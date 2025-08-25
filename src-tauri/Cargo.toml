@@ -1,0 +1,65 @@
+[package]
+name = "devtools"
+version = "0.1.0"
+description = "A Tauri App"
+authors = ["you"]
+edition = "2021"
+default-run = "devtools"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "devtools_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[profile.dev]
+incremental = true # 以较小的步骤编译您的二进制文件。
+
+[profile.release]
+codegen-units = 1 # 允许 LLVM 执行更好的优化。
+lto = true        # 启用链接时优化。
+opt-level = "s"   # 优先考虑小的二进制文件大小。如果您更喜欢速度，请使用 `3`。
+panic = "abort"   # 通过禁用 panic 处理程序来提高性能。
+strip = true      # 确保移除调试符号。
+
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-runtime-wry = "2"
+tauri-plugin-autostart = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-opener = "2"
+tauri-plugin-global-shortcut = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
+tokio = { version = "1", features = ["full"] }
+tokio-rustls = "0.26"
+rustls = { version = "0.23", features = ["ring"] }
+rustls-pemfile = "2"
+rustls-native-certs = "0.8"
+webpki-roots = "0.26"
+dns-lookup = "2"
+openssl = { version = "0.10.73", features = ["vendored"] }
+x509-parser = "0.17"
+base64 = "0.21"
+time = "0.3"
+chrono = { version = "0.4", features = ["serde"] }
+chrono-tz = "0.10"
+hex = "0.4"
+nom = "7.1"
+num-bigint = "0.4"
+num-traits = "0.2"
+regex = "1.10"
+pcre2 = "0.2"
+sha1 = "0.10"
+sha2 = "0.10"
+sqlparser = "0.58"
+dirs = "5.0"

@@ -1,0 +1,211 @@
+import React, { useState } from 'react'
+import Base64Decode from './tools/Base64Decode'
+import Base64Encode from './tools/Base64Encode'
+import PemCertificateViewer from './tools/CertificateViewer'
+import IpInfo from './tools/IpInfo'
+import JsonFormatter from './tools/JsonFormatter'
+import JsonToGo from './tools/JsonToGo'
+import JsonToYaml from './tools/JsonToYaml'
+import JwtDecode from './tools/JwtDecode'
+import JwtEncode from './tools/JwtEncode'
+import PemToPfxConverter from './tools/PemToPfxConverter'
+import PfxToPemConverter from './tools/PfxToPemConverter'
+import { RegexTester } from './tools/RegexTester'
+import Settings from './tools/Settings'
+import SqlToEnt from './tools/SqlToEnt'
+import SqlToGo from './tools/SqlToGo'
+import SslChecker from './tools/SslChecker'
+import SubnetCalculator from './tools/SubnetCalculator'
+import TimestampConverter from './tools/TimestampConverter'
+import YamlToJson from './tools/YamlToJson'
+
+type ToolCategory = {
+  id: string
+  name: string
+  icon: string
+  tools: Array<{
+    id: string
+    name: string
+  }>
+}
+
+const toolCategories: ToolCategory[] = [
+  {
+    id: 'encoding',
+    name: '编码/解码',
+    icon: '🔐',
+    tools: [
+      { id: 'base64encode', name: 'Base64 编码' },
+      { id: 'base64decode', name: 'Base64 解码' },
+      { id: 'jwtencode', name: 'JWT 生成' },
+      { id: 'jwtdecode', name: 'JWT 解码' },
+    ],
+  },
+  {
+    id: 'certificate',
+    name: '证书工具',
+    icon: '📜',
+    tools: [
+      { id: 'certificate', name: '证书查看器' },
+      { id: 'pemtopfx', name: 'PEM 转 PFX' },
+      { id: 'pfxtopem', name: 'PFX 转 PEM' },
+      { id: 'sslchecker', name: '在线 SSL 检测' },
+    ],
+  },
+  {
+    id: 'network',
+    name: '网络工具',
+    icon: '🌐',
+    tools: [
+      { id: 'subnetcalculator', name: '子网掩码计算器' },
+      { id: 'ipinfo', name: 'IP 地址信息查询' },
+    ],
+  },
+  {
+    id: 'dataformat',
+    name: '数据格式转换',
+    icon: '📄',
+    tools: [
+      { id: 'jsonformatter', name: 'JSON 格式化' },
+      { id: 'jsontoyaml', name: 'JSON 转 YAML' },
+      { id: 'yamltojson', name: 'YAML 转 JSON' },
+      { id: 'jsontogo', name: 'JSON 转 Go 结构体' },
+      { id: 'sqltogo', name: 'SQL 转 Go 结构体' },
+      { id: 'sqltoent', name: 'SQL 转 Go Ent ORM' },
+    ],
+  },
+  {
+    id: 'developer',
+    name: '开发工具',
+    icon: '🛠️',
+    tools: [{ id: 'regextester', name: '正则表达式测试器' }],
+  },
+  {
+    id: 'time',
+    name: '时间工具',
+    icon: '⏰',
+    tools: [{ id: 'timestamp', name: '时间戳转换' }],
+  },
+]
+
+const Toolbox: React.FC = () => {
+  const [activeTool, setActiveTool] = useState<
+    | 'base64encode'
+    | 'base64decode'
+    | 'jwtencode'
+    | 'jwtdecode'
+    | 'certificate'
+    | 'pemtopfx'
+    | 'pfxtopem'
+    | 'subnetcalculator'
+    | 'ipinfo'
+    | 'sslchecker'
+    | 'jsonformatter'
+    | 'jsontogo'
+    | 'jsontoyaml'
+    | 'sqltogo'
+    | 'sqltoent'
+    | 'regextester'
+    | 'timestamp'
+    | 'yamltojson'
+    | 'settings'
+  >('base64encode')
+
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
+    new Set(['encoding']),
+  )
+
+  const toggleCategory = (categoryId: string) => {
+    setExpandedCategories((prev) => {
+      const newExpanded = new Set<string>()
+      // 如果点击的是已展开的分类，则折叠它；否则只展开当前分类
+      if (!prev.has(categoryId)) {
+        newExpanded.add(categoryId)
+      }
+      return newExpanded
+    })
+  }
+
+  return (
+    <div className='toolbox flex flex-row w-full h-full'>
+      {/* Left sidebar */}
+      <nav className='toolbox-nav w-48 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md mr-4 h-full flex flex-col'>
+        <div className='space-y-2 flex-1 overflow-y-auto'>
+          {toolCategories.map((category) => (
+            <div key={category.id} className='mb-2'>
+              <button
+                onClick={() => toggleCategory(category.id)}
+                className='w-full px-3 py-2 flex items-center justify-between rounded-md bg-gray-100 hover:bg-gray-200 dark:bg-gray-600 dark:hover:bg-gray-500 transition-colors'>
+                <div className='flex items-center space-x-2'>
+                  <span>{category.icon}</span>
+                  <span className='text-sm font-medium text-gray-700 dark:text-gray-200'>
+                    {category.name}
+                  </span>
+                </div>
+                <span className='text-gray-500 dark:text-gray-400'>
+                  {expandedCategories.has(category.id) ? '▼' : '▶'}
+                </span>
+              </button>
+
+              {expandedCategories.has(category.id) && (
+                <div className='mt-1 ml-2 space-y-1'>
+                  {category.tools.map((tool) => (
+                    <div
+                      key={tool.id}
+                      className={`px-3 py-2 rounded-md cursor-pointer transition-colors text-sm ${
+                        activeTool === tool.id
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-gray-50 text-gray-600 hover:bg-gray-100 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                      }`}
+                      onClick={() => setActiveTool(tool.id as any)}>
+                      {tool.name}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Settings button at bottom */}
+        <div className='mt-4 pt-4 border-t border-gray-200 dark:border-gray-600'>
+          <button
+            onClick={() => setActiveTool('settings')}
+            className={`w-full px-3 py-2 rounded-md cursor-pointer transition-colors flex items-center space-x-2 ${
+              activeTool === 'settings'
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500'
+            }`}>
+            <span>⚙️</span>
+            <span className='text-sm font-medium'>设置</span>
+          </button>
+        </div>
+      </nav>
+
+      {/* Right content area */}
+      <div className='toolbox-content flex-1 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md overflow-auto h-full w-full'>
+        {activeTool === 'base64encode' && <Base64Encode />}
+        {activeTool === 'base64decode' && <Base64Decode />}
+        {activeTool === 'jwtencode' && <JwtEncode />}
+        {activeTool === 'jwtdecode' && <JwtDecode />}
+        {activeTool === 'certificate' && <PemCertificateViewer />}
+        {activeTool === 'pemtopfx' && <PemToPfxConverter />}
+        {activeTool === 'pfxtopem' && <PfxToPemConverter />}
+        {activeTool === 'subnetcalculator' && <SubnetCalculator />}
+        {activeTool === 'ipinfo' && <IpInfo />}
+        {activeTool === 'sslchecker' && <SslChecker />}
+        {activeTool === 'jsonformatter' && <JsonFormatter />}
+        {activeTool === 'jsontogo' && <JsonToGo />}
+        {activeTool === 'jsontoyaml' && <JsonToYaml />}
+        {activeTool === 'timestamp' && <TimestampConverter />}
+        {activeTool === 'regextester' && <RegexTester />}
+        {activeTool === 'yamltojson' && <YamlToJson />}
+        {activeTool === 'sqltogo' && <SqlToGo />}
+        {activeTool === 'sqltoent' && <SqlToEnt />}
+        {activeTool === 'settings' && <Settings />}
+      </div>
+    </div>
+  )
+}
+
+export default Toolbox
