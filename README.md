@@ -91,77 +91,93 @@ pnpm tauri build
 ## 📁 Project Structure
 
 ```bash
-src/                    # Frontend React/TypeScript code
-├── App.tsx            # Main application component
-├── Toolbox.tsx        # Main navigation and tool switching component
-├── tools/             # Individual tool components (19 tools)
-│   ├── Base64Decode.tsx          # Base64 decoding tool
-│   ├── Base64Encode.tsx          # Base64 encoding tool
-│   ├── CertificateViewer.tsx     # Certificate analysis tool
-│   ├── IpInfo.tsx                # IP address information lookup
-│   ├── JsonFormatter.tsx         # JSON formatting and validation
-│   ├── JsonToGo.tsx              # JSON to Go struct conversion
-│   ├── JsonToYaml.tsx            # JSON to YAML conversion
-│   ├── JwtDecode.tsx             # JWT token decoding
-│   ├── JwtEncode.tsx             # JWT token encoding
-│   ├── PemToPfxConverter.tsx     # PEM to PFX certificate conversion
-│   ├── PfxToPemConverter.tsx     # PFX to PEM certificate conversion
-│   ├── RegexTester.tsx           # Regular expression testing tool
-│   ├── Settings.tsx              # Application settings and preferences
-│   ├── SqlToEnt.tsx              # SQL to Ent ORM schema generation
-│   ├── SqlToGo.tsx               # SQL to Go struct conversion
-│   ├── SslChecker.tsx            # SSL certificate checking
-│   ├── SubnetCalculator.tsx      # IP/CIDR calculation
-│   ├── TimestampConverter.tsx     # Unix timestamp conversion
-│   └── YamlToJson.tsx            # YAML to JSON conversion
-├── components/        # Shared components
-│   ├── common/        # Common components
-│   │   ├── Button.tsx
-│   │   ├── Card/
-│   │   ├── CodeEditor/
-│   │   ├── ErrorMessage.tsx
-│   │   ├── FileUpload.tsx
-│   │   ├── InputField.tsx
-│   │   ├── PageHeader.tsx
-│   │   └── Toast/
-│   └── layouts/       # Layout components
-│       ├── SplitEditorLayout.tsx
-│       └── ToolLayout.tsx
-├── hooks/             # Custom React hooks
-│   ├── useAsyncState.ts
-│   ├── useCopyToClipboard.ts
-│   ├── useDebounce.ts
-│   ├── useTheme.ts
-│   └── useToast.ts
-└── utils/             # Utility functions
-
-src-tauri/             # Tauri backend Rust code
-├── src/               # Rust source files
-│   ├── main.rs        # Application entry point
-│   ├── lib.rs         # Main application setup with Tauri command handlers
-│   ├── tray.rs        # System tray implementation
-│   ├── tools/         # Backend tool implementations
-│   │   ├── autostart.rs               # Auto-start functionality
-│   │   ├── certificate_converter.rs   # Certificate format conversion
-│   │   ├── certificate_viewer.rs      # Certificate parsing and analysis
-│   │   ├── global_shortcut.rs         # Global shortcut handling
-│   │   ├── ip_info.rs                 # IP address information lookup
-│   │   ├── json_to_go.rs              # JSON to Go struct conversion
-│   │   ├── regex_tester.rs            # Regular expression testing
-│   │   ├── sql_to_ent.rs              # SQL to Ent ORM schema generation
-│   │   ├── sql_to_go.rs               # SQL to Go struct conversion
-│   │   ├── ssl_checker.rs             # SSL certificate checking
-│   │   └── system_settings.rs         # System settings management
-│   └── utils/         # Shared utility modules
-│       ├── code_formatter.rs
-│       ├── command_handler.rs
-│       ├── crypto.rs
-│       ├── error.rs
-│       ├── response.rs
-│       ├── string_utils.rs
-│       └── validation.rs
-├── tauri.conf.json    # Tauri configuration file
-└── icons/             # Application icons
+devtools/                    # Project root directory
+├── .gitignore              # Git ignore rules
+├── LICENSE                 # MIT License file
+├── README.md               # English documentation
+├── README_ZH.md           # Chinese documentation
+├── index.html             # HTML entry point
+├── package.json           # Node.js dependencies and scripts
+├── pnpm-lock.yaml         # pnpm lock file
+├── public/                # Static public assets
+│   ├── tauri.svg          # Tauri logo
+│   └── vite.svg           # Vite logo
+├── src-tauri/             # Tauri backend Rust code
+│   ├── .gitignore         # Git ignore for Rust
+│   ├── Cargo.lock         # Rust dependencies lock
+│   ├── Cargo.toml         # Rust project configuration
+│   ├── build.rs           # Rust build script
+│   ├── capabilities/      # Tauri capability definitions
+│   │   └── default.json   # Default capabilities
+│   ├── icons/             # Application icons (multiple sizes)
+│   │   ├── 128x128.png
+│   │   ├── 128x128@2x.png
+│   │   ├── 32x32.png
+│   │   ├── Square107x107Logo.png
+│   │   ├── Square142x142Logo.png
+│   │   ├── Square150x150Logo.png
+│   │   ├── Square284x284Logo.png
+│   │   ├── Square30x30Logo.png
+│   │   ├── Square310x310Logo.png
+│   │   ├── Square44x44Logo.png
+│   │   ├── Square71x71Logo.png
+│   │   ├── Square89x89Logo.png
+│   │   ├── StoreLogo.png
+│   │   ├── icon.icns
+│   │   ├── icon.ico
+│   │   └── icon.png
+│   ├── src/               # Rust source code
+│   │   ├── lib.rs         # Main library entry point
+│   │   ├── main.rs        # Application entry point
+│   │   ├── tools/         # Backend tool implementations
+│   │   └── utils/         # Utility modules
+│   └── tauri.conf.json    # Tauri application configuration
+├── src/                   # Frontend React/TypeScript code
+│   ├── App.css            # Main application styles
+│   ├── App.tsx            # Main application component
+│   ├── Toolbox.tsx        # Main navigation and tool switching
+│   ├── assets/            # Static assets
+│   │   └── react.svg      # React logo
+│   ├── components/        # Shared UI components
+│   │   ├── common/        # Common reusable components
+│   │   └── layouts/       # Layout components
+│   ├── hooks/             # Custom React hooks
+│   │   ├── index.ts       # Hooks barrel export
+│   │   ├── useAsyncState.ts
+│   │   ├── useCopyToClipboard.ts
+│   │   ├── useDebounce.ts
+│   │   ├── useTheme.ts
+│   │   ├── useToast.ts
+│   ├── main.tsx           # React application entry point
+│   ├── tools/             # Individual tool components (19 tools)
+│   │   ├── Base64Decode.tsx
+│   │   ├── Base64Encode.tsx
+│   │   ├── CertificateViewer.tsx
+│   │   ├── IpInfo.tsx
+│   │   ├── JsonFormatter.tsx
+│   │   ├── JsonToGo.tsx
+│   │   ├── JsonToYaml.tsx
+│   │   ├── JwtDecode.tsx
+│   │   ├── JwtEncode.tsx
+│   │   ├── PemToPfxConverter.tsx
+│   │   ├── PfxToPemConverter.tsx
+│   │   ├── RegexTester.tsx
+│   │   ├── Settings.tsx
+│   │   ├── SqlToEnt.tsx
+│   │   ├── SqlToGo.tsx
+│   │   ├── SslChecker.tsx
+│   │   ├── SubnetCalculator.tsx
+│   │   ├── TimestampConverter.tsx
+│   │   └── YamlToJson.tsx
+│   ├── utils/             # Utility functions
+│   │   ├── api.ts         # Tauri API wrapper
+│   │   ├── globalShortcut.ts # Global shortcut utilities
+│   │   └── index.ts       # Utility exports
+│   └── vite-env.d.ts      # Vite environment types
+├── tailwind.config.js     # Tailwind CSS configuration
+├── tsconfig.json         # TypeScript configuration
+├── tsconfig.node.json    # TypeScript node configuration
+└── vite.config.ts        # Vite build configuration
 ```
 
 ## 🎯 Core Features
