@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "tauri": "tauri dev"
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
@@ -23,7 +25,10 @@
     "jsrsasign": "^11.1.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-split": "^2.0.14"
+    "react-split": "^2.0.14",
+    "smol-toml": "^1.4.2",
+    "toml": "^3.0.0",
+    "tomlify-j0.4": "^3.0.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.11",

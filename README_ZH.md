@@ -24,7 +24,7 @@
 ### 数据格式工具
 
 - **JSON 格式化** - JSON 格式化、验证和美化打印
-- **JSON/YAML 转换** - JSON 和 YAML 之间的双向格式转换
+- **格式转换器** - JSON、YAML、TOML 之间的多格式转换
 - **JSON 转 Go 结构体** - 从 JSON 生成 Go 结构体定义
 
 ### 数据库工具
@@ -156,7 +156,6 @@ devtools/                    # 项目根目录
 │   │   ├── IpInfo.tsx
 │   │   ├── JsonFormatter.tsx
 │   │   ├── JsonToGo.tsx
-│   │   ├── JsonToYaml.tsx
 │   │   ├── JwtDecode.tsx
 │   │   ├── JwtEncode.tsx
 │   │   ├── PemToPfxConverter.tsx
@@ -168,7 +167,6 @@ devtools/                    # 项目根目录
 │   │   ├── SslChecker.tsx
 │   │   ├── SubnetCalculator.tsx
 │   │   ├── TimestampConverter.tsx
-│   │   └── YamlToJson.tsx
 │   ├── utils/             # 工具函数
 │   │   ├── api.ts         # Tauri API 包装器
 │   │   ├── globalShortcut.ts # 全局快捷键工具

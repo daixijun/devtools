@@ -5,7 +5,7 @@ import PemCertificateViewer from './tools/CertificateViewer'
 import IpInfo from './tools/IpInfo'
 import JsonFormatter from './tools/JsonFormatter'
 import JsonToGo from './tools/JsonToGo'
-import JsonToYaml from './tools/JsonToYaml'
+import FormatConverter from './tools/FormatConverter'
 import JwtDecode from './tools/JwtDecode'
 import JwtEncode from './tools/JwtEncode'
 import PemToPfxConverter from './tools/PemToPfxConverter'
@@ -17,7 +17,6 @@ import SqlToGo from './tools/SqlToGo'
 import SslChecker from './tools/SslChecker'
 import SubnetCalculator from './tools/SubnetCalculator'
 import TimestampConverter from './tools/TimestampConverter'
-import YamlToJson from './tools/YamlToJson'
 
 type ToolCategory = {
   id: string
@@ -66,13 +65,12 @@ const toolCategories: ToolCategory[] = [
     name: '数据格式转换',
     icon: '📄',
     tools: [
-      { id: 'jsonformatter', name: 'JSON 格式化' },
-      { id: 'jsontoyaml', name: 'JSON 转 YAML' },
-      { id: 'yamltojson', name: 'YAML 转 JSON' },
-      { id: 'jsontogo', name: 'JSON 转 Go 结构体' },
-      { id: 'sqltogo', name: 'SQL 转 Go 结构体' },
-      { id: 'sqltoent', name: 'SQL 转 Go Ent ORM' },
-    ],
+        { id: 'jsonformatter', name: 'JSON 格式化' },
+        { id: 'formatconverter', name: '格式转换器' },
+        { id: 'jsontogo', name: 'JSON 转 Go 结构体' },
+        { id: 'sqltogo', name: 'SQL 转 Go 结构体' },
+        { id: 'sqltoent', name: 'SQL 转 Go Ent ORM' },
+      ],
   },
   {
     id: 'developer',
@@ -102,12 +100,11 @@ const Toolbox: React.FC = () => {
     | 'sslchecker'
     | 'jsonformatter'
     | 'jsontogo'
-    | 'jsontoyaml'
+    | 'formatconverter'
     | 'sqltogo'
     | 'sqltoent'
     | 'regextester'
     | 'timestamp'
-    | 'yamltojson'
     | 'settings'
   >('base64encode')
 
@@ -196,10 +193,9 @@ const Toolbox: React.FC = () => {
         {activeTool === 'sslchecker' && <SslChecker />}
         {activeTool === 'jsonformatter' && <JsonFormatter />}
         {activeTool === 'jsontogo' && <JsonToGo />}
-        {activeTool === 'jsontoyaml' && <JsonToYaml />}
+        {activeTool === 'formatconverter' && <FormatConverter />}
         {activeTool === 'timestamp' && <TimestampConverter />}
         {activeTool === 'regextester' && <RegexTester />}
-        {activeTool === 'yamltojson' && <YamlToJson />}
         {activeTool === 'sqltogo' && <SqlToGo />}
         {activeTool === 'sqltoent' && <SqlToEnt />}
         {activeTool === 'settings' && <Settings />}

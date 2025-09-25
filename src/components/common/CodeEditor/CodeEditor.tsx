@@ -109,7 +109,7 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
     <div
       className={`border border-gray-300 dark:border-gray-600 rounded-md overflow-hidden h-full ${className}`}>
       <Editor
-        height="100%"
+        height='100%'
         language={language}
         value={value}
         onChange={handleEditorChange}

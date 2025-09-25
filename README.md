@@ -24,7 +24,7 @@ A desktop developer toolbox application built with Tauri 2 + React
 ### Data Format Tools
 
 - **JSON Formatter** - JSON formatting, validation, and pretty printing
-- **JSON/YAML Converter** - Bidirectional format conversion between JSON and YAML
+- **Format Converter** - Multi-format conversion between JSON, YAML, and TOML
 - **JSON to Go Struct** - Generate Go struct definitions from JSON
 
 ### Database Tools
@@ -156,7 +156,6 @@ devtools/                    # Project root directory
 │   │   ├── IpInfo.tsx
 │   │   ├── JsonFormatter.tsx
 │   │   ├── JsonToGo.tsx
-│   │   ├── JsonToYaml.tsx
 │   │   ├── JwtDecode.tsx
 │   │   ├── JwtEncode.tsx
 │   │   ├── PemToPfxConverter.tsx
@@ -168,7 +167,6 @@ devtools/                    # Project root directory
 │   │   ├── SslChecker.tsx
 │   │   ├── SubnetCalculator.tsx
 │   │   ├── TimestampConverter.tsx
-│   │   └── YamlToJson.tsx
 │   ├── utils/             # Utility functions
 │   │   ├── api.ts         # Tauri API wrapper
 │   │   ├── globalShortcut.ts # Global shortcut utilities

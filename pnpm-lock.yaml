@@ -50,6 +50,15 @@ importers:
       react-split:
         specifier: ^2.0.14
         version: 2.0.14(react@18.3.1)
+      smol-toml:
+        specifier: ^1.4.2
+        version: 1.4.2
+      toml:
+        specifier: ^3.0.0
+        version: 3.0.0
+      tomlify-j0.4:
+        specifier: ^3.0.0
+        version: 3.0.0
     devDependencies:
       '@tailwindcss/vite':
         specifier: ^4.1.11
@@ -988,6 +997,10 @@ packages:
     engines: {node: '>=10'}
     hasBin: true
 
+  smol-toml@1.4.2:
+    resolution: {integrity: sha512-rInDH6lCNiEyn3+hH8KVGFdbjc099j47+OSgbMrfDYX1CmXLfdKd7qi6IfcWj2wFxvSVkuI46M+wPGYfEOEj6g==, tarball: https://registry.npmjs.org/smol-toml/-/smol-toml-1.4.2.tgz}
+    engines: {node: '>= 18'}
+
   source-map-js@1.2.1:
     resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==, tarball: https://registry.npmjs.org/source-map-js/-/source-map-js-1.2.1.tgz}
     engines: {node: '>=0.10.0'}
@@ -1012,6 +1025,12 @@ packages:
   tinyglobby@0.2.14:
     resolution: {integrity: sha512-tX5e7OM1HnYr2+a2C/4V0htOcSQcoSTH9KgJnVvNm5zm/cyEWKJ7j7YutsH9CxMdtOkkLFy2AHrMci9IM8IPZQ==, tarball: https://registry.npmjs.org/tinyglobby/-/tinyglobby-0.2.14.tgz}
     engines: {node: '>=12.0.0'}
+
+  toml@3.0.0:
+    resolution: {integrity: sha512-y/mWCZinnvxjTKYhJ+pYxwD0mRLVvOtdS2Awbgxln6iEnt4rk0yBxeSBHkGJcPucRiG0e55mwWp+g/05rsrd6w==, tarball: https://registry.npmjs.org/toml/-/toml-3.0.0.tgz}
+
+  tomlify-j0.4@3.0.0:
+    resolution: {integrity: sha512-2Ulkc8T7mXJ2l0W476YC/A209PR38Nw8PuaCNtk9uI3t1zzFdGQeWYGQvmj2PZkVvRC/Yoi4xQKMRnWc/N29tQ==, tarball: https://registry.npmjs.org/tomlify-j0.4/-/tomlify-j0.4-3.0.0.tgz}
 
   typescript@5.6.3:
     resolution: {integrity: sha512-hjcS1mhfuyi4WW8IWtjP7brDrG2cuDZukyrYrSauoXGNgx0S7zceP07adYkJycEr56BOUTNPzbInooiN3fn1qw==, tarball: https://registry.npmjs.org/typescript/-/typescript-5.6.3.tgz}
@@ -1852,6 +1871,8 @@ snapshots:
 
   semver@7.7.2: {}
 
+  smol-toml@1.4.2: {}
+
   source-map-js@1.2.1: {}
 
   split.js@1.6.5: {}
@@ -1875,6 +1896,10 @@ snapshots:
     dependencies:
       fdir: 6.4.6(picomatch@4.0.3)
       picomatch: 4.0.3
+
+  toml@3.0.0: {}
+
+  tomlify-j0.4@3.0.0: {}
 
   typescript@5.6.3: {}
 
