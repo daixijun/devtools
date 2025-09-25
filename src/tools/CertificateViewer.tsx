@@ -45,7 +45,7 @@ const RightSideFullScreenCertificateView: React.FC<{
   return (
     <div className='fixed inset-y-0 right-0 left-80 bg-white dark:bg-gray-900 z-50 flex flex-col'>
       {/* 顶部导航栏 */}
-      <div className='flex-shrink-0 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 border-l border-gray-200 dark:border-gray-700 px-6 py-4'>
+      <div className='flex-shrink-0 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 border-l px-6 py-4'>
         <div className='flex items-center justify-between'>
           <div className='flex items-center space-x-4'>
             <Button
@@ -119,9 +119,7 @@ const RightSideFullScreenCertificateView: React.FC<{
                 <div className='flex items-center space-x-3'>
                   <div
                     className={`flex-shrink-0 w-3 h-3 rounded-full ${
-                      chainInfo.is_full_chain
-                        ? 'bg-green-500'
-                        : 'bg-red-500'
+                      chainInfo.is_full_chain ? 'bg-green-500' : 'bg-red-500'
                     }`}></div>
                   <span
                     className={`font-medium ${
@@ -210,61 +208,63 @@ const RightSideFullScreenCertificateView: React.FC<{
               {/* 单个证书标签页 */}
               {currentTab > 0 && (
                 <>
-                  {getOutputForCertificate(currentTab - 1).map((item, index) => {
-                    // 跳过证书标题，因为已经在标签页中显示
-                    if (
-                      item.label?.startsWith('证书 ') &&
-                      item.isSectionHeader &&
-                      item.certIndex === currentTab - 1
-                    ) {
-                      return null
-                    }
+                  {getOutputForCertificate(currentTab - 1).map(
+                    (item, index) => {
+                      // 跳过证书标题，因为已经在标签页中显示
+                      if (
+                        item.label?.startsWith('证书 ') &&
+                        item.isSectionHeader &&
+                        item.certIndex === currentTab - 1
+                      ) {
+                        return null
+                      }
 
-                    return (
-                      <div
-                        key={index}
-                        className={`${
-                          item.isSectionHeader
-                            ? 'border-t border-gray-200 dark:border-gray-700 pt-6 mt-6 first:border-t-0 first:pt-0 first:mt-0'
-                            : 'mb-3'
-                        }`}>
-                        {item.label && (
-                          <div
-                            className={`flex items-start ${
-                              item.indentLevel === 1
-                                ? 'ml-0'
-                                : item.indentLevel === 2
-                                ? 'ml-6'
-                                : ''
-                            }`}>
-                            <span
-                              className={`font-medium text-gray-700 dark:text-gray-300 ${
-                                item.isSectionHeader
-                                  ? 'text-xl font-semibold text-gray-900 dark:text-white mb-3 block'
-                                  : 'inline-block min-w-40'
+                      return (
+                        <div
+                          key={index}
+                          className={`${
+                            item.isSectionHeader
+                              ? 'border-t border-gray-200 dark:border-gray-700 pt-6 mt-6 first:border-t-0 first:pt-0 first:mt-0'
+                              : 'mb-3'
+                          }`}>
+                          {item.label && (
+                            <div
+                              className={`flex items-start ${
+                                item.indentLevel === 1
+                                  ? 'ml-0'
+                                  : item.indentLevel === 2
+                                  ? 'ml-6'
+                                  : ''
                               }`}>
-                              {item.label}
-                              {!item.isSectionHeader && ':'}
-                            </span>
-                            <span
-                              className={`flex-1 ml-3 text-base ${
-                                item.statusType === 'expired'
-                                  ? 'text-red-600 dark:text-red-400 font-medium'
-                                  : item.statusType === 'warning'
-                                  ? 'text-yellow-600 dark:text-yellow-400 font-medium'
-                                  : item.statusType === 'valid'
-                                  ? 'text-green-600 dark:text-green-400 font-medium'
-                                  : item.isExpiryWarning
-                                  ? 'text-red-600 dark:text-red-400 font-medium'
-                                  : 'text-gray-600 dark:text-gray-400'
-                              } ${item.isSectionHeader ? 'hidden' : ''}`}>
-                              {item.value}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
+                              <span
+                                className={`font-medium text-gray-700 dark:text-gray-300 ${
+                                  item.isSectionHeader
+                                    ? 'text-xl font-semibold text-gray-900 dark:text-white mb-3 block'
+                                    : 'inline-block min-w-40'
+                                }`}>
+                                {item.label}
+                                {!item.isSectionHeader && ':'}
+                              </span>
+                              <span
+                                className={`flex-1 ml-3 text-base ${
+                                  item.statusType === 'expired'
+                                    ? 'text-red-600 dark:text-red-400 font-medium'
+                                    : item.statusType === 'warning'
+                                    ? 'text-yellow-600 dark:text-yellow-400 font-medium'
+                                    : item.statusType === 'valid'
+                                    ? 'text-green-600 dark:text-green-400 font-medium'
+                                    : item.isExpiryWarning
+                                    ? 'text-red-600 dark:text-red-400 font-medium'
+                                    : 'text-gray-600 dark:text-gray-400'
+                                } ${item.isSectionHeader ? 'hidden' : ''}`}>
+                                {item.value}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    },
+                  )}
                 </>
               )}
             </div>
@@ -717,6 +717,7 @@ const PemCertificateViewer: React.FC = () => {
   const [pfxPassword, setPfxPassword] = useState('')
   const [fileType, setFileType] = useState<'PEM' | 'PFX'>('PEM')
   const [isRightSideFullScreen, setIsRightSideFullScreen] = useState(false)
+  const [isBase64Decode, setIsBase64Decode] = useState(false) // 新增：控制是否进行base64解码
 
   // 检测文件类型
   const detectFileType = (
@@ -769,6 +770,19 @@ const PemCertificateViewer: React.FC = () => {
       const detectedFileType = detectFileType(content, fileName)
       let result: CertificateChainInfo
 
+      // 处理base64解码
+      let processedContent = content
+      if (isBase64Decode && content.trim()) {
+        try {
+          // 移除可能的base64前缀和空格
+          const base64Content = content.replace(/^data:[^;]+;base64,/, '').replace(/\s/g, '')
+          const decodedContent = atob(base64Content)
+          processedContent = decodedContent
+        } catch (err) {
+          throw new Error('Base64解码失败：请检查输入内容是否为有效的Base64编码')
+        }
+      }
+
       if (detectedFileType === 'PFX' && data) {
         // 处理PFX文件
         const pfxDataArray = Array.from(data)
@@ -786,14 +800,14 @@ const PemCertificateViewer: React.FC = () => {
       } else {
         // 处理PEM文本内容
         result = (await invoke('parse_pem_certificate', {
-          pemContent: content,
+          pemContent: processedContent,
         })) as CertificateChainInfo
       }
 
       setChainInfo(result)
       setCertificateInfo(result.certificates[0] || null)
       setActiveTab(0) // 重置到第一个标签页
-      
+
       // 自动进入右侧全屏模式
       setIsRightSideFullScreen(true)
 
@@ -1138,6 +1152,7 @@ const PemCertificateViewer: React.FC = () => {
     setUploadedFileName('')
     setPfxPassword('')
     setFileType('PEM')
+    setIsBase64Decode(false) // 重置base64解码选项
   }
 
   // 如果处于右侧全屏模式，显示右侧全屏组件
@@ -1153,10 +1168,9 @@ const PemCertificateViewer: React.FC = () => {
   }
 
   return (
-    <ToolLayout 
-      title="证书查看器"
-      subtitle="解析和查看PEM、PFX格式的X.509证书信息，支持证书链检测、CA证书下载建议和多证书展示"
-    >
+    <ToolLayout
+      title='证书查看器'
+      subtitle='解析和查看PEM、PFX格式的X.509证书信息，支持证书链检测、CA证书下载建议和多证书展示'>
       <div className='flex flex-col h-full space-y-6'>
         {/* 统一的证书文件上传 */}
         <div className='space-y-4 mb-4'>
@@ -1238,13 +1252,39 @@ const PemCertificateViewer: React.FC = () => {
               </div>
             </div>
           )}
+
+          {/* Base64解码选项（仅在文本输入时显示） */}
+          {!uploadedData && (
+            <div className='p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg'>
+              <div className='flex items-start space-x-3'>
+                <div className='flex items-center h-5'>
+                  <input
+                    id='base64-decode'
+                    name='base64-decode'
+                    type='checkbox'
+                    checked={isBase64Decode}
+                    onChange={(e) => setIsBase64Decode(e.target.checked)}
+                    className='w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500'
+                  />
+                </div>
+                <div className='flex-1'>
+                  <label htmlFor='base64-decode' className='text-blue-800 dark:text-blue-200 font-medium'>
+                    Base64解码
+                  </label>
+                  <p className='text-blue-700 dark:text-blue-300 text-sm mt-1'>
+                    如果输入的证书内容是Base64编码的，请勾选此选项进行解码后再解析
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 操作按钮区域 */}
         <div>
-          <Button 
-            variant='primary' 
-            size='md' 
+          <Button
+            variant='primary'
+            size='md'
             onClick={handleParseCertificate}
             disabled={isLoading || (!input.trim() && !uploadedData)}
             className='w-full'>
@@ -1254,69 +1294,77 @@ const PemCertificateViewer: React.FC = () => {
 
         <div className='flex-1 min-h-0 overflow-auto'>
           {/* 初始状态 */}
-          {!isLoading && !input && !error && (!output || output.length === 0) && (
-            <div className='bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm p-8'>
-              <div className='flex flex-col items-center justify-center space-y-4'>
-                <div className='w-16 h-16 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center'>
-                  <svg
-                    className='w-8 h-8 text-blue-600 dark:text-blue-400'
-                    fill='none'
-                    stroke='currentColor'
-                    viewBox='0 0 24 24'>
-                    <path
-                      strokeLinecap='round'
-                      strokeLinejoin='round'
-                      strokeWidth={2}
-                      d='M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z'
-                    />
-                  </svg>
-                </div>
-                <div className='text-center'>
-                  <p className='text-gray-900 dark:text-white font-medium text-lg'>
-                    欢迎使用证书查看器
-                  </p>
-                  <p className='text-gray-600 dark:text-gray-400 mt-2'>
-                    支持PEM和PFX格式证书，提供证书链分析和CA下载建议
-                  </p>
-                  <div className='mt-4 text-sm text-gray-500 dark:text-gray-500'>
-                    <p>支持的格式：.pem, .crt, .pfx, .p12</p>
-                    <p>支持多个证书：自动检测证书链完整性</p>
-                    <p>示例格式：-----BEGIN CERTIFICATE----- 或 PFX二进制文件</p>
+          {!isLoading &&
+            !input &&
+            !error &&
+            (!output || output.length === 0) && (
+              <div className='bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm p-8'>
+                <div className='flex flex-col items-center justify-center space-y-4'>
+                  <div className='w-16 h-16 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center'>
+                    <svg
+                      className='w-8 h-8 text-blue-600 dark:text-blue-400'
+                      fill='none'
+                      stroke='currentColor'
+                      viewBox='0 0 24 24'>
+                      <path
+                        strokeLinecap='round'
+                        strokeLinejoin='round'
+                        strokeWidth={2}
+                        d='M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z'
+                      />
+                    </svg>
+                  </div>
+                  <div className='text-center'>
+                    <p className='text-gray-900 dark:text-white font-medium text-lg'>
+                      欢迎使用证书查看器
+                    </p>
+                    <p className='text-gray-600 dark:text-gray-400 mt-2'>
+                      支持PEM和PFX格式证书，提供证书链分析和CA下载建议和多证书展示
+                    </p>
+                    <div className='mt-4 text-sm text-gray-500 dark:text-gray-500'>
+                      <p>支持的格式：.pem, .crt, .pfx, .p12</p>
+                      <p>支持多个证书：自动检测证书链完整性</p>
+                      <p>
+                        示例格式：-----BEGIN CERTIFICATE----- 或 PFX二进制文件
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
           {/* 空状态 */}
-          {!isLoading && input && !error && (!output || output.length === 0) && (
-            <div className='bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm p-8'>
-              <div className='flex flex-col items-center justify-center space-y-4'>
-                <div className='w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center'>
-                  <svg
-                    className='w-6 h-6 text-gray-400 dark:text-gray-500'
-                    fill='none'
-                    stroke='currentColor'
-                    viewBox='0 0 24 24'>
-                    <path
-                      strokeLinecap='round'
-                      strokeLinejoin='round'
-                      strokeWidth={2}
-                      d='M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'
-                    />
-                  </svg>
-                </div>
-                <div className='text-center'>
-                  <p className='text-gray-600 dark:text-gray-400 font-medium'>
-                    等待证书输入
-                  </p>
-                  <p className='text-sm text-gray-500 dark:text-gray-500 mt-1'>
-                    请输入PEM格式的证书内容
-                  </p>
+          {!isLoading &&
+            input &&
+            !error &&
+            (!output || output.length === 0) && (
+              <div className='bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm p-8'>
+                <div className='flex flex-col items-center justify-center space-y-4'>
+                  <div className='w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center'>
+                    <svg
+                      className='w-6 h-6 text-gray-400 dark:text-gray-500'
+                      fill='none'
+                      stroke='currentColor'
+                      viewBox='0 0 24 24'>
+                      <path
+                        strokeLinecap='round'
+                        strokeLinejoin='round'
+                        strokeWidth={2}
+                        d='M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'
+                      />
+                    </svg>
+                  </div>
+                  <div className='text-center'>
+                    <p className='text-gray-600 dark:text-gray-400 font-medium'>
+                      等待证书输入
+                    </p>
+                    <p className='text-sm text-gray-500 dark:text-gray-500 mt-1'>
+                      请输入PEM格式的证书内容
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
           {isLoading && (
             <div className='bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm p-8'>
@@ -1461,7 +1509,7 @@ const PemCertificateViewer: React.FC = () => {
                               <span
                                 className={`font-medium text-gray-700 dark:text-gray-300 ${
                                   item.isSectionHeader
-                                    ? 'text-lg font-semibold text-gray-900 dark:text-white mb-2 block'
+                                    ? 'text-xl font-semibold text-gray-900 dark:text-white mb-2 block'
                                     : 'inline-block min-w-32'
                                 }`}>
                                 {item.label}
@@ -1508,7 +1556,7 @@ const PemCertificateViewer: React.FC = () => {
                               className={`${
                                 item.isSectionHeader
                                   ? 'border-t border-gray-200 dark:border-gray-700 pt-4 mt-4 first:border-t-0 first:pt-0 first:mt-0'
-                                  : 'mb-2'
+                                  : 'mb-3'
                               }`}>
                               {item.label && (
                                 <div
@@ -1522,14 +1570,14 @@ const PemCertificateViewer: React.FC = () => {
                                   <span
                                     className={`font-medium text-gray-700 dark:text-gray-300 ${
                                       item.isSectionHeader
-                                        ? 'text-lg font-semibold text-gray-900 dark:text-white mb-2 block'
+                                        ? 'text-xl font-semibold text-gray-900 dark:text-white mb-3 block'
                                         : 'inline-block min-w-32'
                                     }`}>
                                     {item.label}
                                     {!item.isSectionHeader && ':'}
                                   </span>
                                   <span
-                                    className={`flex-1 ml-2 ${
+                                    className={`flex-1 ml-3 text-base ${
                                       item.statusType === 'expired'
                                         ? 'text-red-600 dark:text-red-400 font-medium'
                                         : item.statusType === 'warning'
