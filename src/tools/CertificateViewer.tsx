@@ -775,11 +775,15 @@ const PemCertificateViewer: React.FC = () => {
       if (isBase64Decode && content.trim()) {
         try {
           // 移除可能的base64前缀和空格
-          const base64Content = content.replace(/^data:[^;]+;base64,/, '').replace(/\s/g, '')
+          const base64Content = content
+            .replace(/^data:[^;]+;base64,/, '')
+            .replace(/\s/g, '')
           const decodedContent = atob(base64Content)
           processedContent = decodedContent
         } catch (err) {
-          throw new Error('Base64解码失败：请检查输入内容是否为有效的Base64编码')
+          throw new Error(
+            'Base64解码失败：请检查输入内容是否为有效的Base64编码',
+          )
         }
       }
 
@@ -1268,7 +1272,9 @@ const PemCertificateViewer: React.FC = () => {
                   />
                 </div>
                 <div className='flex-1'>
-                  <label htmlFor='base64-decode' className='text-blue-800 dark:text-blue-200 font-medium'>
+                  <label
+                    htmlFor='base64-decode'
+                    className='text-blue-800 dark:text-blue-200 font-medium'>
                     Base64解码
                   </label>
                   <p className='text-blue-700 dark:text-blue-300 text-sm mt-1'>
