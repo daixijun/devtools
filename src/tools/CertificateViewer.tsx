@@ -43,7 +43,7 @@ const RightSideFullScreenCertificateView: React.FC<{
   }
 
   return (
-    <div className='fixed inset-y-0 right-0 left-80 bg-white dark:bg-gray-900 z-50 flex flex-col'>
+    <div className='absolute inset-y-0 right-0 left-80 bg-white dark:bg-gray-900 z-50 flex flex-col'>
       {/* 顶部导航栏 */}
       <div className='flex-shrink-0 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 border-l px-6 py-4'>
         <div className='flex items-center justify-between'>
@@ -78,7 +78,7 @@ const RightSideFullScreenCertificateView: React.FC<{
       </div>
 
       {/* 标签页导航 */}
-      <div className='flex-shrink-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 border-l border-gray-200 dark:border-gray-700'>
+      <div className='flex-shrink-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 border-l '>
         <div className='px-6'>
           <nav className='flex space-x-8' aria-label='证书标签页'>
             <button
