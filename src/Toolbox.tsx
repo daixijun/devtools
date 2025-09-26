@@ -17,6 +17,7 @@ import SqlToGo from './tools/SqlToGo'
 import SslChecker from './tools/SslChecker'
 import SubnetCalculator from './tools/SubnetCalculator'
 import TimestampConverter from './tools/TimestampConverter'
+import PasswordGenerator from './tools/PasswordGenerator'
 
 type ToolCategory = {
   id: string
@@ -38,6 +39,7 @@ const toolCategories: ToolCategory[] = [
       { id: 'base64decode', name: 'Base64 解码' },
       { id: 'jwtencode', name: 'JWT 生成' },
       { id: 'jwtdecode', name: 'JWT 解码' },
+      { id: 'passwordgenerator', name: '密码生成器' },
     ],
   },
   {
@@ -92,6 +94,7 @@ const Toolbox: React.FC = () => {
     | 'base64decode'
     | 'jwtencode'
     | 'jwtdecode'
+    | 'passwordgenerator'
     | 'certificate'
     | 'pemtopfx'
     | 'pfxtopem'
@@ -185,6 +188,7 @@ const Toolbox: React.FC = () => {
         {activeTool === 'base64decode' && <Base64Decode />}
         {activeTool === 'jwtencode' && <JwtEncode />}
         {activeTool === 'jwtdecode' && <JwtDecode />}
+        {activeTool === 'passwordgenerator' && <PasswordGenerator />}
         {activeTool === 'certificate' && <PemCertificateViewer />}
         {activeTool === 'pemtopfx' && <PemToPfxConverter />}
         {activeTool === 'pfxtopem' && <PfxToPemConverter />}
