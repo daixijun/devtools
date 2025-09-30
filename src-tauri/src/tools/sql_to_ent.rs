@@ -1,6 +1,4 @@
 use crate::utils::code_formatter::CodeFormatter;
-use crate::utils::error::{DevToolError, DevToolResult};
-use crate::utils::response::DevToolResponse;
 use serde::{Deserialize, Serialize};
 use sqlparser::ast::{
     ColumnDef, ColumnOption, ColumnOptionDef, CreateTable, DataType, ExactNumberInfo, Expr,
@@ -72,7 +70,7 @@ pub struct SqlToEntParser;
 
 impl SqlToEntParser {
     /// Parse multiple CREATE TABLE statements using sqlparser
-    pub fn parse_sql_tables(sql: &str) -> DevToolResult<Vec<TableDefinition>> {
+    pub fn parse_sql_tables(sql: &str) -> Result<Vec<TableDefinition>, String> {
         let mut tables = Vec::new();
 
         // Try different SQL dialects
@@ -101,14 +99,11 @@ impl SqlToEntParser {
         }
 
         let statements = parsed_statements.ok_or_else(|| {
-            DevToolError::ParseError(
-                "SQL".to_string(),
-                format!(
-                    "无法解析 SQL 语句: {}",
-                    last_error
-                        .map(|e| e.to_string())
-                        .unwrap_or_else(|| "未知错误".to_string())
-                ),
+            format!(
+                "无法解析 SQL 语句: {}",
+                last_error
+                    .map(|e| e.to_string())
+                    .unwrap_or_else(|| "未知错误".to_string())
             )
         })?;
 
@@ -139,10 +134,7 @@ impl SqlToEntParser {
         }
 
         if tables.is_empty() {
-            return Err(DevToolError::ParseError(
-                "SQL".to_string(),
-                "未找到有效的 CREATE TABLE 语句".to_string(),
-            ));
+            return Err("未找到有效的 CREATE TABLE 语句".to_string());
         }
 
         Ok(tables)
@@ -164,7 +156,7 @@ impl SqlToEntParser {
     fn parse_table_columns(
         columns: &[ColumnDef],
         constraints: &[TableConstraint],
-    ) -> DevToolResult<Vec<ColumnDefinition>> {
+    ) -> Result<Vec<ColumnDefinition>, String> {
         let mut result_columns = Vec::new();
 
         // Parse primary key constraints
@@ -414,7 +406,7 @@ impl EntSchemaGenerator {
     pub fn generate_schemas(
         tables: &[TableDefinition],
         options: &SqlToEntOptions,
-    ) -> DevToolResult<EntSchemaOutput> {
+    ) -> Result<EntSchemaOutput, String> {
         let mut outputs = HashMap::new();
         let mut table_names = Vec::new();
 
@@ -436,7 +428,7 @@ impl EntSchemaGenerator {
     fn generate_single_schema(
         table: &TableDefinition,
         options: &SqlToEntOptions,
-    ) -> DevToolResult<String> {
+    ) -> Result<String, String> {
         let class_name = Self::get_class_name(&table.name, options.enable_pluralization);
 
         let mut schema = String::new();
@@ -772,19 +764,19 @@ impl EntSchemaGenerator {
 pub async fn convert_sql_to_ent(
     sql: String,
     options: Option<SqlToEntOptions>,
-) -> Result<DevToolResponse<EntSchemaOutput>, String> {
+) -> Result<EntSchemaOutput, String> {
     let options = options.unwrap_or_default();
 
     // Validate input
     if sql.trim().is_empty() {
-        return Ok(DevToolResponse::error("SQL内容不能为空"));
+        return Err("SQL内容不能为空".to_string());
     }
 
     match SqlToEntParser::parse_sql_tables(&sql) {
         Ok(tables) => match EntSchemaGenerator::generate_schemas(&tables, &options) {
-            Ok(schemas) => Ok(DevToolResponse::success(schemas)),
-            Err(e) => Ok(DevToolResponse::error(format!("生成Ent Schema失败: {}", e))),
+            Ok(schemas) => Ok(schemas),
+            Err(e) => Err(format!("生成Ent Schema失败: {}", e)),
         },
-        Err(e) => Ok(DevToolResponse::error(format!("SQL解析失败: {}", e))),
+        Err(e) => Err(format!("SQL解析失败: {}", e)),
     }
 }

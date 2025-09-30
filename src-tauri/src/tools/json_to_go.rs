@@ -1,9 +1,4 @@
-use crate::utils::{
-    error::{DevToolError, DevToolResult},
-    response::DevToolResponse,
-    string_utils::StringUtils,
-    code_formatter::CodeFormatter,
-};
+use crate::utils::{code_formatter::CodeFormatter, string_utils::StringUtils};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
@@ -57,10 +52,10 @@ pub struct JsonToGoConverter;
 
 /// Entry point command for Tauri backend
 #[command]
-pub fn convert_json_to_go(json_str: &str, options: JsonToGoOptions) -> DevToolResponse<String> {
+pub fn convert_json_to_go(json_str: &str, options: JsonToGoOptions) -> Result<String, String> {
     match JsonToGoConverter::convert_json_to_go_structs(json_str, options) {
-        Ok(data) => DevToolResponse::success(data),
-        Err(error) => DevToolResponse::error(error.to_string()),
+        Ok(data) => Ok(data),
+        Err(error) => Err(error),
     }
 }
 
@@ -69,7 +64,7 @@ impl JsonToGoConverter {
     pub fn convert_json_to_go_structs(
         json_str: &str,
         options: JsonToGoOptions,
-    ) -> DevToolResult<String> {
+    ) -> Result<String, String> {
         let json_value = Self::parse_json_string(json_str)?;
         let fields = Self::extract_fields_from_json(&json_value, &options.struct_name)?;
         let go_code = Self::generate_go_structs(&fields, &options)?;
@@ -77,7 +72,7 @@ impl JsonToGoConverter {
     }
 
     /// Legacy method for backward compatibility
-    pub fn convert(json_str: &str, options: JsonToGoOptions) -> DevToolResult<String> {
+    pub fn convert(json_str: &str, options: JsonToGoOptions) -> Result<String, String> {
         Self::convert_json_to_go_structs(json_str, options)
     }
 }
@@ -85,16 +80,15 @@ impl JsonToGoConverter {
 // JSON Parsing Module
 impl JsonToGoConverter {
     /// Parse JSON string to structured Value
-    fn parse_json_string(json_str: &str) -> DevToolResult<Value> {
-        serde_json::from_str(json_str)
-            .map_err(|e| DevToolError::ParseError("JSON".to_string(), e.to_string()))
+    fn parse_json_string(json_str: &str) -> Result<Value, String> {
+        serde_json::from_str(json_str).map_err(|e| format!("JSON解析错误: {}", e))
     }
 
     /// Extract fields from JSON value based on its type
     fn extract_fields_from_json(
         json_value: &Value,
         parent_name: &str,
-    ) -> DevToolResult<Vec<GoField>> {
+    ) -> Result<Vec<GoField>, String> {
         match json_value {
             Value::Object(map) => Self::extract_fields_from_object(map, parent_name),
             Value::Array(array) => Self::extract_fields_from_array(array, parent_name),
@@ -106,7 +100,7 @@ impl JsonToGoConverter {
     fn extract_fields_from_object(
         map: &serde_json::Map<String, Value>,
         parent_name: &str,
-    ) -> DevToolResult<Vec<GoField>> {
+    ) -> Result<Vec<GoField>, String> {
         let mut fields = Vec::new();
         for (key, value) in map {
             let field = Self::create_field_from_json_value(key, value, parent_name)?;
@@ -119,7 +113,7 @@ impl JsonToGoConverter {
     fn extract_fields_from_array(
         array: &[Value],
         parent_name: &str,
-    ) -> DevToolResult<Vec<GoField>> {
+    ) -> Result<Vec<GoField>, String> {
         if array.is_empty() {
             return Ok(vec![]);
         }
@@ -151,7 +145,7 @@ impl JsonToGoConverter {
         key: &str,
         value: &Value,
         parent_name: &str,
-    ) -> DevToolResult<GoField> {
+    ) -> Result<GoField, String> {
         match value {
             Value::Object(_) => Self::create_object_field(key, value, parent_name),
             Value::Array(array) => Self::create_array_field(key, array),
@@ -160,7 +154,11 @@ impl JsonToGoConverter {
     }
 
     /// Create a field for JSON object
-    fn create_object_field(key: &str, value: &Value, _parent_name: &str) -> DevToolResult<GoField> {
+    fn create_object_field(
+        key: &str,
+        value: &Value,
+        _parent_name: &str,
+    ) -> Result<GoField, String> {
         let nested_name = StringUtils::to_pascal_case(key);
         let nested_fields = Self::extract_fields_from_json(value, &nested_name)?;
 
@@ -175,7 +173,7 @@ impl JsonToGoConverter {
     }
 
     /// Create a field for JSON array
-    fn create_array_field(key: &str, array: &[Value]) -> DevToolResult<GoField> {
+    fn create_array_field(key: &str, array: &[Value]) -> Result<GoField, String> {
         if array.is_empty() {
             return Self::create_empty_array_field(key);
         }
@@ -192,7 +190,7 @@ impl JsonToGoConverter {
     }
 
     /// Create a field for primitive JSON value
-    fn create_primitive_field(key: &str, value: &Value) -> DevToolResult<GoField> {
+    fn create_primitive_field(key: &str, value: &Value) -> Result<GoField, String> {
         let field_type = Self::infer_go_type_from_json_value(value);
 
         Ok(GoField {
@@ -206,7 +204,7 @@ impl JsonToGoConverter {
     }
 
     /// Create a field for empty array
-    fn create_empty_array_field(key: &str) -> DevToolResult<GoField> {
+    fn create_empty_array_field(key: &str) -> Result<GoField, String> {
         Ok(GoField {
             name: key.to_string(),
             field_type: "[]interface{}".to_string(),
@@ -218,7 +216,7 @@ impl JsonToGoConverter {
     }
 
     /// Create a field for array of objects
-    fn create_object_array_field(key: &str, first_item: &Value) -> DevToolResult<GoField> {
+    fn create_object_array_field(key: &str, first_item: &Value) -> Result<GoField, String> {
         let nested_name = StringUtils::to_pascal_case(key);
         let nested_fields = Self::extract_fields_from_json(first_item, &nested_name)?;
 
@@ -233,7 +231,7 @@ impl JsonToGoConverter {
     }
 
     /// Create a field for array of primitive values
-    fn create_primitive_array_field(key: &str, first_item: &Value) -> DevToolResult<GoField> {
+    fn create_primitive_array_field(key: &str, first_item: &Value) -> Result<GoField, String> {
         let element_type = Self::infer_go_type_from_json_value(first_item);
 
         Ok(GoField {
@@ -271,11 +269,13 @@ impl JsonToGoConverter {
     }
 }
 
-
 // Struct Generation Module
 impl JsonToGoConverter {
     /// Generate all Go structs including nested ones
-    fn generate_go_structs(fields: &[GoField], options: &JsonToGoOptions) -> DevToolResult<String> {
+    fn generate_go_structs(
+        fields: &[GoField],
+        options: &JsonToGoOptions,
+    ) -> Result<String, String> {
         let mut all_structs = String::new();
         let mut processed_structs = HashSet::new();
         let mut structs_to_generate = Vec::new();
@@ -313,7 +313,7 @@ impl JsonToGoConverter {
         fields: &[GoField],
         options: &JsonToGoOptions,
         structs_to_generate: &mut Vec<(String, Vec<GoField>)>,
-    ) -> DevToolResult<String> {
+    ) -> Result<String, String> {
         let mut result = format!("type {} struct {{\n", struct_name);
 
         if fields.is_empty() {
@@ -503,7 +503,6 @@ impl JsonToGoConverter {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -531,18 +530,9 @@ mod tests {
 
     #[test]
     fn test_naming_conversion() {
-        assert_eq!(
-            StringUtils::to_pascal_case("hello_world"),
-            "HelloWorld"
-        );
-        assert_eq!(
-            StringUtils::to_camel_case("hello_world"),
-            "helloWorld"
-        );
-        assert_eq!(
-            StringUtils::to_pascal_case("hello-world"),
-            "HelloWorld"
-        );
+        assert_eq!(StringUtils::to_pascal_case("hello_world"), "HelloWorld");
+        assert_eq!(StringUtils::to_camel_case("hello_world"), "helloWorld");
+        assert_eq!(StringUtils::to_pascal_case("hello-world"), "HelloWorld");
     }
 
     #[test]
@@ -602,7 +592,10 @@ mod tests {
         );
 
         // Test leading special characters
-        assert_eq!(StringUtils::sanitize_field_name("-field", "Field"), "_field");
+        assert_eq!(
+            StringUtils::sanitize_field_name("-field", "Field"),
+            "_field"
+        );
 
         // Test empty string
         assert_eq!(StringUtils::sanitize_field_name("", "Field"), "Field");

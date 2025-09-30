@@ -1,8 +1,6 @@
-use crate::utils::error::DevToolError;
-use crate::utils::response::DevToolResponse;
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Manager, State};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HotKeyConfig {
@@ -46,7 +44,7 @@ impl GlobalShortcutState {
     }
 }
 
-fn hotkey_config_to_accelerator(config: &HotKeyConfig) -> Result<String, DevToolError> {
+fn hotkey_config_to_accelerator(config: &HotKeyConfig) -> Result<String, String> {
     let modifier = match config.modifier.as_str() {
         "alt" | "option" => {
             if cfg!(target_os = "macos") {
@@ -64,13 +62,13 @@ fn hotkey_config_to_accelerator(config: &HotKeyConfig) -> Result<String, DevTool
             }
         }
         "shift" => "Shift",
-        _ => return Err(DevToolError::ValidationError("不支持的修饰键".to_string())),
+        _ => return Err("不支持的修饰键".to_string()),
     };
 
     let key = match config.key.as_str() {
         "Space" => "Space",
         k if k.len() == 1 => &k.to_uppercase(),
-        _ => return Err(DevToolError::ValidationError("不支持的按键".to_string())),
+        _ => return Err("不支持的按键".to_string()),
     };
 
     Ok(format!("{}+{}", modifier, key))
@@ -96,124 +94,83 @@ fn toggle_window_visibility(app: &AppHandle) {
 }
 
 #[tauri::command]
-pub async fn register_global_shortcut(
-    app: AppHandle,
+pub fn register_global_shortcut(
+    _app: AppHandle,
     config: HotKeyConfig,
     state: State<'_, GlobalShortcutState>,
-) -> Result<DevToolResponse<bool>, DevToolError> {
-    let accelerator = hotkey_config_to_accelerator(&config)?;
-
-    // 先取消注册旧的快捷键
-    if let Ok(current) = state.current_shortcut.lock() {
-        if let Some(old_shortcut) = current.as_ref() {
-            // 使用前端 API 取消注册
-            if let Err(e) = app.emit("unregister-shortcut", old_shortcut) {
-                eprintln!("Failed to emit unregister event: {}", e);
-            }
-        }
+) -> Result<bool, String> {
+    // 验证快捷键配置
+    if let Err(e) = hotkey_config_to_accelerator(&config) {
+        return Err(e);
     }
 
-    // 发送注册事件到前端
-    if let Err(e) = app.emit("register-shortcut", &accelerator) {
-        return Err(DevToolError::SystemError(format!(
-            "发送注册事件失败: {}",
-            e
-        )));
-    }
-
-    // 更新状态
+    // 更新配置状态
     {
         let mut config_guard = state.config.lock().unwrap();
         config_guard.hotkey = config;
         config_guard.enabled = true;
     }
-    {
-        let mut current = state.current_shortcut.lock().unwrap();
-        *current = Some(accelerator);
-    }
 
-    Ok(DevToolResponse::success(true))
+    Ok(true)
 }
 
 #[tauri::command]
-pub async fn unregister_global_shortcut(
-    app: AppHandle,
+pub fn unregister_global_shortcut(
+    _app: AppHandle,
     state: State<'_, GlobalShortcutState>,
-) -> Result<DevToolResponse<bool>, DevToolError> {
-    if let Ok(current) = state.current_shortcut.lock() {
-        if let Some(shortcut) = current.as_ref() {
-            // 发送取消注册事件到前端
-            if let Err(e) = app.emit("unregister-shortcut", shortcut) {
-                eprintln!("Failed to emit unregister event: {}", e);
-            }
-        }
-    }
-
+) -> Result<bool, String> {
+    // 更新配置状态
     {
         let mut config_guard = state.config.lock().unwrap();
         config_guard.enabled = false;
     }
-    {
-        let mut current = state.current_shortcut.lock().unwrap();
-        *current = None;
-    }
 
-    Ok(DevToolResponse::success(true))
+    Ok(true)
 }
 
 #[tauri::command]
-pub async fn get_global_shortcut_config(
+pub fn get_global_shortcut_config(
     state: State<'_, GlobalShortcutState>,
-) -> Result<DevToolResponse<GlobalShortcutConfig>, DevToolError> {
+) -> Result<GlobalShortcutConfig, String> {
     let config = state.config.lock().unwrap().clone();
-    Ok(DevToolResponse::success(config))
+    Ok(config)
 }
 
 #[tauri::command]
-pub async fn set_global_shortcut_enabled(
-    app: AppHandle,
+pub fn set_global_shortcut_enabled(
+    _app: AppHandle,
     enabled: bool,
     state: State<'_, GlobalShortcutState>,
-) -> Result<DevToolResponse<bool>, DevToolError> {
-    if enabled {
-        let config = {
-            let config_guard = state.config.lock().unwrap();
-            config_guard.hotkey.clone()
-        };
-        register_global_shortcut(app, config, state).await
-    } else {
-        unregister_global_shortcut(app, state).await
+) -> Result<bool, String> {
+    // 更新配置状态
+    {
+        let mut config_guard = state.config.lock().unwrap();
+        config_guard.enabled = enabled;
     }
+
+    Ok(true)
 }
 
 #[tauri::command]
-pub async fn handle_global_shortcut_triggered(app: AppHandle) -> Result<(), DevToolError> {
+pub async fn handle_global_shortcut_triggered(app: AppHandle) -> Result<(), String> {
     toggle_window_visibility(&app);
     Ok(())
 }
 
 pub fn initialize_global_shortcut(
-    app: &AppHandle,
+    _app: &AppHandle,
     state: &GlobalShortcutState,
-) -> Result<(), DevToolError> {
+) -> Result<(), String> {
+    // 初始化时验证配置，但不发送事件
+    // 前端会在启动时主动获取配置并注册快捷键
     let config = {
         let config_guard = state.config.lock().unwrap();
         config_guard.clone()
     };
 
     if config.enabled {
-        let accelerator = hotkey_config_to_accelerator(&config.hotkey)?;
-
-        // 延迟发送初始化事件，避免时序问题
-        let app_handle = app.clone();
-        let accelerator_clone = accelerator.clone();
-        std::thread::spawn(move || {
-            std::thread::sleep(std::time::Duration::from_millis(500));
-            let _ = app_handle.emit("init-shortcut", &accelerator_clone);
-        });
-
-        let mut current = state.current_shortcut.lock().unwrap();
-        *current = Some(accelerator);
+        // 验证快捷键配置是否有效
+        hotkey_config_to_accelerator(&config.hotkey)?;
     }
 
     Ok(())

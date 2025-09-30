@@ -195,7 +195,6 @@ devtools/                    # 项目根目录
 - **专业 SQL 解析** - 使用 sqlparser-rs (v0.58) 进行稳健的 SQL 解析，而非正则表达式
 - **多方言 SQL 支持** - 支持 Generic、MySQL、PostgreSQL 和 SQLite 方言
 - **集中式错误处理** - 所有工具使用统一的 DevToolError 和本地化消息
-- **标准化响应格式** - 所有命令返回 DevToolResponse<T> 以保持一致性
 
 ### SQL 工具增强
 

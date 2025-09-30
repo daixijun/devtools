@@ -2,8 +2,8 @@ pub mod tools;
 mod utils;
 
 use tauri::Manager;
-use tools::system_settings::GlobalTrayState;
 use tools::global_shortcut::GlobalShortcutState;
+use tools::system_settings::GlobalTrayState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -41,18 +41,24 @@ pub fn run() {
             tools::system_settings::toggle_tray,
             tools::system_settings::get_tray_status,
             tools::system_settings::set_start_minimized,
-            tools::system_settings::get_start_minimized_status
+            tools::system_settings::get_start_minimized_status,
+            tools::video_converter::convert_video,
+            tools::video_converter::get_video_info,
+            tools::video_converter::check_ffmpeg_available,
+            tools::image_converter::convert_image,
+            tools::image_converter::get_image_info_command,
+            tools::image_converter::get_image_exif_data
         ])
         .setup(|app| {
             let tray_state = app.state::<GlobalTrayState>();
             let shortcut_state = app.state::<GlobalShortcutState>();
-            
+
             // 检查是否启用托盘
             let should_show_tray = {
                 let config = tray_state.config.lock().unwrap();
                 config.tray_enabled
             };
-            
+
             if should_show_tray {
                 if let Ok(tray) = tools::system_settings::create_tray_icon(app.handle()) {
                     if let Ok(mut tray_icon) = tray_state.tray_icon.lock() {
@@ -60,29 +66,31 @@ pub fn run() {
                     }
                 }
             }
-            
+
             // 初始化全局快捷键
-            if let Err(e) = tools::global_shortcut::initialize_global_shortcut(app.handle(), &shortcut_state) {
+            if let Err(e) =
+                tools::global_shortcut::initialize_global_shortcut(app.handle(), &shortcut_state)
+            {
                 eprintln!("Failed to initialize global shortcut: {}", e);
             }
-            
+
             // 检查是否为自启动模式，如果是且启用了启动时最小化，则隐藏窗口
             let args: Vec<String> = std::env::args().collect();
             let is_autostart = args.contains(&"--autostart".to_string());
-            
+
             if is_autostart {
                 let should_start_minimized = {
                     let config = tray_state.config.lock().unwrap();
                     config.start_minimized
                 };
-                
+
                 if should_start_minimized {
                     if let Some(window) = app.get_webview_window("main") {
                         let _ = window.hide();
                     }
                 }
             }
-            
+
             Ok(())
         })
         .run(tauri::generate_context!())

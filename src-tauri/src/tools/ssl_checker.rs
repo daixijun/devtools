@@ -97,11 +97,6 @@ pub struct SslInfo {
     pub alpn_protocols: Option<Vec<String>>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct SslResponse {
-    pub info: Option<SslInfo>,
-    pub error: Option<String>,
-}
 
 fn resolve_domain_ip(domain: &str) -> Result<IpAddr, String> {
     match dns_lookup::lookup_host(domain) {
@@ -1865,14 +1860,11 @@ fn analyze_security(
 }
 
 #[tauri::command]
-pub async fn check_ssl_info(domain: String) -> Result<SslResponse, String> {
+pub async fn check_ssl_info(domain: String) -> Result<SslInfo, String> {
     let domain = domain.trim().to_lowercase();
 
     if domain.is_empty() {
-        return Ok(SslResponse {
-            info: None,
-            error: Some("域名不能为空".to_string()),
-        });
+        return Err("域名不能为空".to_string());
     }
 
     // Resolve IP address
@@ -2005,27 +1997,24 @@ pub async fn check_ssl_info(domain: String) -> Result<SslResponse, String> {
         ),
     };
 
-    Ok(SslResponse {
-        info: Some(SslInfo {
-            domain,
-            server_ip,
-            server_info,
-            certificate,
-            certificate_chain,
-            ssl_versions,
-            cipher_suites,
-            protocol_support,
-            server_cipher_order,
-            security_score,
-            ssl_labs_rating,
-            vulnerabilities,
-            recommendations,
-            cve_vulnerabilities,
-            http2_support,
-            spdy_support,
-            http3_support,
-            alpn_protocols,
-        }),
-        error: None,
+    Ok(SslInfo {
+        domain,
+        server_ip,
+        server_info,
+        certificate,
+        certificate_chain,
+        ssl_versions,
+        cipher_suites,
+        protocol_support,
+        server_cipher_order,
+        security_score,
+        ssl_labs_rating,
+        vulnerabilities,
+        recommendations,
+        cve_vulnerabilities,
+        http2_support,
+        spdy_support,
+        http3_support,
+        alpn_protocols,
     })
 }

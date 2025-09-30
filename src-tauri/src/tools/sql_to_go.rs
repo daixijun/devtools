@@ -1,6 +1,4 @@
 use crate::utils::code_formatter::CodeFormatter;
-use crate::utils::error::{DevToolError, DevToolResult};
-use crate::utils::response::DevToolResponse;
 use serde::{Deserialize, Serialize};
 use sqlparser::ast::{
     ColumnDef, ColumnOption, ColumnOptionDef, CreateTable, DataType, ExactNumberInfo, ObjectName,
@@ -71,7 +69,7 @@ pub struct SqlParser;
 
 impl SqlParser {
     /// Parse multiple CREATE TABLE SQL statements using sqlparser and return table definitions
-    pub fn parse_sql_tables(sql: &str) -> DevToolResult<Vec<TableDefinition>> {
+    pub fn parse_sql_tables(sql: &str) -> Result<Vec<TableDefinition>, String> {
         // Try different SQL dialects
         let dialects = vec![
             Box::new(GenericDialect {}) as Box<dyn sqlparser::dialect::Dialect>,
@@ -98,14 +96,11 @@ impl SqlParser {
         }
 
         let statements = parsed_statements.ok_or_else(|| {
-            DevToolError::ParseError(
-                "SQL".to_string(),
-                format!(
-                    "无法解析 SQL 语句: {}",
-                    last_error
-                        .map(|e| e.to_string())
-                        .unwrap_or_else(|| "未知错误".to_string())
-                ),
+            format!(
+                "无法解析 SQL 语句: {}",
+                last_error
+                    .map(|e| e.to_string())
+                    .unwrap_or_else(|| "未知错误".to_string())
             )
         })?;
 
@@ -131,28 +126,23 @@ impl SqlParser {
         }
 
         if tables.is_empty() {
-            return Err(DevToolError::ParseError(
-                "SQL".to_string(),
-                "未找到有效的 CREATE TABLE 语句".to_string(),
-            ));
+            return Err("未找到有效的 CREATE TABLE 语句".to_string());
         }
 
         Ok(tables)
     }
 
     /// Parse CREATE TABLE SQL using sqlparser and return table definition (single table)
-    pub fn parse_create_table(sql: &str) -> DevToolResult<TableDefinition> {
+    pub fn parse_create_table(sql: &str) -> Result<TableDefinition, String> {
         let tables = Self::parse_sql_tables(sql)?;
-        tables.into_iter().next().ok_or_else(|| {
-            DevToolError::ParseError(
-                "SQL".to_string(),
-                "未找到有效的 CREATE TABLE 语句".to_string(),
-            )
-        })
+        tables
+            .into_iter()
+            .next()
+            .ok_or_else(|| "未找到有效的 CREATE TABLE 语句".to_string())
     }
 
     /// Extract table name from ObjectName
-    fn extract_table_name_from_object(name: &ObjectName) -> String {
+    pub fn extract_table_name_from_object(name: &ObjectName) -> String {
         if let Some(last_part) = name.0.last() {
             // Clean table name by removing backticks, quotes and brackets
             last_part
@@ -164,10 +154,10 @@ impl SqlParser {
     }
 
     /// Parse table columns and constraints
-    fn parse_table_columns(
+    pub fn parse_table_columns(
         columns: &[ColumnDef],
         constraints: &[TableConstraint],
-    ) -> DevToolResult<Vec<ColumnDefinition>> {
+    ) -> Result<Vec<ColumnDefinition>, String> {
         let mut result_columns = Vec::new();
 
         // Parse constraints
@@ -402,7 +392,7 @@ impl GoStructGenerator {
     pub fn generate_structs(
         tables: &[TableDefinition],
         options: &SqlToGoOptions,
-    ) -> DevToolResult<GoStructOutput> {
+    ) -> Result<GoStructOutput, String> {
         let mut outputs = HashMap::new();
         let mut table_names = Vec::new();
 
@@ -424,7 +414,7 @@ impl GoStructGenerator {
     pub fn generate_struct(
         table: &TableDefinition,
         options: &SqlToGoOptions,
-    ) -> DevToolResult<String> {
+    ) -> Result<String, String> {
         let struct_name = Self::generate_struct_name(&table.name, options.enable_pluralization);
 
         // Check what imports are needed
@@ -504,7 +494,7 @@ impl GoStructGenerator {
     }
 
     /// Generate struct name from table name
-    fn generate_struct_name(table_name: &str, enable_pluralization: bool) -> String {
+    pub fn generate_struct_name(table_name: &str, enable_pluralization: bool) -> String {
         let mut name = table_name.to_string();
         if enable_pluralization {
             name = Self::singularize(&name);
@@ -602,16 +592,16 @@ impl GoStructGenerator {
     fn sql_type_to_go_type(sql_type: &str, nullable: bool) -> String {
         // Normalize to lowercase for easier matching
         let sql_lower = sql_type.to_lowercase();
-        
+
         // Check if this is an unsigned integer type
-        let is_unsigned = sql_lower.contains("int unsigned") || 
-                         sql_lower.contains("bigint unsigned") ||
-                         sql_lower.contains("tinyint unsigned") ||
-                         sql_lower.contains("smallint unsigned") ||
-                         sql_lower.contains("mediumint unsigned") ||
-                         sql_lower.contains(" unsigned") ||
-                         sql_lower.ends_with(" unsigned");
-                         
+        let is_unsigned = sql_lower.contains("int unsigned")
+            || sql_lower.contains("bigint unsigned")
+            || sql_lower.contains("tinyint unsigned")
+            || sql_lower.contains("smallint unsigned")
+            || sql_lower.contains("mediumint unsigned")
+            || sql_lower.contains(" unsigned")
+            || sql_lower.ends_with(" unsigned");
+
         let clean_type = sql_type
             .replace(|c: char| c == '(' || c == ')' || c.is_ascii_digit(), "")
             .to_uppercase()
@@ -624,30 +614,62 @@ impl GoStructGenerator {
             // Integer types - handle unsigned variants
             "BIT" | "TINYINT" => {
                 if is_unsigned {
-                    if nullable { "*uint8" } else { "uint8" }
+                    if nullable {
+                        "*uint8"
+                    } else {
+                        "uint8"
+                    }
                 } else {
-                    if nullable { "*int8" } else { "int8" }
+                    if nullable {
+                        "*int8"
+                    } else {
+                        "int8"
+                    }
                 }
             }
             "SMALLINT" => {
                 if is_unsigned {
-                    if nullable { "*uint16" } else { "uint16" }
+                    if nullable {
+                        "*uint16"
+                    } else {
+                        "uint16"
+                    }
                 } else {
-                    if nullable { "*int16" } else { "int16" }
+                    if nullable {
+                        "*int16"
+                    } else {
+                        "int16"
+                    }
                 }
             }
             "MEDIUMINT" | "INT" | "INTEGER" => {
                 if is_unsigned {
-                    if nullable { "*uint32" } else { "uint32" }
+                    if nullable {
+                        "*uint32"
+                    } else {
+                        "uint32"
+                    }
                 } else {
-                    if nullable { "*int32" } else { "int32" }
+                    if nullable {
+                        "*int32"
+                    } else {
+                        "int32"
+                    }
                 }
             }
             "BIGINT" => {
                 if is_unsigned {
-                    if nullable { "*uint64" } else { "uint64" }
+                    if nullable {
+                        "*uint64"
+                    } else {
+                        "uint64"
+                    }
                 } else {
-                    if nullable { "*int64" } else { "int64" }
+                    if nullable {
+                        "*int64"
+                    } else {
+                        "int64"
+                    }
                 }
             }
 
@@ -748,10 +770,10 @@ impl GoStructGenerator {
     }
 
     /// Generate field definitions
-    fn generate_field_definitions(
+    pub fn generate_field_definitions(
         columns: &[ColumnDefinition],
         options: &SqlToGoOptions,
-    ) -> DevToolResult<Vec<String>> {
+    ) -> Result<Vec<String>, String> {
         let mut definitions = Vec::new();
         let mut max_name_len = 0;
         let mut max_type_len = 0;
@@ -969,19 +991,19 @@ impl GoStructGenerator {
 pub async fn convert_sql_to_go(
     sql: String,
     options: Option<SqlToGoOptions>,
-) -> Result<DevToolResponse<GoStructOutput>, String> {
+) -> Result<GoStructOutput, String> {
     let options = options.unwrap_or_default();
 
     // Validate input
     if sql.trim().is_empty() {
-        return Ok(DevToolResponse::error("SQL内容不能为空"));
+        return Err("SQL内容不能为空".to_string());
     }
 
     match SqlParser::parse_sql_tables(&sql) {
         Ok(tables) => match GoStructGenerator::generate_structs(&tables, &options) {
-            Ok(go_structs) => Ok(DevToolResponse::success(go_structs)),
-            Err(e) => Ok(DevToolResponse::error(format!("生成Go结构体失败: {}", e))),
+            Ok(go_structs) => Ok(go_structs),
+            Err(e) => Err(format!("生成Go结构体失败: {}", e)),
         },
-        Err(e) => Ok(DevToolResponse::error(format!("SQL解析失败: {}", e))),
+        Err(e) => Err(format!("SQL解析失败: {}", e)),
     }
 }

@@ -195,7 +195,6 @@ devtools/                    # Project root directory
 - **Professional SQL Parsing** - Uses sqlparser-rs (v0.58) for robust SQL parsing instead of regex
 - **Multi-dialect SQL Support** - Supports Generic, MySQL, PostgreSQL, and SQLite dialects
 - **Centralized Error Handling** - All tools use unified DevToolError with localized messages
-- **Standardized Response Format** - All commands return DevToolResponse<T> for consistency
 
 ### SQL Tools Enhancements
 

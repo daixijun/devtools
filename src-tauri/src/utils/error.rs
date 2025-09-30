@@ -10,6 +10,7 @@ pub enum DevToolError {
     FileError(String),
     SystemError(String),
     ConversionError(String), // 格式转换错误
+    AsyncExecutionError,     // 异步执行错误
 }
 
 impl DevToolError {
@@ -23,6 +24,7 @@ impl DevToolError {
             DevToolError::FileError(error) => format!("文件操作错误: {}", error),
             DevToolError::SystemError(error) => format!("系统错误: {}", error),
             DevToolError::ConversionError(error) => format!("格式转换失败: {}", error),
+            DevToolError::AsyncExecutionError => "异步执行失败".to_string(),
         }
     }
 }

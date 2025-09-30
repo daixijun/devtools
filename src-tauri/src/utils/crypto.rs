@@ -19,5 +19,4 @@ impl CryptoUtils {
         let result = hasher.finalize();
         hex::encode(result).to_uppercase()
     }
-
 }

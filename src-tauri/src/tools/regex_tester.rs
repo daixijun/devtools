@@ -1,4 +1,3 @@
-use crate::utils::response::DevToolResponse;
 use pcre2::bytes::RegexBuilder as Pcre2RegexBuilder;
 use serde::{Deserialize, Serialize};
 
@@ -110,9 +109,9 @@ pub async fn test_regex(
     text: String,
     flags: RegexFlags,
     engine: String,
-) -> DevToolResponse<RegexTestResult> {
+) -> Result<RegexTestResult, String> {
     if pattern.is_empty() {
-        return DevToolResponse::error("正则表达式不能为空".to_string());
+        return Err("正则表达式不能为空".to_string());
     }
 
     let request = RegexTestRequest {
@@ -128,11 +127,11 @@ pub async fn test_regex(
         "pcre" => test_pcre_regex(request).await,
         "golang" => test_golang_regex(request).await,
         "javascript" => test_javascript_regex(request).await,
-        _ => DevToolResponse::error("不支持的正则表达式引擎".to_string()),
+        _ => Err("不支持的正则表达式引擎".to_string()),
     }
 }
 
-async fn test_rust_regex(request: RegexTestRequest) -> DevToolResponse<RegexTestResult> {
+async fn test_rust_regex(request: RegexTestRequest) -> Result<RegexTestResult, String> {
     match build_rust_regex(&request.pattern, &request.flags) {
         Ok(re) => {
             let mut matches = Vec::new();
@@ -170,14 +169,14 @@ async fn test_rust_regex(request: RegexTestRequest) -> DevToolResponse<RegexTest
                 }
             }
 
-            DevToolResponse::success(RegexTestResult {
+            Ok(RegexTestResult {
                 is_valid: true,
                 error_message: None,
                 match_count: matches.len(),
                 matches,
             })
         }
-        Err(e) => DevToolResponse::success(RegexTestResult {
+        Err(e) => Ok(RegexTestResult {
             is_valid: false,
             error_message: Some(format!("正则表达式语法错误: {}", e)),
             matches: Vec::new(),
@@ -186,7 +185,7 @@ async fn test_rust_regex(request: RegexTestRequest) -> DevToolResponse<RegexTest
     }
 }
 
-async fn test_pcre_regex(request: RegexTestRequest) -> DevToolResponse<RegexTestResult> {
+async fn test_pcre_regex(request: RegexTestRequest) -> Result<RegexTestResult, String> {
     // 使用真正的 PCRE2 库
     let mut builder = Pcre2RegexBuilder::new();
 
@@ -264,14 +263,14 @@ async fn test_pcre_regex(request: RegexTestRequest) -> DevToolResponse<RegexTest
                 }
             }
 
-            DevToolResponse::success(RegexTestResult {
+            Ok(RegexTestResult {
                 is_valid: true,
                 error_message: None,
                 match_count: matches.len(),
                 matches,
             })
         }
-        Err(e) => DevToolResponse::success(RegexTestResult {
+        Err(e) => Ok(RegexTestResult {
             is_valid: false,
             error_message: Some(format!("PCRE2正则表达式语法错误: {}", e)),
             matches: Vec::new(),
@@ -280,7 +279,7 @@ async fn test_pcre_regex(request: RegexTestRequest) -> DevToolResponse<RegexTest
     }
 }
 
-async fn test_golang_regex(request: RegexTestRequest) -> DevToolResponse<RegexTestResult> {
+async fn test_golang_regex(request: RegexTestRequest) -> Result<RegexTestResult, String> {
     // Go 的正则表达式引擎基于 RE2，具有特定的语法特点
     let mut pattern = request.pattern.clone();
 
@@ -344,14 +343,14 @@ async fn test_golang_regex(request: RegexTestRequest) -> DevToolResponse<RegexTe
                 }
             }
 
-            DevToolResponse::success(RegexTestResult {
+            Ok(RegexTestResult {
                 is_valid: true,
                 error_message: None,
                 match_count: matches.len(),
                 matches,
             })
         }
-        Err(e) => DevToolResponse::success(RegexTestResult {
+        Err(e) => Ok(RegexTestResult {
             is_valid: false,
             error_message: Some(format!("Golang正则表达式语法错误: {}", e)),
             matches: Vec::new(),
@@ -360,7 +359,7 @@ async fn test_golang_regex(request: RegexTestRequest) -> DevToolResponse<RegexTe
     }
 }
 
-async fn test_javascript_regex(request: RegexTestRequest) -> DevToolResponse<RegexTestResult> {
+async fn test_javascript_regex(request: RegexTestRequest) -> Result<RegexTestResult, String> {
     // JavaScript正则表达式语法，使用标志字符串
     let mut pattern = request.pattern.clone();
     let mut flags = String::new();
@@ -419,14 +418,14 @@ async fn test_javascript_regex(request: RegexTestRequest) -> DevToolResponse<Reg
                 }
             }
 
-            DevToolResponse::success(RegexTestResult {
+            Ok(RegexTestResult {
                 is_valid: true,
                 error_message: None,
                 match_count: matches.len(),
                 matches,
             })
         }
-        Err(e) => DevToolResponse::success(RegexTestResult {
+        Err(e) => Ok(RegexTestResult {
             is_valid: false,
             error_message: Some(format!("JavaScript正则表达式语法错误: {}", e)),
             matches: Vec::new(),
@@ -435,7 +434,7 @@ async fn test_javascript_regex(request: RegexTestRequest) -> DevToolResponse<Reg
     }
 }
 
-async fn test_re2_regex(request: RegexTestRequest) -> DevToolResponse<RegexTestResult> {
+async fn test_re2_regex(request: RegexTestRequest) -> Result<RegexTestResult, String> {
     // 使用真正的 RE2 库
     let mut pattern = request.pattern.clone();
 
@@ -509,14 +508,14 @@ async fn test_re2_regex(request: RegexTestRequest) -> DevToolResponse<RegexTestR
                 }
             }
 
-            DevToolResponse::success(RegexTestResult {
+            Ok(RegexTestResult {
                 is_valid: true,
                 error_message: None,
                 match_count: matches.len(),
                 matches,
             })
         }
-        Err(e) => DevToolResponse::success(RegexTestResult {
+        Err(e) => Ok(RegexTestResult {
             is_valid: false,
             error_message: Some(format!("RE2正则表达式语法错误: {:?}", e)),
             matches: Vec::new(),
@@ -533,9 +532,9 @@ pub async fn replace_regex(
     flags: RegexFlags,
     engine: String,
     replace_all: bool,
-) -> DevToolResponse<RegexReplaceResult> {
+) -> Result<RegexReplaceResult, String> {
     if pattern.is_empty() {
-        return DevToolResponse::error("正则表达式不能为空".to_string());
+        return Err("正则表达式不能为空".to_string());
     }
 
     let request = RegexReplaceRequest {
@@ -553,11 +552,11 @@ pub async fn replace_regex(
         "pcre" => replace_pcre_regex(request).await,
         "golang" => replace_golang_regex(request).await,
         "javascript" => replace_javascript_regex(request).await,
-        _ => DevToolResponse::error("不支持的正则表达式引擎".to_string()),
+        _ => Err("不支持的正则表达式引擎".to_string()),
     }
 }
 
-async fn replace_rust_regex(request: RegexReplaceRequest) -> DevToolResponse<RegexReplaceResult> {
+async fn replace_rust_regex(request: RegexReplaceRequest) -> Result<RegexReplaceResult, String> {
     match build_rust_regex(&request.pattern, &request.flags) {
         Ok(re) => {
             let result = if request.replace_all {
@@ -580,14 +579,14 @@ async fn replace_rust_regex(request: RegexReplaceRequest) -> DevToolResponse<Reg
                 }
             };
 
-            DevToolResponse::success(RegexReplaceResult {
+            Ok(RegexReplaceResult {
                 is_valid: true,
                 error_message: None,
                 result: Some(result),
                 replacement_count,
             })
         }
-        Err(e) => DevToolResponse::success(RegexReplaceResult {
+        Err(e) => Ok(RegexReplaceResult {
             is_valid: false,
             error_message: Some(format!("正则表达式语法错误: {}", e)),
             result: None,
@@ -596,7 +595,7 @@ async fn replace_rust_regex(request: RegexReplaceRequest) -> DevToolResponse<Reg
     }
 }
 
-async fn replace_re2_regex(request: RegexReplaceRequest) -> DevToolResponse<RegexReplaceResult> {
+async fn replace_re2_regex(request: RegexReplaceRequest) -> Result<RegexReplaceResult, String> {
     let mut pattern = request.pattern.clone();
 
     // RE2 标志处理
@@ -651,14 +650,14 @@ async fn replace_re2_regex(request: RegexReplaceRequest) -> DevToolResponse<Rege
                 }
             };
 
-            DevToolResponse::success(RegexReplaceResult {
+            Ok(RegexReplaceResult {
                 is_valid: true,
                 error_message: None,
                 result: Some(result.0),
                 replacement_count: result.1,
             })
         }
-        Err(e) => DevToolResponse::success(RegexReplaceResult {
+        Err(e) => Ok(RegexReplaceResult {
             is_valid: false,
             error_message: Some(format!("RE2正则表达式语法错误: {:?}", e)),
             result: None,
@@ -667,7 +666,7 @@ async fn replace_re2_regex(request: RegexReplaceRequest) -> DevToolResponse<Rege
     }
 }
 
-async fn replace_pcre_regex(request: RegexReplaceRequest) -> DevToolResponse<RegexReplaceResult> {
+async fn replace_pcre_regex(request: RegexReplaceRequest) -> Result<RegexReplaceResult, String> {
     // 使用真正的 PCRE2 库进行替换
     let mut builder = Pcre2RegexBuilder::new();
 
@@ -731,14 +730,14 @@ async fn replace_pcre_regex(request: RegexReplaceRequest) -> DevToolResponse<Reg
                 }
             };
 
-            DevToolResponse::success(RegexReplaceResult {
+            Ok(RegexReplaceResult {
                 is_valid: true,
                 error_message: None,
                 result: Some(result.0),
                 replacement_count: result.1,
             })
         }
-        Err(e) => DevToolResponse::success(RegexReplaceResult {
+        Err(e) => Ok(RegexReplaceResult {
             is_valid: false,
             error_message: Some(format!("PCRE2正则表达式语法错误: {}", e)),
             result: None,
@@ -749,12 +748,12 @@ async fn replace_pcre_regex(request: RegexReplaceRequest) -> DevToolResponse<Reg
 
 async fn replace_javascript_regex(
     request: RegexReplaceRequest,
-) -> DevToolResponse<RegexReplaceResult> {
+) -> Result<RegexReplaceResult, String> {
     // 使用与test_javascript_regex相同的模式处理
     replace_rust_regex(request).await
 }
 
-async fn replace_golang_regex(request: RegexReplaceRequest) -> DevToolResponse<RegexReplaceResult> {
+async fn replace_golang_regex(request: RegexReplaceRequest) -> Result<RegexReplaceResult, String> {
     // Go 风格正则表达式替换，使用与 test_golang_regex 相同的模式处理
     let mut pattern = request.pattern.clone();
 
@@ -803,14 +802,14 @@ async fn replace_golang_regex(request: RegexReplaceRequest) -> DevToolResponse<R
                 }
             };
 
-            DevToolResponse::success(RegexReplaceResult {
+            Ok(RegexReplaceResult {
                 is_valid: true,
                 error_message: None,
                 result: Some(result),
                 replacement_count,
             })
         }
-        Err(e) => DevToolResponse::success(RegexReplaceResult {
+        Err(e) => Ok(RegexReplaceResult {
             is_valid: false,
             error_message: Some(format!("Golang正则表达式语法错误: {}", e)),
             result: None,
@@ -820,9 +819,9 @@ async fn replace_golang_regex(request: RegexReplaceRequest) -> DevToolResponse<R
 }
 
 #[tauri::command]
-pub async fn validate_regex(pattern: String, engine: String) -> DevToolResponse<bool> {
+pub async fn validate_regex(pattern: String, engine: String) -> Result<bool, String> {
     if pattern.is_empty() {
-        return DevToolResponse::error("正则表达式不能为空".to_string());
+        return Err("正则表达式不能为空".to_string());
     }
 
     let is_valid = match engine.as_str() {
@@ -848,7 +847,7 @@ pub async fn validate_regex(pattern: String, engine: String) -> DevToolResponse<
         _ => false,
     };
 
-    DevToolResponse::success(is_valid)
+    Ok(is_valid)
 }
 
 // Go 风格模式转换函数
@@ -906,25 +905,28 @@ mod tests {
             )
             .await;
 
-            assert!(result.success, "Engine {} should succeed", engine);
-            if let Some(data) = result.data {
-                assert!(data.is_valid, "Engine {} should have valid pattern", engine);
-                assert_eq!(
-                    data.match_count, 2,
-                    "Engine {} should find 2 matches",
-                    engine
-                );
-                assert_eq!(
-                    data.matches[0].full_match, "123",
-                    "First match should be '123' for engine {}",
-                    engine
-                );
-                assert_eq!(
-                    data.matches[1].full_match, "456",
-                    "Second match should be '456' for engine {}",
-                    engine
-                );
-            }
+            assert!(result.is_ok(), "Engine {} should succeed", engine);
+            let response = result.unwrap();
+            assert!(
+                response.is_valid,
+                "Engine {} should have valid pattern",
+                engine
+            );
+            assert_eq!(
+                response.match_count, 2,
+                "Engine {} should find 2 matches",
+                engine
+            );
+            assert_eq!(
+                response.matches[0].full_match, "123",
+                "First match should be '123' for engine {}",
+                engine
+            );
+            assert_eq!(
+                response.matches[1].full_match, "456",
+                "Second match should be '456' for engine {}",
+                engine
+            );
         }
     }
 
@@ -936,27 +938,23 @@ mod tests {
             // Valid pattern
             let result = validate_regex(r"\d+".to_string(), engine.to_string()).await;
             assert!(
-                result.success,
+                result.is_ok(),
                 "Validation should succeed for engine {}",
                 engine
             );
-            assert_eq!(
-                result.data,
-                Some(true),
-                "Pattern should be valid for engine {}",
-                engine
-            );
+            let is_valid = result.unwrap();
+            assert!(is_valid, "Pattern should be valid for engine {}", engine);
 
             // Invalid pattern
             let result = validate_regex(r"[".to_string(), engine.to_string()).await;
             assert!(
-                result.success,
+                result.is_ok(),
                 "Validation should succeed for engine {}",
                 engine
             );
-            assert_eq!(
-                result.data,
-                Some(false),
+            let is_valid = result.unwrap();
+            assert!(
+                !is_valid,
                 "Invalid pattern should be rejected for engine {}",
                 engine
             );

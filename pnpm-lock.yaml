@@ -26,12 +26,18 @@ importers:
       '@tauri-apps/plugin-opener':
         specifier: ^2
         version: 2.4.0
+      '@types/bcryptjs':
+        specifier: ^3.0.0
+        version: 3.0.0
       '@types/js-yaml':
         specifier: ^4.0.9
         version: 4.0.9
       '@types/jsonwebtoken':
         specifier: ^9.0.10
         version: 9.0.10
+      bcryptjs:
+        specifier: ^3.0.2
+        version: 3.0.2
       js-yaml:
         specifier: ^4.1.0
         version: 4.1.0
@@ -654,6 +660,10 @@ packages:
   '@types/babel__traverse@7.28.0':
     resolution: {integrity: sha512-8PvcXf70gTDZBgt9ptxJ8elBeBjcLOAcOtoO/mPJjtji1+CdGbHgm77om1GrsPxsiE+uXIpNSK64UYaIwQXd4Q==, tarball: https://registry.npmjs.org/@types/babel__traverse/-/babel__traverse-7.28.0.tgz}
 
+  '@types/bcryptjs@3.0.0':
+    resolution: {integrity: sha512-WRZOuCuaz8UcZZE4R5HXTco2goQSI2XxjGY3hbM/xDvwmqFWd4ivooImsMx65OKM6CtNKbnZ5YL+YwAwK7c1dg==, tarball: https://registry.npmjs.org/@types/bcryptjs/-/bcryptjs-3.0.0.tgz}
+    deprecated: This is a stub types definition. bcryptjs provides its own type definitions, so you do not need this installed.
+
   '@types/estree@1.0.8':
     resolution: {integrity: sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w==, tarball: https://registry.npmjs.org/@types/estree/-/estree-1.0.8.tgz}
 
@@ -698,6 +708,10 @@ packages:
     hasBin: true
     peerDependencies:
       postcss: ^8.1.0
+
+  bcryptjs@3.0.2:
+    resolution: {integrity: sha512-k38b3XOZKv60C4E2hVsXTolJWfkGRMbILBIe2IBITXciy5bOsTKot5kDrf3ZfufQtQOUN5mXceUEpU1rTl9Uog==, tarball: https://registry.npmjs.org/bcryptjs/-/bcryptjs-3.0.2.tgz}
+    hasBin: true
 
   browserslist@4.25.1:
     resolution: {integrity: sha512-KGj0KoOMXLpSNkkEI6Z6mShmQy0bc1I+T7K9N81k4WWMrfz+6fQ6es80B/YLAeRoKvjYE1YSHHOW1qe9xIVzHw==, tarball: https://registry.npmjs.org/browserslist/-/browserslist-4.25.1.tgz}
@@ -1538,6 +1552,10 @@ snapshots:
     dependencies:
       '@babel/types': 7.28.2
 
+  '@types/bcryptjs@3.0.0':
+    dependencies:
+      bcryptjs: 3.0.2
+
   '@types/estree@1.0.8': {}
 
   '@types/js-yaml@4.0.9': {}
@@ -1589,6 +1607,8 @@ snapshots:
       picocolors: 1.1.1
       postcss: 8.5.6
       postcss-value-parser: 4.2.0
+
+  bcryptjs@3.0.2: {}
 
   browserslist@4.25.1:
     dependencies:
