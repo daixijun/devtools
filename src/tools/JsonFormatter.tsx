@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import Split from 'react-split'
-import { CodeEditor } from '../components/common'
-import { Button } from '../components/common'
+import { Button, CodeEditor } from '../components/common'
 import { ToolLayout } from '../components/layouts'
 import { useCopyToClipboard, useDebounce } from '../hooks'
 import { errorUtils, validators } from '../utils'
@@ -11,7 +10,6 @@ import { errorUtils, validators } from '../utils'
  * 使用重构后的公共组件，提供统一的用户体验
  */
 const JsonFormatter: React.FC = () => {
-
   const [input, setInput] = useState('')
   const [output, setOutput] = useState('')
   const [error, setError] = useState('')
@@ -56,7 +54,7 @@ const JsonFormatter: React.FC = () => {
 
   const handleUnescape = () => {
     if (!input.trim()) return
-    
+
     try {
       // 尝试解析为JSON字符串，去除转义
       const parsed = JSON.parse(input)
@@ -79,7 +77,6 @@ const JsonFormatter: React.FC = () => {
     }
   }
 
-  
   const handleLoadExample = () => {
     const exampleJson = {
       name: '张三',
@@ -96,10 +93,9 @@ const JsonFormatter: React.FC = () => {
   }
 
   return (
-    <ToolLayout 
-      title="JSON 格式化器"
-      subtitle="格式化和美化JSON数据，提供语法验证和错误检测"
-    >
+    <ToolLayout
+      title='JSON 格式化器'
+      subtitle='格式化和美化JSON数据，提供语法验证和错误检测'>
       <div className='flex flex-col h-full'>
         {/* 错误提示 */}
         {error && (
@@ -121,7 +117,6 @@ const JsonFormatter: React.FC = () => {
             direction='horizontal'
             cursor='col-resize'
             className='flex flex-row gap-4 h-full'>
-            
             {/* 左侧输入区域 */}
             <div className='flex flex-col h-full'>
               <div className='p-2 bg-gray-100 dark:bg-gray-700 border-b dark:border-gray-600 flex items-center justify-between flex-shrink-0'>
@@ -132,19 +127,22 @@ const JsonFormatter: React.FC = () => {
                   <div className='text-sm text-gray-600 dark:text-gray-400'>
                     输入长度: {input.length}
                   </div>
-                  <Button variant='secondary' size='sm' onClick={handleLoadExample}>
+                  <Button
+                    variant='secondary'
+                    size='sm'
+                    onClick={handleLoadExample}>
                     示例
                   </Button>
-                  <Button 
-                    variant='secondary' 
-                    size='sm' 
+                  <Button
+                    variant='secondary'
+                    size='sm'
                     onClick={handleUnescape}
                     disabled={!input}>
                     去除转义
                   </Button>
-                  <Button 
-                    variant='secondary' 
-                    size='sm' 
+                  <Button
+                    variant='secondary'
+                    size='sm'
                     onClick={handleClearInput}
                     disabled={!input}>
                     清空

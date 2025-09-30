@@ -28,8 +28,8 @@ const Settings: React.FC = () => {
     startMinimized: false,
     hotkey: {
       modifier: isMac ? 'option' : 'alt',
-      key: 'Space'
-    }
+      key: 'Space',
+    },
   })
   const [currentTheme, setCurrentTheme] = useState<'light' | 'dark'>('light')
   const [loading, setLoading] = useState(false)
@@ -56,8 +56,8 @@ const Settings: React.FC = () => {
           ...parsedSettings,
           hotkey: parsedSettings.hotkey || {
             modifier: isMac ? 'option' : 'alt',
-            key: 'Space'
-          }
+            key: 'Space',
+          },
         }
         setSettings(settingsWithDefaults)
       }
@@ -66,31 +66,37 @@ const Settings: React.FC = () => {
     }
   }
 
-  const loadSystemSettings = async () => {
+  const loadSystemSettings = () => {
     if (!isTauri()) return
 
-    try {
-      // 获取托盘状态
-      const trayStatus = await invoke<boolean>('get_tray_status')
-      // 获取自启动状态
-      const autostartStatus = await invoke<boolean>('get_autostart_status')
-      // 获取启动时最小化状态
-      const startMinimizedStatus = await invoke<boolean>('get_start_minimized_status')
-
-      setSettings((prev) => ({
-        ...prev,
-        showTray: trayStatus,
-        autoStart: autostartStatus,
-        startMinimized: startMinimizedStatus,
-        // 确保 hotkey 字段存在
-        hotkey: prev.hotkey || {
-          modifier: isMac ? 'option' : 'alt',
-          key: 'Space'
-        }
-      }))
-    } catch (error) {
-      console.error('Failed to load system settings:', error)
-    }
+    // 获取托盘状态
+    invoke<boolean>('get_tray_status')
+      .then((trayStatus) => {
+        // 获取自启动状态
+        return invoke<boolean>('get_autostart_status').then(
+          (autostartStatus) => {
+            // 获取启动时最小化状态
+            return invoke<boolean>('get_start_minimized_status').then(
+              (startMinimizedStatus) => {
+                setSettings((prev) => ({
+                  ...prev,
+                  showTray: trayStatus,
+                  autoStart: autostartStatus,
+                  startMinimized: startMinimizedStatus,
+                  // 确保 hotkey 字段存在
+                  hotkey: prev.hotkey || {
+                    modifier: isMac ? 'option' : 'alt',
+                    key: 'Space',
+                  },
+                }))
+              },
+            )
+          },
+        )
+      })
+      .catch((error) => {
+        console.error('Failed to load system settings:', error)
+      })
   }
 
   const saveSettings = (newSettings: SettingsConfig) => {
@@ -102,7 +108,7 @@ const Settings: React.FC = () => {
     }
   }
 
-  const handleThemeChange = async (theme: 'light' | 'dark' | 'system') => {
+  const handleThemeChange = (theme: 'light' | 'dark' | 'system') => {
     const newSettings = { ...settings, theme }
     saveSettings(newSettings)
 
@@ -110,85 +116,97 @@ const Settings: React.FC = () => {
       const tauriWindow = getCurrentWindow()
       if (theme === 'system') {
         // 获取系统主题
-        const systemTheme = await tauriWindow.theme()
-        await tauriWindow.setTheme(systemTheme)
-        setCurrentTheme(systemTheme === 'dark' ? 'dark' : 'light')
+        tauriWindow.theme().then((systemTheme) => {
+          return tauriWindow.setTheme(systemTheme).then(() => {
+            setCurrentTheme(systemTheme === 'dark' ? 'dark' : 'light')
+          })
+        })
       } else {
-        await tauriWindow.setTheme(theme)
-        setCurrentTheme(theme)
+        tauriWindow.setTheme(theme).then(() => {
+          setCurrentTheme(theme)
+        })
       }
     }
   }
 
-  const handleTrayToggle = async (showTray: boolean) => {
+  const handleTrayToggle = (showTray: boolean) => {
     if (!isTauri()) return
 
     setLoading(true)
-    try {
-      const result = await invoke<boolean>('toggle_tray', { enabled: showTray })
-      const newSettings = { ...settings, showTray: result }
-      saveSettings(newSettings)
 
-      // 如果用户关闭了托盘，显示提示
-      if (!showTray) {
-        // 这里可以显示一个提示，告知用户托盘图标会在下次启动时不再显示
-        console.log('托盘图标将在下次应用启动时不再显示')
-      }
-    } catch (error) {
-      console.error('Failed to toggle tray:', error)
-      // 如果失败，恢复原状态
-      setSettings((prev) => ({ ...prev, showTray: !showTray }))
-    } finally {
-      setLoading(false)
-    }
+    invoke<boolean>('toggle_tray', { enabled: showTray })
+      .then((result) => {
+        const newSettings = { ...settings, showTray: result }
+        saveSettings(newSettings)
+
+        // 如果用户关闭了托盘，显示提示
+        if (!showTray) {
+          // 这里可以显示一个提示，告知用户托盘图标会在下次启动时不再显示
+          console.log('托盘图标将在下次应用启动时不再显示')
+        }
+      })
+      .catch((error) => {
+        console.error('Failed to toggle tray:', error)
+        // 如果失败，恢复原状态
+        setSettings((prev) => ({ ...prev, showTray: !showTray }))
+      })
+      .finally(() => {
+        setLoading(false)
+      })
   }
 
-  const handleAutoStartToggle = async (autoStart: boolean) => {
+  const handleAutoStartToggle = (autoStart: boolean) => {
     if (!isTauri()) return
 
     setLoading(true)
-    try {
-      const result = await invoke<boolean>('set_autostart', {
-        enabled: autoStart,
+
+    invoke<boolean>('set_autostart', {
+      enabled: autoStart,
+    })
+      .then((result) => {
+        const newSettings = { ...settings, autoStart: result }
+        saveSettings(newSettings)
       })
-      const newSettings = { ...settings, autoStart: result }
-      saveSettings(newSettings)
-    } catch (error) {
-      console.error('Failed to set autostart:', error)
-      // 如果失败，恢复原状态
-      setSettings((prev) => ({ ...prev, autoStart: !autoStart }))
-    } finally {
-      setLoading(false)
-    }
+      .catch((error) => {
+        console.error('Failed to set autostart:', error)
+        // 如果失败，恢复原状态
+        setSettings((prev) => ({ ...prev, autoStart: !autoStart }))
+      })
+      .finally(() => {
+        setLoading(false)
+      })
   }
 
-  const handleStartMinimizedToggle = async (startMinimized: boolean) => {
+  const handleStartMinimizedToggle = (startMinimized: boolean) => {
     if (!isTauri()) return
 
     setLoading(true)
-    try {
-      const result = await invoke<boolean>('set_start_minimized', {
-        enabled: startMinimized,
+
+    invoke<boolean>('set_start_minimized', {
+      enabled: startMinimized,
+    })
+      .then((result) => {
+        const newSettings = { ...settings, startMinimized: result }
+        saveSettings(newSettings)
       })
-      const newSettings = { ...settings, startMinimized: result }
-      saveSettings(newSettings)
-    } catch (error) {
-      console.error('Failed to set start minimized:', error)
-      // 如果失败，恢复原状态
-      setSettings((prev) => ({ ...prev, startMinimized: !startMinimized }))
-    } finally {
-      setLoading(false)
-    }
+      .catch((error) => {
+        console.error('Failed to set start minimized:', error)
+        // 如果失败，恢复原状态
+        setSettings((prev) => ({ ...prev, startMinimized: !startMinimized }))
+      })
+      .finally(() => {
+        setLoading(false)
+      })
   }
 
   const handleHotkeyRecord = () => {
     setIsRecordingHotkey(true)
-    
+
     const handleKeyDown = (e: KeyboardEvent) => {
       e.preventDefault()
-      
+
       let modifier: 'option' | 'alt' | 'ctrl' | 'cmd'
-      
+
       if (e.metaKey) {
         modifier = 'cmd'
       } else if (e.altKey) {
@@ -199,92 +217,103 @@ const Settings: React.FC = () => {
         // 必须有修饰键
         return
       }
-      
+
       // 排除单独的修饰键
       if (['Control', 'Alt', 'Meta', 'Shift'].includes(e.key)) {
         return
       }
-      
+
       const newHotkey = {
         modifier,
-        key: e.key === ' ' ? 'Space' : e.key
+        key: e.key === ' ' ? 'Space' : e.key,
       }
-      
+
       // 调用后端注册快捷键
       registerHotkeyWithBackend(newHotkey)
-      
+
       document.removeEventListener('keydown', handleKeyDown)
     }
-    
+
     document.addEventListener('keydown', handleKeyDown)
-    
+
     // 10秒后自动取消录制
     const timeoutId = setTimeout(() => {
       setIsRecordingHotkey(false)
       document.removeEventListener('keydown', handleKeyDown)
     }, 10000)
-    
+
     // 保存timeout ID以便在需要时清除
     const cleanup = () => {
       clearTimeout(timeoutId)
       document.removeEventListener('keydown', handleKeyDown)
     }
-    
+
     // 在组件卸载时清理
     return cleanup
   }
 
-  const registerHotkeyWithBackend = async (newHotkey: HotKeyConfig) => {
+  const registerHotkeyWithBackend = (newHotkey: HotKeyConfig) => {
     if (!isTauri()) {
       // 如果不在 Tauri 环境中，只更新本地状态
-      const newSettings = { 
-        ...settings, 
+      const newSettings = {
+        ...settings,
         hotkey: newHotkey,
         theme: settings.theme || 'system',
         showTray: settings.showTray !== undefined ? settings.showTray : true,
-        autoStart: settings.autoStart !== undefined ? settings.autoStart : false,
-        startMinimized: settings.startMinimized !== undefined ? settings.startMinimized : false
+        autoStart:
+          settings.autoStart !== undefined ? settings.autoStart : false,
+        startMinimized:
+          settings.startMinimized !== undefined
+            ? settings.startMinimized
+            : false,
       }
       saveSettings(newSettings)
       setIsRecordingHotkey(false)
       return
     }
 
-    try {
-      setLoading(true)
-      
-      // 调用后端 API 注册全局快捷键
-      const result = await invoke('register_global_shortcut', { config: newHotkey })
-      
-      if (result) {
+    setLoading(true)
+
+    // 调用后端 API 注册全局快捷键
+    invoke<boolean>('register_global_shortcut', { config: newHotkey })
+      .then(() => {
         // 更新本地设置
-        const newSettings = { 
-          ...settings, 
+        const newSettings = {
+          ...settings,
           hotkey: newHotkey,
           theme: settings.theme || 'system',
           showTray: settings.showTray !== undefined ? settings.showTray : true,
-          autoStart: settings.autoStart !== undefined ? settings.autoStart : false,
-          startMinimized: settings.startMinimized !== undefined ? settings.startMinimized : false
+          autoStart:
+            settings.autoStart !== undefined ? settings.autoStart : false,
+          startMinimized:
+            settings.startMinimized !== undefined
+              ? settings.startMinimized
+              : false,
         }
         saveSettings(newSettings)
         console.log('全局快捷键注册成功')
-      }
-    } catch (error) {
-      console.error('Failed to register global shortcut:', error)
-      // 如果注册失败，显示错误但仍更新本地设置以保存用户选择
-      const newSettings = { 
-        ...settings, 
-        hotkey: newHotkey,
-        theme: settings.theme || 'system',
-        showTray: settings.showTray !== undefined ? settings.showTray : true,
-        autoStart: settings.autoStart !== undefined ? settings.autoStart : false,
-        startMinimized: settings.startMinimized !== undefined ? settings.startMinimized : false
-      }
-      saveSettings(newSettings)
-    } finally {
-      setLoading(false)
-      setIsRecordingHotkey(false)
-    }
+      })
+      .catch((error) => {
+        console.error('Failed to register global shortcut:', error)
+        // 如果注册失败，显示错误但仍更新本地设置以保存用户选择
+        const newSettings = {
+          ...settings,
+          hotkey: newHotkey,
+          theme: settings.theme || 'system',
+          showTray: settings.showTray !== undefined ? settings.showTray : true,
+          autoStart:
+            settings.autoStart !== undefined ? settings.autoStart : false,
+          startMinimized:
+            settings.startMinimized !== undefined
+              ? settings.startMinimized
+              : false,
+        }
+        saveSettings(newSettings)
+      })
+      .finally(() => {
+        setLoading(false)
+        setIsRecordingHotkey(false)
+      })
   }
 
   // 在组件卸载时清理事件监听器
@@ -299,14 +328,14 @@ const Settings: React.FC = () => {
     if (!hotkey || !hotkey.modifier || !hotkey.key) {
       return isMac ? '⌥ + 空格' : 'Alt + 空格'
     }
-    
+
     const modifierDisplay = {
-      'option': '⌥',
-      'alt': 'Alt',
-      'ctrl': isMac ? '⌃' : 'Ctrl',
-      'cmd': '⌘'
+      option: '⌥',
+      alt: 'Alt',
+      ctrl: isMac ? '⌃' : 'Ctrl',
+      cmd: '⌘',
     }
-    
+
     const keyDisplay = hotkey.key === 'Space' ? '空格' : hotkey.key
     return `${modifierDisplay[hotkey.modifier]} + ${keyDisplay}`
   }
@@ -442,7 +471,9 @@ const Settings: React.FC = () => {
                     className='sr-only'
                     checked={settings.startMinimized}
                     disabled={loading}
-                    onChange={(e) => handleStartMinimizedToggle(e.target.checked)}
+                    onChange={(e) =>
+                      handleStartMinimizedToggle(e.target.checked)
+                    }
                   />
                   <div
                     className={`w-11 h-6 rounded-full transition-colors ${
@@ -452,7 +483,9 @@ const Settings: React.FC = () => {
                     } ${loading ? 'opacity-50' : ''}`}>
                     <div
                       className={`w-5 h-5 bg-white rounded-full shadow transform transition-transform ${
-                        settings.startMinimized ? 'translate-x-5' : 'translate-x-0'
+                        settings.startMinimized
+                          ? 'translate-x-5'
+                          : 'translate-x-0'
                       } mt-0.5 ml-0.5`}
                     />
                   </div>
@@ -498,25 +531,28 @@ const Settings: React.FC = () => {
                   </button>
                 </div>
               </div>
-              
+
               {isRecordingHotkey && (
                 <div className='p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-md'>
                   <p className='text-sm text-orange-700 dark:text-orange-300'>
-                    🎯 请按下新的快捷键组合（必须包含修饰键：Ctrl、Alt/Option、Cmd）
+                    🎯
+                    请按下新的快捷键组合（必须包含修饰键：Ctrl、Alt/Option、Cmd）
                   </p>
                   <p className='text-xs text-orange-600 dark:text-orange-400 mt-1'>
                     10秒后自动取消录制
                   </p>
                 </div>
               )}
-              
+
               <div className='p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md'>
                 <p className='text-sm text-blue-700 dark:text-blue-300'>
                   💡 <strong>使用说明：</strong>
                 </p>
                 <ul className='text-xs text-blue-600 dark:text-blue-400 mt-1 space-y-1'>
                   <li>• 全局快捷键可以在任何应用程序中使用</li>
-                  <li>• 默认快捷键：{isMac ? 'Option + 空格' : 'Alt + 空格'}</li>
+                  <li>
+                    • 默认快捷键：{isMac ? 'Option + 空格' : 'Alt + 空格'}
+                  </li>
                   <li>• 建议使用不与其他应用冲突的组合键</li>
                 </ul>
               </div>

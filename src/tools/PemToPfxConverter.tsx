@@ -6,12 +6,6 @@ import { Button } from '../components/common'
 import FileUpload from '../components/common/FileUpload'
 import { ToolLayout } from '../components/layouts'
 
-interface PemToPfxResult {
-  pfx_data: number[]
-  success: boolean
-  error?: string
-}
-
 const PemToPfxConverter: React.FC = () => {
   const [pemContent, setPemContent] = useState('')
   const [privateKeyContent, setPrivateKeyContent] = useState('')
@@ -210,105 +204,93 @@ const PemToPfxConverter: React.FC = () => {
     setKeyError(null)
     setFormError(null)
 
-    try {
-      // 获取最终使用的私钥内容
-      const finalPrivateKey =
-        privateKeyContent.trim() || certInfo.extractedPrivateKey || ''
+    // 获取最终使用的私钥内容
+    const finalPrivateKey =
+      privateKeyContent.trim() || certInfo.extractedPrivateKey || ''
 
-      // 如果私钥被加密，则必须填写私钥密码
-      if (
-        finalPrivateKey &&
-        isEncryptedPrivateKey(finalPrivateKey) &&
-        !privateKeyPassword.trim()
-      ) {
-        setKeyError('检测到加密私钥，请填写私钥密码')
-        return
-      }
+    // 如果私钥被加密，则必须填写私钥密码
+    if (
+      finalPrivateKey &&
+      isEncryptedPrivateKey(finalPrivateKey) &&
+      !privateKeyPassword.trim()
+    ) {
+      setKeyError('检测到加密私钥，请填写私钥密码')
+      setIsProcessing(false)
+      return
+    }
 
-      // 验证证书内容
-      if (!certInfo.certOnly.trim()) {
-        throw new Error('无法提取有效的证书内容')
-      }
+    // 验证证书内容
+    if (!certInfo.certOnly.trim()) {
+      setFormError('无法提取有效的证书内容')
+      setIsProcessing(false)
+      return
+    }
 
-      // 清理和验证输入内容
-      const cleanCert = certInfo.certOnly.trim()
-      const cleanPrivateKey = finalPrivateKey.trim() || null
-      const cleanPassword = password.trim()
-      const cleanPrivateKeyPassword = privateKeyPassword.trim() || null
+    // 清理和验证输入内容
+    const cleanCert = certInfo.certOnly.trim()
+    const cleanPrivateKey = finalPrivateKey.trim() || null
+    const cleanPassword = password.trim()
+    const cleanPrivateKeyPassword = privateKeyPassword.trim() || null
 
-      // 调用Rust后端进行转换
-      const result: PemToPfxResult = await invoke('convert_pem_to_pfx', {
-        certPem: cleanCert,
-        privateKeyPem: cleanPrivateKey,
-        password: cleanPassword,
-        privateKeyPassword: cleanPrivateKeyPassword,
-      })
-
-      if (result.success && result.pfx_data && result.pfx_data.length > 0) {
+    // 调用Rust后端进行转换
+    invoke<{ pfx_data: number[] }>('convert_pem_to_pfx', {
+      certPem: cleanCert,
+      privateKeyPem: cleanPrivateKey,
+      password: cleanPassword,
+      privateKeyPassword: cleanPrivateKeyPassword,
+    })
+      .then((result) => {
         setPfxData(result.pfx_data)
         setFormError(null)
-      } else {
-        const errorMsg = result.error || '转换失败'
-        if (errorMsg.includes('证书')) {
-          setPemError(errorMsg)
-        } else if (errorMsg.includes('私钥')) {
-          setKeyError(errorMsg)
+        setIsProcessing(false)
+      })
+      .catch((err) => {
+        console.error('PEM转PFX转换错误:', err)
+        let errorMessage = '转换失败'
+
+        if (err && typeof err === 'string') {
+          errorMessage = err
+        } else if (err instanceof Error) {
+          errorMessage = err.message
+        }
+
+        // 提供更友好的错误信息
+        if (errorMessage.includes('证书内容不能为空')) {
+          errorMessage = '证书内容不能为空，请提供有效的证书内容'
+        } else if (errorMessage.includes('证书格式不正确')) {
+          errorMessage =
+            '证书格式不正确，请确保证书以-----BEGIN CERTIFICATE-----开头'
+        } else if (errorMessage.includes('私钥内容不能为空')) {
+          errorMessage = '私钥内容不能为空，请提供有效的私钥内容'
+        } else if (errorMessage.includes('私钥格式不正确')) {
+          errorMessage = '私钥格式不正确，请确保私钥包含正确的BEGIN和END标记'
+        } else if (errorMessage.includes('私钥密码错误')) {
+          errorMessage = '私钥密码错误或私钥格式不正确'
+        } else if (errorMessage.includes('PFX密码不能为空')) {
+          errorMessage = 'PFX密码不能为空，请设置PFX文件密码'
+        } else if (errorMessage.includes('PKCS12构建失败')) {
+          errorMessage = 'PFX文件构建失败：证书和私钥可能不匹配'
+        } else if (errorMessage.includes('证书解析失败')) {
+          errorMessage = '证书解析失败：请检查证书格式是否正确'
+        } else if (errorMessage.includes('私钥解析失败')) {
+          errorMessage = '私钥解析失败：请检查私钥格式和密码是否正确'
+        } else if (
+          errorMessage === '转换失败' ||
+          errorMessage.includes('未知错误')
+        ) {
+          errorMessage = '转换失败：请检查证书和私钥内容是否匹配'
+        }
+
+        if (errorMessage.includes('证书')) {
+          setPemError(errorMessage)
+        } else if (errorMessage.includes('私钥')) {
+          setKeyError(errorMessage)
         } else {
-          setFormError(errorMsg)
+          setFormError(errorMessage)
         }
         setPfxData(null)
-      }
-    } catch (err: any) {
-      console.error('PEM转PFX转换错误:', err)
-
-      let errorMessage = '转换失败'
-
-      if (err && typeof err === 'string') {
-        errorMessage = err
-      } else if (err && err.message) {
-        errorMessage = err.message
-      } else if (err && err.toString) {
-        errorMessage = err.toString()
-      }
-
-      // 提供更友好的错误信息
-      if (errorMessage.includes('证书内容不能为空')) {
-        errorMessage = '证书内容不能为空，请提供有效的证书内容'
-      } else if (errorMessage.includes('证书格式不正确')) {
-        errorMessage =
-          '证书格式不正确，请确保证书以-----BEGIN CERTIFICATE-----开头'
-      } else if (errorMessage.includes('私钥内容不能为空')) {
-        errorMessage = '私钥内容不能为空，请提供有效的私钥内容'
-      } else if (errorMessage.includes('私钥格式不正确')) {
-        errorMessage = '私钥格式不正确，请确保私钥包含正确的BEGIN和END标记'
-      } else if (errorMessage.includes('私钥密码错误')) {
-        errorMessage = '私钥密码错误或私钥格式不正确'
-      } else if (errorMessage.includes('PFX密码不能为空')) {
-        errorMessage = 'PFX密码不能为空，请设置PFX文件密码'
-      } else if (errorMessage.includes('PKCS12构建失败')) {
-        errorMessage = 'PFX文件构建失败：证书和私钥可能不匹配'
-      } else if (errorMessage.includes('证书解析失败')) {
-        errorMessage = '证书解析失败：请检查证书格式是否正确'
-      } else if (errorMessage.includes('私钥解析失败')) {
-        errorMessage = '私钥解析失败：请检查私钥格式和密码是否正确'
-      } else if (
-        errorMessage === '转换失败' ||
-        errorMessage.includes('未知错误')
-      ) {
-        errorMessage = '转换失败：请检查证书和私钥内容是否匹配'
-      }
-
-      if (errorMessage.includes('证书')) {
-        setPemError(errorMessage)
-      } else if (errorMessage.includes('私钥')) {
-        setKeyError(errorMessage)
-      } else {
-        setFormError(errorMessage)
-      }
-      setPfxData(null)
-    } finally {
-      setIsProcessing(false)
-    }
+        setIsProcessing(false)
+      })
   }
 
   // 下载PFX文件
@@ -358,86 +340,86 @@ const PemToPfxConverter: React.FC = () => {
   }
 
   return (
-    <ToolLayout 
-      title="PEM 转 PFX 转换器"
-      subtitle="将PEM格式的证书和私钥转换为PFX格式文件"
+    <ToolLayout
+      title='PEM 转 PFX 转换器'
+      subtitle='将PEM格式的证书和私钥转换为PFX格式文件'
       actions={
-        <Button 
+        <Button
           variant='secondary'
           size='sm'
           onClick={() => setShowOpensslInfo(!showOpensslInfo)}>
           {showOpensslInfo ? '隐藏' : '查看'}OpenSSL命令
         </Button>
-      }
-    >
+      }>
       <div className='flex flex-col h-full space-y-6 overflow-y-auto'>
         {/* OpenSSL命令提示 */}
         {showOpensslInfo && (
           <div className='mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg'>
-          <div className='flex items-center justify-between mb-3'>
-            <h3 className='text-sm font-semibold text-blue-800 dark:text-blue-200'>
-              📋 OpenSSL命令参考
-            </h3>
-            <button
-              onClick={() => setShowOpensslInfo(false)}
-              className='text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300'>
-              <svg
-                className='w-4 h-4'
-                fill='none'
-                stroke='currentColor'
-                viewBox='0 0 24 24'>
-                <path
-                  strokeLinecap='round'
-                  strokeLinejoin='round'
-                  strokeWidth={2}
-                  d='M6 18L18 6M6 6l12 12'
-                />
-              </svg>
-            </button>
+            <div className='flex items-center justify-between mb-3'>
+              <h3 className='text-sm font-semibold text-blue-800 dark:text-blue-200'>
+                📋 OpenSSL命令参考
+              </h3>
+              <button
+                onClick={() => setShowOpensslInfo(false)}
+                className='text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300'>
+                <svg
+                  className='w-4 h-4'
+                  fill='none'
+                  stroke='currentColor'
+                  viewBox='0 0 24 24'>
+                  <path
+                    strokeLinecap='round'
+                    strokeLinejoin='round'
+                    strokeWidth={2}
+                    d='M6 18L18 6M6 6l12 12'
+                  />
+                </svg>
+              </button>
+            </div>
+            <div className='space-y-3 text-xs'>
+              <div>
+                <p className='font-medium text-blue-800 dark:text-blue-200 mb-1'>
+                  基本转换：
+                </p>
+                <code className='block p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded font-mono text-blue-700 dark:text-blue-300'>
+                  openssl pkcs12 -export -out certificate.pfx -inkey private.key
+                  -in certificate.crt
+                </code>
+              </div>
+              <div>
+                <p className='font-medium text-blue-800 dark:text-blue-200 mb-1'>
+                  带私钥密码：
+                </p>
+                <code className='block p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded font-mono text-blue-700 dark:text-blue-300'>
+                  openssl pkcs12 -export -out certificate.pfx -inkey private.key
+                  -in certificate.crt -passin pass:私钥密码 -passout
+                  pass:PFX密码
+                </code>
+              </div>
+              <div>
+                <p className='font-medium text-blue-800 dark:text-blue-200 mb-1'>
+                  从PEM文件：
+                </p>
+                <code className='block p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded font-mono text-blue-700 dark:text-blue-300'>
+                  openssl pkcs12 -export -out certificate.pfx -inkey key.pem -in
+                  cert.pem -certfile chain.pem
+                </code>
+              </div>
+              <div>
+                <p className='font-medium text-blue-800 dark:text-blue-200 mb-1'>
+                  仅证书和私钥：
+                </p>
+                <code className='block p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded font-mono text-blue-700 dark:text-blue-300'>
+                  openssl pkcs12 -export -out certificate.pfx -inkey private.pem
+                  -in cert.pem
+                </code>
+              </div>
+            </div>
+            <p className='mt-3 text-xs text-blue-700 dark:text-blue-300 italic'>
+              💡
+              此工具为可视化版本，上述命令仅供参考。转换结果与命令行工具完全一致。
+            </p>
           </div>
-          <div className='space-y-3 text-xs'>
-            <div>
-              <p className='font-medium text-blue-800 dark:text-blue-200 mb-1'>
-                基本转换：
-              </p>
-              <code className='block p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded font-mono text-blue-700 dark:text-blue-300'>
-                openssl pkcs12 -export -out certificate.pfx -inkey private.key
-                -in certificate.crt
-              </code>
-            </div>
-            <div>
-              <p className='font-medium text-blue-800 dark:text-blue-200 mb-1'>
-                带私钥密码：
-              </p>
-              <code className='block p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded font-mono text-blue-700 dark:text-blue-300'>
-                openssl pkcs12 -export -out certificate.pfx -inkey private.key
-                -in certificate.crt -passin pass:私钥密码 -passout pass:PFX密码
-              </code>
-            </div>
-            <div>
-              <p className='font-medium text-blue-800 dark:text-blue-200 mb-1'>
-                从PEM文件：
-              </p>
-              <code className='block p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded font-mono text-blue-700 dark:text-blue-300'>
-                openssl pkcs12 -export -out certificate.pfx -inkey key.pem -in
-                cert.pem -certfile chain.pem
-              </code>
-            </div>
-            <div>
-              <p className='font-medium text-blue-800 dark:text-blue-200 mb-1'>
-                仅证书和私钥：
-              </p>
-              <code className='block p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded font-mono text-blue-700 dark:text-blue-300'>
-                openssl pkcs12 -export -out certificate.pfx -inkey private.pem
-                -in cert.pem
-              </code>
-            </div>
-          </div>
-          <p className='mt-3 text-xs text-blue-700 dark:text-blue-300 italic'>
-            💡
-            此工具为可视化版本，上述命令仅供参考。转换结果与命令行工具完全一致。
-          </p>
-        </div>
         )}
 
         {/* PEM证书输入 */}
@@ -507,91 +489,94 @@ const PemToPfxConverter: React.FC = () => {
               const needsPassword = isEncryptedPrivateKey(effectiveKey)
               return needsPassword ? (
                 <div>
-              <div className='flex flex-col sm:flex-row sm:items-center sm:space-x-3 space-y-2 sm:space-y-0'>
-                  <label className='w-28 shrink-0 text-sm font-medium text-gray-700 dark:text-gray-300 mb-0'>
-                    {(() => {
-                      const effectiveKey = (
-                        privateKeyContent ||
-                        certInfo.extractedPrivateKey ||
-                        ''
-                      ).trim()
-                      // 如果证书不包含私钥，则私钥密码必填
-                      if (!certInfo.hasPrivateKey) {
+                  <div className='flex flex-col sm:flex-row sm:items-center sm:space-x-3 space-y-2 sm:space-y-0'>
+                    <label className='w-28 shrink-0 text-sm font-medium text-gray-700 dark:text-gray-300 mb-0'>
+                      {(() => {
+                        const effectiveKey = (
+                          privateKeyContent ||
+                          certInfo.extractedPrivateKey ||
+                          ''
+                        ).trim()
+                        // 如果证书不包含私钥，则私钥密码必填
+                        if (!certInfo.hasPrivateKey) {
+                          return isEncryptedPrivateKey(effectiveKey)
+                            ? '私钥密码 *'
+                            : '私钥密码 *'
+                        }
+                        // 如果证书包含私钥，则根据是否加密决定
                         return isEncryptedPrivateKey(effectiveKey)
                           ? '私钥密码 *'
-                          : '私钥密码 *'
-                      }
-                      // 如果证书包含私钥，则根据是否加密决定
-                      return isEncryptedPrivateKey(effectiveKey)
-                        ? '私钥密码 *'
-                        : '私钥密码（可选）'
-                    })()}
-                  </label>
-                  <div className='relative w-full'>
-                    <input
-                      type={showPrivateKeyPassword ? 'text' : 'password'}
-                      value={privateKeyPassword}
-                      onChange={(e) => setPrivateKeyPassword(e.target.value)}
-                      placeholder='如果私钥需要密码...'
-                      className='w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500'
-                    />
-                    <button
-                      type='button'
-                      onClick={() =>
-                        setShowPrivateKeyPassword(!showPrivateKeyPassword)
-                      }
-                      className='absolute inset-y-0 right-0 px-3 flex items-center text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
-                      title={showPrivateKeyPassword ? '隐藏密码' : '显示密码'}>
-                      {showPrivateKeyPassword ? (
-                        <svg
-                          className='w-5 h-5'
-                          fill='none'
-                          stroke='currentColor'
-                          viewBox='0 0 24 24'>
-                          <path
-                            strokeLinecap='round'
-                            strokeLinejoin='round'
-                            strokeWidth={2}
-                            d='M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21'
-                          />
-                        </svg>
-                      ) : (
-                        <svg
-                          className='w-5 h-5'
-                          fill='none'
-                          stroke='currentColor'
-                          viewBox='0 0 24 24'>
-                          <path
-                            strokeLinecap='round'
-                            strokeLinejoin='round'
-                            strokeWidth={2}
-                            d='M15 12a3 3 0 11-6 0 3 3 0 016 0z'
-                          />
-                          <path
-                            strokeLinecap='round'
-                            strokeLinejoin='round'
-                            strokeWidth={2}
-                            d='M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z'
-                          />
-                        </svg>
-                      )}
-                    </button>
+                          : '私钥密码（可选）'
+                      })()}
+                    </label>
+                    <div className='relative w-full'>
+                      <input
+                        type={showPrivateKeyPassword ? 'text' : 'password'}
+                        value={privateKeyPassword}
+                        onChange={(e) => setPrivateKeyPassword(e.target.value)}
+                        placeholder='如果私钥需要密码...'
+                        className='w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500'
+                      />
+                      <button
+                        type='button'
+                        onClick={() =>
+                          setShowPrivateKeyPassword(!showPrivateKeyPassword)
+                        }
+                        className='absolute inset-y-0 right-0 px-3 flex items-center text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                        title={
+                          showPrivateKeyPassword ? '隐藏密码' : '显示密码'
+                        }>
+                        {showPrivateKeyPassword ? (
+                          <svg
+                            className='w-5 h-5'
+                            fill='none'
+                            stroke='currentColor'
+                            viewBox='0 0 24 24'>
+                            <path
+                              strokeLinecap='round'
+                              strokeLinejoin='round'
+                              strokeWidth={2}
+                              d='M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21'
+                            />
+                          </svg>
+                        ) : (
+                          <svg
+                            className='w-5 h-5'
+                            fill='none'
+                            stroke='currentColor'
+                            viewBox='0 0 24 24'>
+                            <path
+                              strokeLinecap='round'
+                              strokeLinejoin='round'
+                              strokeWidth={2}
+                              d='M15 12a3 3 0 11-6 0 3 3 0 016 0z'
+                            />
+                            <path
+                              strokeLinecap='round'
+                              strokeLinejoin='round'
+                              strokeWidth={2}
+                              d='M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z'
+                            />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
               ) : null
             })()}
 
             {/* PFX密码设置 */}
-            <div className={(() => {
-              const effectiveKey = (
-                privateKeyContent ||
-                certInfo.extractedPrivateKey ||
-                ''
-              ).trim()
-              const needsPassword = isEncryptedPrivateKey(effectiveKey)
-              return needsPassword ? '' : 'md:col-span-2'
-            })()}>
+            <div
+              className={(() => {
+                const effectiveKey = (
+                  privateKeyContent ||
+                  certInfo.extractedPrivateKey ||
+                  ''
+                ).trim()
+                const needsPassword = isEncryptedPrivateKey(effectiveKey)
+                return needsPassword ? '' : 'md:col-span-2'
+              })()}>
               <div className='flex flex-col sm:flex-row sm:items-center sm:space-x-3 space-y-2 sm:space-y-0'>
                 <label className='w-28 shrink-0 text-sm font-medium text-gray-700 dark:text-gray-300 mb-0'>
                   PFX密码 *
@@ -658,30 +643,35 @@ const PemToPfxConverter: React.FC = () => {
             variant='primary'
             size='lg'
             onClick={convertPEMtoPFX}
-            disabled={isProcessing || !pemContent.trim() || !password.trim() || (!certInfo.hasPrivateKey && !privateKeyContent.trim())}
+            disabled={
+              isProcessing ||
+              !pemContent.trim() ||
+              !password.trim() ||
+              (!certInfo.hasPrivateKey && !privateKeyContent.trim())
+            }
             className='w-full'>
             {isProcessing ? '转换中...' : '转换为PFX'}
           </Button>
         </div>
 
         {formError && (
+          <div
+            className='mt-3 p-3 rounded-md border text-sm '
+            style={{
+              backgroundColor: formError.includes('成功')
+                ? 'var(--tw-color-green-50, #f0fdf4)'
+                : undefined,
+            }}>
             <div
-              className='mt-3 p-3 rounded-md border text-sm '
-              style={{
-                backgroundColor: formError.includes('成功')
-                  ? 'var(--tw-color-green-50, #f0fdf4)'
-                  : undefined,
-              }}>
-              <div
-                className={
-                  formError.includes('成功')
-                    ? 'text-green-700 dark:text-green-300'
-                    : 'text-red-700 dark:text-red-300'
-                }>
-                {formError}
-              </div>
+              className={
+                formError.includes('成功')
+                  ? 'text-green-700 dark:text-green-300'
+                  : 'text-red-700 dark:text-red-300'
+              }>
+              {formError}
             </div>
-          )}
+          </div>
+        )}
 
         {/* 结果下载区域 */}
         {pfxData && (

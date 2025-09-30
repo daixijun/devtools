@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react'
-import { CodeEditor } from '../components/common'
 import * as yaml from 'js-yaml'
+import React, { useEffect, useState } from 'react'
 import { parse as parseToml } from 'smol-toml'
+import { CodeEditor } from '../components/common'
 
 const FormatConverter: React.FC = () => {
   const [input, setInput] = useState('')
@@ -15,11 +15,7 @@ const FormatConverter: React.FC = () => {
   )
 
   // 前端格式转换函数
-  const convertFormat = (
-    content: string,
-    from: string,
-    to: string,
-  ): string => {
+  const convertFormat = (content: string, from: string, to: string): string => {
     if (!content.trim()) return ''
 
     try {
@@ -68,17 +64,19 @@ const FormatConverter: React.FC = () => {
     if (Array.isArray(data)) {
       // 处理数组
       if (data.length === 0) return '[]'
-      
+
       // 检查数组元素类型
       const firstType = typeof data[0]
-      const isHomogeneous = data.every(item => typeof item === firstType)
-      
+      const isHomogeneous = data.every((item) => typeof item === firstType)
+
       if (isHomogeneous && firstType !== 'object') {
         // 基本类型数组
-        return `[${data.map(item => formatTomlValue(item)).join(', ')}]`
+        return `[${data.map((item) => formatTomlValue(item)).join(', ')}]`
       } else {
         // 对象数组或混合类型数组
-        return `[\n${data.map(item => `  ${serializeToToml(item)}`).join(',\n')}\n]`
+        return `[\n${data
+          .map((item) => `  ${serializeToToml(item)}`)
+          .join(',\n')}\n]`
       }
     }
 
@@ -89,7 +87,11 @@ const FormatConverter: React.FC = () => {
 
     // 分离简单值和嵌套对象
     for (const [key, value] of Object.entries(data)) {
-      if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+      if (
+        typeof value === 'object' &&
+        value !== null &&
+        !Array.isArray(value)
+      ) {
         tableEntries.push([key, value])
       } else {
         simpleEntries.push([key, value])
@@ -101,13 +103,13 @@ const FormatConverter: React.FC = () => {
       if (currentTable) {
         lines.push(`[${currentTable}]`)
       }
-      
+
       for (const [key, value] of simpleEntries) {
         const formattedKey = formatTomlKey(key)
         const formattedValue = formatTomlValue(value)
         lines.push(`${formattedKey} = ${formattedValue}`)
       }
-      
+
       if (simpleEntries.length > 0 && tableEntries.length > 0) {
         lines.push('') // 空行分隔
       }
@@ -138,7 +140,7 @@ const FormatConverter: React.FC = () => {
   const formatTomlValue = (value: any): string => {
     if (value === null) return 'null'
     if (value === undefined) return 'null'
-    
+
     switch (typeof value) {
       case 'string':
         // 字符串需要用引号包围，并转义特殊字符

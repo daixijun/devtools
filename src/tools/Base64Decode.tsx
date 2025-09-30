@@ -56,10 +56,7 @@ const Base64Decode: React.FC = () => {
   }
 
   return (
-    <ToolLayout 
-      title="Base64 解码"
-      subtitle="将Base64格式解码为普通文本"
-    >
+    <ToolLayout title='Base64 解码' subtitle='将Base64格式解码为普通文本'>
       <div className='flex flex-col h-full'>
         {/* 输入区域 */}
         <div className='flex-1 flex flex-col p-4'>

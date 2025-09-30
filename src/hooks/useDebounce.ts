@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 /**
  * 防抖Hook
@@ -26,7 +26,7 @@ export const useDebounce = <T>(value: T, delay: number): T => {
  */
 export const useDebounceCallback = <T extends any[]>(
   callback: (...args: T) => void,
-  delay: number
+  delay: number,
 ) => {
   const [timeoutId, setTimeoutId] = useState<NodeJS.Timeout | null>(null)
 

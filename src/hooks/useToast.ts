@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useCallback, useState } from 'react'
 
 /**
  * Toast 通知管理Hook
@@ -11,7 +11,7 @@ export const useToast = () => {
   const showToast = useCallback((message: string, duration = 2000) => {
     setToast(message)
     setShow(true)
-    
+
     // 清除之前的定时器
     const timer = setTimeout(() => {
       setShow(false)
@@ -31,6 +31,6 @@ export const useToast = () => {
     toast,
     show,
     showToast,
-    hideToast
+    hideToast,
   }
 }

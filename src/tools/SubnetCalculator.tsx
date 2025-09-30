@@ -59,37 +59,44 @@ const SubnetCalculator: React.FC = () => {
     try {
       // 基本格式检查
       if (!ip || typeof ip !== 'string') return false
-      
+
       // 移除开头和结尾的空格
       ip = ip.trim()
-      
+
       // 检查是否包含无效字符（允许十六进制字符和冒号）
       if (!/^[0-9a-fA-F:]+$/.test(ip)) return false
-      
+
       // 处理特殊情况 :: (全零地址)
       if (ip === '::') return true
-      
+
       // 检查双冒号出现次数（最多一次）
       const doubleColonCount = (ip.match(/::/g) || []).length
       if (doubleColonCount > 1) return false
-      
+
       // 检查是否以单个冒号开始或结束（双冒号是允许的）
-      if ((ip.startsWith(':') && !ip.startsWith('::')) || 
-          (ip.endsWith(':') && !ip.endsWith('::'))) return false
-      
+      if (
+        (ip.startsWith(':') && !ip.startsWith('::')) ||
+        (ip.endsWith(':') && !ip.endsWith('::'))
+      )
+        return false
+
       let parts: string[]
-      
+
       if (ip.includes('::')) {
         // 处理压缩格式 (::表示一个或多个零组)
         const segments = ip.split('::')
         if (segments.length !== 2) return false
-        
-        const leftParts = segments[0] ? segments[0].split(':').filter(part => part !== '') : []
-        const rightParts = segments[1] ? segments[1].split(':').filter(part => part !== '') : []
-        
+
+        const leftParts = segments[0]
+          ? segments[0].split(':').filter((part) => part !== '')
+          : []
+        const rightParts = segments[1]
+          ? segments[1].split(':').filter((part) => part !== '')
+          : []
+
         // 检查总部分数是否合理 (左右两部分加起来不能超过8组)
         if (leftParts.length + rightParts.length >= 8) return false
-        
+
         // 验证左右两侧的每个部分
         parts = [...leftParts, ...rightParts]
       } else {
@@ -97,7 +104,7 @@ const SubnetCalculator: React.FC = () => {
         parts = ip.split(':')
         if (parts.length !== 8) return false
       }
-      
+
       // 验证每个部分
       for (const part of parts) {
         // 每部分不能为空（在完整格式中）
@@ -107,7 +114,7 @@ const SubnetCalculator: React.FC = () => {
         // 只允许十六进制字符
         if (part && !/^[0-9a-fA-F]+$/i.test(part)) return false
       }
-      
+
       return true
     } catch (error) {
       return false
@@ -353,9 +360,8 @@ const SubnetCalculator: React.FC = () => {
 
   return (
     <ToolLayout
-      title="子网计算器 (IPv4 & IPv6)"
-      subtitle="支持IPv4和IPv6网络地址的子网计算，包括CIDR转换、子网划分和网络信息查询"
-    >
+      title='子网计算器 (IPv4 & IPv6)'
+      subtitle='支持IPv4和IPv6网络地址的子网计算，包括CIDR转换、子网划分和网络信息查询'>
       <div className='flex flex-col h-full'>
         <div className='flex-1 overflow-auto p-4'>
           {/* IP版本选择器 */}
@@ -438,14 +444,18 @@ const SubnetCalculator: React.FC = () => {
               <div className='grid grid-cols-1 md:grid-cols-2 gap-2'>
                 {/* 基本信息 */}
                 <div className='flex justify-between'>
-                  <span className='text-gray-700 dark:text-gray-200'>版本:</span>
+                  <span className='text-gray-700 dark:text-gray-200'>
+                    版本:
+                  </span>
                   <span className='font-mono text-gray-900 dark:text-white'>
                     {result.version}
                   </span>
                 </div>
 
                 <div className='flex justify-between'>
-                  <span className='text-gray-700 dark:text-gray-200'>CIDR:</span>
+                  <span className='text-gray-700 dark:text-gray-200'>
+                    CIDR:
+                  </span>
                   <span className='font-mono text-gray-900 dark:text-white'>
                     {result.cidr}
                   </span>

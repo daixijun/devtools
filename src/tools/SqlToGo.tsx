@@ -1,14 +1,14 @@
 import { Editor as MonacoEditor } from '@monaco-editor/react'
 import { invoke } from '@tauri-apps/api/core'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 import React, { useEffect, useState } from 'react'
 import Split from 'react-split'
-import { getCurrentWindow } from '@tauri-apps/api/window'
 
 const SqlToGo: React.FC = () => {
   const [isDark, setIsDark] = useState(false)
   useEffect(() => {
     const window = getCurrentWindow()
-    window.theme().then(theme => setIsDark(theme === 'dark'))
+    window.theme().then((theme) => setIsDark(theme === 'dark'))
     window.onThemeChanged(({ payload: theme }) => {
       setIsDark(theme === 'dark')
     })
@@ -91,50 +91,54 @@ CREATE TABLE posts (
     setOutput('')
   }
 
-  const convertSqlToGo = async () => {
+  const convertSqlToGo = () => {
     if (!input.trim()) {
       setOutput('')
       return
     }
 
-    try {
-      const options = {
-        enable_pluralization: enablePluralization,
-        exported_fields: exportedFields,
-        is_go_124_or_above: isGo124OrAbove,
-        json_null_handling: jsonNullHandling,
-        selected_tags: selectedTags,
-      }
-
-      console.log('Sending options to backend:', options)
-      console.log('GORM tag enabled:', selectedTags.gorm)
-      console.log('Exported fields:', exportedFields)
-
-      const result: any = await invoke('convert_sql_to_go', {
-        sql: input,
-        options,
-      })
-
-      // Handle different response formats
-      if (result && typeof result === 'object') {
-        if (result.success) {
-          if (
-            result.warnings &&
-            Array.isArray(result.warnings) &&
-            result.warnings.length > 0
-          ) {
-            console.log('Warnings:', result.warnings)
-          }
-          const data = result.data || ''
-          console.log('Backend raw output:', JSON.stringify(data))
-          console.log('Backend output lines:', data.split('\n'))
-          setOutput(data)
-        } else {
-        }
-      }
-    } catch (err) {
-      console.error('Error in convertSqlToGo:', err)
+    const options = {
+      enable_pluralization: enablePluralization,
+      exported_fields: exportedFields,
+      is_go_124_or_above: isGo124OrAbove,
+      json_null_handling: jsonNullHandling,
+      selected_tags: selectedTags,
     }
+
+    console.log('Sending options to backend:', options)
+    console.log('GORM tag enabled:', selectedTags.gorm)
+    console.log('Exported fields:', exportedFields)
+
+    invoke('convert_sql_to_go', {
+      sql: input,
+      options,
+    })
+      .then((result: any) => {
+        // Handle the new direct response format (GoStructOutput)
+        if (result && typeof result === 'object') {
+          console.log('Backend raw output:', JSON.stringify(result))
+
+          // Extract the first table's output for display
+          if (result.outputs && typeof result.outputs === 'object') {
+            const firstTableKey = Object.keys(result.outputs)[0]
+            if (firstTableKey && result.outputs[firstTableKey]) {
+              const goCode = result.outputs[firstTableKey]
+              console.log('Backend output for table:', firstTableKey)
+              setOutput(goCode)
+            } else {
+              setOutput('') // No output found
+            }
+          } else {
+            setOutput('') // Invalid output structure
+          }
+        } else {
+          throw new Error('无效的响应格式')
+        }
+      })
+      .catch((err) => {
+        console.error('Error in convertSqlToGo:', err)
+        setOutput('') // Clear output on error
+      })
   }
 
   const handleTagChange = (tag: string, checked: boolean) => {
@@ -144,7 +148,9 @@ CREATE TABLE posts (
   return (
     <div className='flex flex-col h-full'>
       <div className='p-4 border-b dark:border-gray-600 bg-white dark:bg-gray-800'>
-        <h1 className='text-xl font-bold mb-4 text-gray-800 dark:text-gray-200'>SQL 转 Go 结构体</h1>
+        <h1 className='text-xl font-bold mb-4 text-gray-800 dark:text-gray-200'>
+          SQL 转 Go 结构体
+        </h1>
 
         <div className='flex flex-wrap gap-4 mb-4'>
           <label className='flex items-center space-x-2'>
@@ -191,7 +197,9 @@ CREATE TABLE posts (
         </div>
 
         <div className='flex flex-wrap gap-4 mb-4'>
-          <span className='font-medium text-gray-700 dark:text-gray-300'>标签:</span>
+          <span className='font-medium text-gray-700 dark:text-gray-300'>
+            标签:
+          </span>
           {Object.entries(selectedTags).map(([tag, checked]) => (
             <label key={tag} className='flex items-center space-x-2'>
               <input
@@ -200,7 +208,9 @@ CREATE TABLE posts (
                 onChange={(e) => handleTagChange(tag, e.target.checked)}
                 className='w-4 h-4'
               />
-              <span className='uppercase text-gray-700 dark:text-gray-300'>{tag}</span>
+              <span className='uppercase text-gray-700 dark:text-gray-300'>
+                {tag}
+              </span>
             </label>
           ))}
         </div>
@@ -219,7 +229,9 @@ CREATE TABLE posts (
         className='flex flex-row gap-4 h-full flex-1 overflow-hidden'>
         <div className='flex flex-col w-full h-full'>
           <div className='p-2 bg-gray-100 dark:bg-gray-700 border-b dark:border-gray-600 flex items-center justify-between flex-shrink-0'>
-            <h2 className='font-semibold text-gray-800 dark:text-gray-200'>SQL 输入</h2>
+            <h2 className='font-semibold text-gray-800 dark:text-gray-200'>
+              SQL 输入
+            </h2>
             <div className='flex items-center space-x-2'>
               <button
                 onClick={handleLoadExample}
@@ -258,7 +270,9 @@ CREATE TABLE posts (
 
         <div className='flex flex-col w-full h-full'>
           <div className='p-2 bg-gray-100 dark:bg-gray-700 border-b dark:border-gray-600 flex items-center justify-between flex-shrink-0'>
-            <h2 className='font-semibold text-gray-800 dark:text-gray-200'>Go 结构体输出</h2>
+            <h2 className='font-semibold text-gray-800 dark:text-gray-200'>
+              Go 结构体输出
+            </h2>
           </div>
           <div className='mb-4'>
             <MonacoEditor

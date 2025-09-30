@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useCallback, useState } from 'react'
 
 interface UseAsyncStateReturn<T> {
   data: T | null
@@ -51,7 +51,7 @@ const useAsyncState = <T>(): UseAsyncStateReturn<T> => {
     execute,
     setError: setErrorDirectly,
     clearError,
-    reset
+    reset,
   }
 }
 

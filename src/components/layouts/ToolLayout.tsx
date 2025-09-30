@@ -50,7 +50,7 @@ const ToolLayout: React.FC<ToolLayoutProps> = ({
       </div>
 
       {/* 页面内容区域 */}
-      <div className={`flex-1 overflow-hidden ${padding ? 'p-4' : ''}`}>
+      <div className={`flex-1 overflow-y-auto ${padding ? 'p-4' : ''}`}>
         {children}
       </div>
     </div>

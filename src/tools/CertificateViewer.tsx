@@ -752,7 +752,7 @@ const PemCertificateViewer: React.FC = () => {
     return 'PEM'
   }
 
-  const parseCertificate = async (
+  const parseCertificate = (
     content: string,
     fileName?: string,
     data?: Uint8Array,
@@ -766,301 +766,361 @@ const PemCertificateViewer: React.FC = () => {
     setIsLoading(true)
     setError('')
 
-    try {
-      const detectedFileType = detectFileType(content, fileName)
-      let result: CertificateChainInfo
+    // 处理base64解码
+    let processedContent = content
+    if (isBase64Decode && content.trim()) {
+      try {
+        // 移除可能的base64前缀和空格
+        const base64Content = content
+          .replace(/^data:[^;]+;base64,/, '')
+          .replace(/\s/g, '')
+        const decodedContent = atob(base64Content)
+        processedContent = decodedContent
+      } catch (err) {
+        const errorMessage =
+          'Base64解码失败：请检查输入内容是否为有效的Base64编码'
+        setError(errorMessage)
+        setIsLoading(false)
+        return
+      }
+    }
 
-      // 处理base64解码
-      let processedContent = content
-      if (isBase64Decode && content.trim()) {
-        try {
-          // 移除可能的base64前缀和空格
-          const base64Content = content
-            .replace(/^data:[^;]+;base64,/, '')
-            .replace(/\s/g, '')
-          const decodedContent = atob(base64Content)
-          processedContent = decodedContent
-        } catch (err) {
-          throw new Error(
-            'Base64解码失败：请检查输入内容是否为有效的Base64编码',
-          )
+    const detectedFileType = detectFileType(content, fileName)
+
+    if (detectedFileType === 'PFX' && data) {
+      // 处理PFX文件
+      const pfxDataArray = Array.from(data)
+
+      invoke('parse_pfx_certificate', {
+        pfxData: pfxDataArray,
+        password: password || null,
+      })
+        .then((result: unknown) => {
+          const typedResult = result as CertificateChainInfo
+          if (!result || typeof result !== 'object') {
+            throw new Error('无效的PFX证书响应格式')
+          }
+
+          setChainInfo(typedResult)
+          setCertificateInfo(typedResult.certificates[0] || null)
+          setActiveTab(0) // 重置到第一个标签页
+
+          // 自动进入右侧全屏模式
+          setIsRightSideFullScreen(true)
+
+          // 转换格式用于显示 - 按证书分组
+          const displayData = processCertificateResult(typedResult)
+          setOutput(displayData)
+        })
+        .catch((err) => {
+          const errorMessage = typeof err === 'string' ? err : '证书解析失败'
+          setError(errorMessage)
+        })
+        .finally(() => {
+          setIsLoading(false)
+        })
+    } else if (data) {
+      // 处理PEM文件（从二进制数据转换为文本）
+      const textContent = new TextDecoder().decode(data)
+
+      invoke('parse_pem_certificate', {
+        pemContent: textContent,
+      })
+        .then((result: unknown) => {
+          const typedResult = result as CertificateChainInfo
+          if (!result || typeof result !== 'object') {
+            throw new Error('无效的PEM证书响应格式')
+          }
+
+          setChainInfo(typedResult)
+          setCertificateInfo(typedResult.certificates[0] || null)
+          setActiveTab(0) // 重置到第一个标签页
+
+          // 自动进入右侧全屏模式
+          setIsRightSideFullScreen(true)
+
+          // 转换格式用于显示 - 按证书分组
+          const displayData = processCertificateResult(typedResult)
+          setOutput(displayData)
+        })
+        .catch((err) => {
+          const errorMessage = typeof err === 'string' ? err : '证书解析失败'
+          setError(errorMessage)
+        })
+        .finally(() => {
+          setIsLoading(false)
+        })
+    } else {
+      // 处理PEM文本内容
+      invoke('parse_pem_certificate', {
+        pemContent: processedContent,
+      })
+        .then((result: unknown) => {
+          const typedResult = result as CertificateChainInfo
+          if (!result || typeof result !== 'object') {
+            throw new Error('无效的PEM证书响应格式')
+          }
+
+          setChainInfo(typedResult)
+          setCertificateInfo(typedResult.certificates[0] || null)
+          setActiveTab(0) // 重置到第一个标签页
+
+          // 自动进入右侧全屏模式
+          setIsRightSideFullScreen(true)
+
+          // 转换格式用于显示 - 按证书分组
+          const displayData = processCertificateResult(typedResult)
+          setOutput(displayData)
+        })
+        .catch((err) => {
+          const errorMessage = typeof err === 'string' ? err : '证书解析失败'
+          setError(errorMessage)
+        })
+        .finally(() => {
+          setIsLoading(false)
+        })
+    }
+  }
+
+  // 处理证书结果的辅助函数
+  const processCertificateResult = (result: CertificateChainInfo) => {
+    const displayData: Array<{
+      label: string
+      value: string
+      isExpiryWarning?: boolean
+      indentLevel?: number
+      isSectionHeader?: boolean
+      statusType?: 'valid' | 'warning' | 'expired'
+      certIndex?: number
+    }> = []
+
+    // CA下载建议
+    if (!result.is_full_chain && result.ca_download_urls.length > 0) {
+      displayData.push({
+        label: 'CA证书下载建议',
+        value: '',
+        indentLevel: 1,
+        isSectionHeader: true,
+      })
+      result.ca_download_urls.forEach((url: string, index: number) => {
+        displayData.push({
+          label: `下载链接 ${index + 1}`,
+          value: url,
+          indentLevel: 2,
+        })
+      })
+    }
+
+    // 缺失CA信息
+    if (result.missing_ca_info) {
+      displayData.push({
+        label: '缺失CA信息',
+        value: result.missing_ca_info,
+        indentLevel: 1,
+        isExpiryWarning: true,
+        statusType: 'warning',
+      })
+    }
+
+    // 为每个证书生成详细信息
+    result.certificates.forEach((cert: CertificateInfo, certIndex: number) => {
+      const certType = getCertificateType(cert.chain_level)
+
+      // 证书标题
+      displayData.push({
+        label: `证书 ${certIndex + 1} - ${certType}`,
+        value: '',
+        indentLevel: 0,
+        isSectionHeader: true,
+        certIndex,
+      })
+
+      // 前端根据时间差值判断过期状态
+      // 正数：证书未过期，表示剩余天数
+      // 负数：证书已过期，绝对值表示过期天数
+      const isExpired = cert.validity.days_until_expiry < 0
+      const remainingDays = Math.abs(cert.validity.days_until_expiry)
+      const status = isExpired
+        ? `已过期 ${remainingDays} 天`
+        : `还有 ${remainingDays} 天到期`
+
+      // 主题信息
+      displayData.push({
+        label: '主题信息',
+        value: '',
+        indentLevel: 1,
+        isSectionHeader: true,
+        certIndex,
+      })
+      Object.entries(cert.subject).forEach(([key, value]) => {
+        displayData.push({
+          label: key,
+          value: value,
+          indentLevel: 2,
+          certIndex,
+        })
+      })
+
+      // 颁发者信息
+      displayData.push({
+        label: '颁发者信息',
+        value: '',
+        indentLevel: 1,
+        isSectionHeader: true,
+        certIndex,
+      })
+      Object.entries(cert.issuer).forEach(([key, value]) => {
+        displayData.push({
+          label: key,
+          value: value,
+          indentLevel: 2,
+          certIndex,
+        })
+      })
+
+      // 有效期信息
+      displayData.push({
+        label: '有效期信息',
+        value: '',
+        indentLevel: 1,
+        isSectionHeader: true,
+        certIndex,
+      })
+      displayData.push({
+        label: '开始时间',
+        value: cert.validity.not_before,
+        indentLevel: 2,
+        certIndex,
+      })
+      displayData.push({
+        label: '结束时间',
+        value: cert.validity.not_after,
+        indentLevel: 2,
+        certIndex,
+      })
+      displayData.push({
+        label: '证书状态',
+        value: status,
+        indentLevel: 2,
+        isExpiryWarning: isExpired || (!isExpired && remainingDays < 30),
+        statusType: isExpired
+          ? 'expired'
+          : remainingDays < 30
+          ? 'warning'
+          : 'valid',
+        certIndex,
+      })
+
+      // 证书详细信息
+      displayData.push({
+        label: '证书详细信息',
+        value: '',
+        indentLevel: 1,
+        isSectionHeader: true,
+        certIndex,
+      })
+
+      // 仅对终端证书显示证书类型和品牌信息
+      if (cert.chain_level === 0) {
+        if (cert.certificate_type) {
+          displayData.push({
+            label: '证书类型',
+            value: cert.certificate_type,
+            indentLevel: 2,
+            certIndex,
+          })
+        }
+        if (cert.brand) {
+          displayData.push({
+            label: '证书品牌',
+            value: cert.brand,
+            indentLevel: 2,
+            certIndex,
+          })
         }
       }
 
-      if (detectedFileType === 'PFX' && data) {
-        // 处理PFX文件
-        const pfxDataArray = Array.from(data)
+      displayData.push({
+        label: '序列号',
+        value: cert.serial_number,
+        indentLevel: 2,
+        certIndex,
+      })
+      displayData.push({
+        label: '签名算法',
+        value: cert.signature_algorithm,
+        indentLevel: 2,
+        certIndex,
+      })
 
-        result = (await invoke('parse_pfx_certificate', {
-          pfxData: pfxDataArray,
-          password: password || null,
-        })) as CertificateChainInfo
-      } else if (data) {
-        // 处理PEM文件（从二进制数据转换为文本）
-        const textContent = new TextDecoder().decode(data)
-        result = (await invoke('parse_pem_certificate', {
-          pemContent: textContent,
-        })) as CertificateChainInfo
-      } else {
-        // 处理PEM文本内容
-        result = (await invoke('parse_pem_certificate', {
-          pemContent: processedContent,
-        })) as CertificateChainInfo
+      // 指纹信息 - 对所有证书显示
+      if (cert.sha1_fingerprint) {
+        displayData.push({
+          label: 'SHA1指纹',
+          value: cert.sha1_fingerprint,
+          indentLevel: 2,
+          certIndex,
+        })
+      }
+      if (cert.sha256_fingerprint) {
+        displayData.push({
+          label: 'SHA256指纹',
+          value: cert.sha256_fingerprint,
+          indentLevel: 2,
+          certIndex,
+        })
       }
 
-      setChainInfo(result)
-      setCertificateInfo(result.certificates[0] || null)
-      setActiveTab(0) // 重置到第一个标签页
-
-      // 自动进入右侧全屏模式
-      setIsRightSideFullScreen(true)
-
-      // 转换格式用于显示 - 按证书分组
-      const displayData: Array<{
-        label: string
-        value: string
-        isExpiryWarning?: boolean
-        indentLevel?: number
-        isSectionHeader?: boolean
-        statusType?: 'valid' | 'warning' | 'expired'
-        certIndex?: number
-      }> = []
-
-      // CA下载建议
-      if (!result.is_full_chain && result.ca_download_urls.length > 0) {
+      // 公钥信息
+      displayData.push({
+        label: '公钥信息',
+        value: '',
+        indentLevel: 1,
+        isSectionHeader: true,
+        certIndex,
+      })
+      displayData.push({
+        label: '类型',
+        value: cert.public_key_info.key_type,
+        indentLevel: 2,
+        certIndex,
+      })
+      if (cert.public_key_info.key_size) {
         displayData.push({
-          label: 'CA证书下载建议',
+          label: '密钥长度',
+          value: `${cert.public_key_info.key_size} bits`,
+          indentLevel: 2,
+          certIndex,
+        })
+      }
+      displayData.push({
+        label: '算法',
+        value: cert.public_key_info.algorithm,
+        indentLevel: 2,
+        certIndex,
+      })
+
+      // 域名信息 - 仅对终端证书显示
+      if (cert.sans.length > 0 && cert.chain_level === 0) {
+        displayData.push({
+          label: '域名清单 (SAN)',
           value: '',
           indentLevel: 1,
           isSectionHeader: true,
+          certIndex,
         })
-        result.ca_download_urls.forEach((url: string, index: number) => {
+        cert.sans.forEach((domain: string, index: number) => {
           displayData.push({
-            label: `下载链接 ${index + 1}`,
-            value: url,
+            label: `域名 ${index + 1}`,
+            value: domain,
             indentLevel: 2,
+            certIndex,
           })
-        })
-      }
-
-      // 缺失CA信息
-      if (result.missing_ca_info) {
-        displayData.push({
-          label: '缺失CA信息',
-          value: result.missing_ca_info,
-          indentLevel: 1,
-          isExpiryWarning: true,
-          statusType: 'warning',
         })
       }
+    })
 
-      // 为每个证书生成详细信息
-      result.certificates.forEach(
-        (cert: CertificateInfo, certIndex: number) => {
-          const certType = getCertificateType(cert.chain_level)
-
-          // 证书标题
-          displayData.push({
-            label: `证书 ${certIndex + 1} - ${certType}`,
-            value: '',
-            indentLevel: 0,
-            isSectionHeader: true,
-            certIndex,
-          })
-
-          // 前端根据时间差值判断过期状态
-          // 正数：证书未过期，表示剩余天数
-          // 负数：证书已过期，绝对值表示过期天数
-          const isExpired = cert.validity.days_until_expiry < 0
-          const remainingDays = Math.abs(cert.validity.days_until_expiry)
-          const status = isExpired
-            ? `已过期 ${remainingDays} 天`
-            : `还有 ${remainingDays} 天到期`
-
-          // 主题信息
-          displayData.push({
-            label: '主题信息',
-            value: '',
-            indentLevel: 1,
-            isSectionHeader: true,
-            certIndex,
-          })
-          Object.entries(cert.subject).forEach(([key, value]) => {
-            displayData.push({
-              label: key,
-              value: value,
-              indentLevel: 2,
-              certIndex,
-            })
-          })
-
-          // 颁发者信息
-          displayData.push({
-            label: '颁发者信息',
-            value: '',
-            indentLevel: 1,
-            isSectionHeader: true,
-            certIndex,
-          })
-          Object.entries(cert.issuer).forEach(([key, value]) => {
-            displayData.push({
-              label: key,
-              value: value,
-              indentLevel: 2,
-              certIndex,
-            })
-          })
-
-          // 有效期信息
-          displayData.push({
-            label: '有效期信息',
-            value: '',
-            indentLevel: 1,
-            isSectionHeader: true,
-            certIndex,
-          })
-          displayData.push({
-            label: '开始时间',
-            value: cert.validity.not_before,
-            indentLevel: 2,
-            certIndex,
-          })
-          displayData.push({
-            label: '结束时间',
-            value: cert.validity.not_after,
-            indentLevel: 2,
-            certIndex,
-          })
-          displayData.push({
-            label: '证书状态',
-            value: status,
-            indentLevel: 2,
-            isExpiryWarning: isExpired || (!isExpired && remainingDays < 30),
-            statusType: isExpired
-              ? 'expired'
-              : remainingDays < 30
-              ? 'warning'
-              : 'valid',
-            certIndex,
-          })
-
-          // 证书详细信息
-          displayData.push({
-            label: '证书详细信息',
-            value: '',
-            indentLevel: 1,
-            isSectionHeader: true,
-            certIndex,
-          })
-
-          // 仅对终端证书显示证书类型和品牌信息
-          if (cert.chain_level === 0) {
-            if (cert.certificate_type) {
-              displayData.push({
-                label: '证书类型',
-                value: cert.certificate_type,
-                indentLevel: 2,
-                certIndex,
-              })
-            }
-            if (cert.brand) {
-              displayData.push({
-                label: '证书品牌',
-                value: cert.brand,
-                indentLevel: 2,
-                certIndex,
-              })
-            }
-          }
-
-          displayData.push({
-            label: '序列号',
-            value: cert.serial_number,
-            indentLevel: 2,
-            certIndex,
-          })
-          displayData.push({
-            label: '签名算法',
-            value: cert.signature_algorithm,
-            indentLevel: 2,
-            certIndex,
-          })
-
-          // 指纹信息 - 对所有证书显示
-          if (cert.sha1_fingerprint) {
-            displayData.push({
-              label: 'SHA1指纹',
-              value: cert.sha1_fingerprint,
-              indentLevel: 2,
-              certIndex,
-            })
-          }
-          if (cert.sha256_fingerprint) {
-            displayData.push({
-              label: 'SHA256指纹',
-              value: cert.sha256_fingerprint,
-              indentLevel: 2,
-              certIndex,
-            })
-          }
-
-          // 公钥信息
-          displayData.push({
-            label: '公钥信息',
-            value: '',
-            indentLevel: 1,
-            isSectionHeader: true,
-            certIndex,
-          })
-          displayData.push({
-            label: '类型',
-            value: cert.public_key_info.key_type,
-            indentLevel: 2,
-            certIndex,
-          })
-          if (cert.public_key_info.key_size) {
-            displayData.push({
-              label: '密钥长度',
-              value: `${cert.public_key_info.key_size} bits`,
-              indentLevel: 2,
-              certIndex,
-            })
-          }
-          displayData.push({
-            label: '算法',
-            value: cert.public_key_info.algorithm,
-            indentLevel: 2,
-            certIndex,
-          })
-
-          // 域名信息 - 仅对终端证书显示
-          if (cert.sans.length > 0 && cert.chain_level === 0) {
-            displayData.push({
-              label: '域名清单 (SAN)',
-              value: '',
-              indentLevel: 1,
-              isSectionHeader: true,
-              certIndex,
-            })
-            cert.sans.forEach((domain: string, index: number) => {
-              displayData.push({
-                label: `域名 ${index + 1}`,
-                value: domain,
-                indentLevel: 2,
-                certIndex,
-              })
-            })
-          }
-        },
-      )
-
-      setOutput(displayData)
-    } catch (err) {
-      const errorMessage = typeof err === 'string' ? err : '证书解析失败'
-      setError(errorMessage)
-    } finally {
-      setIsLoading(false)
-    }
+    return displayData
   }
 
   const getCertificateType = (chainLevel: number) => {

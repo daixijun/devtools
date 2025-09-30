@@ -2,12 +2,15 @@ import React, { useState } from 'react'
 import Base64Decode from './tools/Base64Decode'
 import Base64Encode from './tools/Base64Encode'
 import PemCertificateViewer from './tools/CertificateViewer'
+import FormatConverter from './tools/FormatConverter'
+import ImageConverter from './tools/ImageConverter'
 import IpInfo from './tools/IpInfo'
 import JsonFormatter from './tools/JsonFormatter'
 import JsonToGo from './tools/JsonToGo'
-import FormatConverter from './tools/FormatConverter'
 import JwtDecode from './tools/JwtDecode'
 import JwtEncode from './tools/JwtEncode'
+import PasswordGenerator from './tools/PasswordGenerator'
+import PasswordHasher from './tools/PasswordHasher'
 import PemToPfxConverter from './tools/PemToPfxConverter'
 import PfxToPemConverter from './tools/PfxToPemConverter'
 import { RegexTester } from './tools/RegexTester'
@@ -17,7 +20,7 @@ import SqlToGo from './tools/SqlToGo'
 import SslChecker from './tools/SslChecker'
 import SubnetCalculator from './tools/SubnetCalculator'
 import TimestampConverter from './tools/TimestampConverter'
-import PasswordGenerator from './tools/PasswordGenerator'
+import VideoConverter from './tools/VideoConverter'
 
 type ToolCategory = {
   id: string
@@ -40,6 +43,7 @@ const toolCategories: ToolCategory[] = [
       { id: 'jwtencode', name: 'JWT 生成' },
       { id: 'jwtdecode', name: 'JWT 解码' },
       { id: 'passwordgenerator', name: '密码生成器' },
+      { id: 'passwordhasher', name: '密码加密验证' },
     ],
   },
   {
@@ -67,12 +71,21 @@ const toolCategories: ToolCategory[] = [
     name: '数据格式转换',
     icon: '📄',
     tools: [
-        { id: 'jsonformatter', name: 'JSON 格式化' },
-        { id: 'formatconverter', name: '格式转换器' },
-        { id: 'jsontogo', name: 'JSON 转 Go 结构体' },
-        { id: 'sqltogo', name: 'SQL 转 Go 结构体' },
-        { id: 'sqltoent', name: 'SQL 转 Go Ent ORM' },
-      ],
+      { id: 'jsonformatter', name: 'JSON 格式化' },
+      { id: 'formatconverter', name: '格式转换器' },
+      { id: 'jsontogo', name: 'JSON 转 Go 结构体' },
+      { id: 'sqltogo', name: 'SQL 转 Go 结构体' },
+      { id: 'sqltoent', name: 'SQL 转 Go Ent ORM' },
+    ],
+  },
+  {
+    id: 'media',
+    name: '媒体格式转换',
+    icon: '🎬',
+    tools: [
+      { id: 'imageconverter', name: '图片格式转换' },
+      { id: 'videoconverter', name: '视频格式转换' },
+    ],
   },
   {
     id: 'developer',
@@ -95,6 +108,7 @@ const Toolbox: React.FC = () => {
     | 'jwtencode'
     | 'jwtdecode'
     | 'passwordgenerator'
+    | 'passwordhasher'
     | 'certificate'
     | 'pemtopfx'
     | 'pfxtopem'
@@ -104,6 +118,8 @@ const Toolbox: React.FC = () => {
     | 'jsonformatter'
     | 'jsontogo'
     | 'formatconverter'
+    | 'imageconverter'
+    | 'videoconverter'
     | 'sqltogo'
     | 'sqltoent'
     | 'regextester'
@@ -112,7 +128,7 @@ const Toolbox: React.FC = () => {
   >('base64encode')
 
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
-    new Set(['encoding']),
+    new Set(['encoding', 'media']),
   )
 
   const toggleCategory = (categoryId: string) => {
@@ -189,6 +205,7 @@ const Toolbox: React.FC = () => {
         {activeTool === 'jwtencode' && <JwtEncode />}
         {activeTool === 'jwtdecode' && <JwtDecode />}
         {activeTool === 'passwordgenerator' && <PasswordGenerator />}
+        {activeTool === 'passwordhasher' && <PasswordHasher />}
         {activeTool === 'certificate' && <PemCertificateViewer />}
         {activeTool === 'pemtopfx' && <PemToPfxConverter />}
         {activeTool === 'pfxtopem' && <PfxToPemConverter />}
@@ -198,6 +215,8 @@ const Toolbox: React.FC = () => {
         {activeTool === 'jsonformatter' && <JsonFormatter />}
         {activeTool === 'jsontogo' && <JsonToGo />}
         {activeTool === 'formatconverter' && <FormatConverter />}
+        {activeTool === 'imageconverter' && <ImageConverter />}
+        {activeTool === 'videoconverter' && <VideoConverter />}
         {activeTool === 'timestamp' && <TimestampConverter />}
         {activeTool === 'regextester' && <RegexTester />}
         {activeTool === 'sqltogo' && <SqlToGo />}

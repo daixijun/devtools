@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
 import { getCurrentWindow } from '@tauri-apps/api/window'
+import { useEffect, useState } from 'react'
 
 /**
  * 主题状态管理Hook
@@ -13,18 +13,18 @@ export const useTheme = () => {
     const setupTheme = async () => {
       try {
         const window = getCurrentWindow()
-        
+
         // 获取初始主题
         const theme = await window.theme()
         setIsDark(theme === 'dark')
-        
+
         // 监听主题变化
         const unlisten = await window.onThemeChanged(({ payload: theme }) => {
           setIsDark(theme === 'dark')
         })
-        
+
         setIsLoading(false)
-        
+
         // 返回清理函数
         return unlisten
       } catch (error) {
@@ -49,6 +49,6 @@ export const useTheme = () => {
   return {
     isDark,
     isLoading,
-    theme: isDark ? 'dark' : 'light'
+    theme: isDark ? 'dark' : 'light',
   }
 }

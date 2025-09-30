@@ -51,10 +51,7 @@ const Base64Encode: React.FC = () => {
   }
 
   return (
-    <ToolLayout 
-      title="Base64 编码"
-      subtitle="将文本编码为Base64格式"
-    >
+    <ToolLayout title='Base64 编码' subtitle='将文本编码为Base64格式'>
       <div className='flex flex-col h-full'>
         {/* 输入区域 */}
         <div className='flex-1 flex flex-col p-4'>

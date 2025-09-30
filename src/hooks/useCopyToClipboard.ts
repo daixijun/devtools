@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useCallback, useState } from 'react'
 
 interface UseCopyToClipboardReturn {
   copied: boolean
@@ -25,10 +25,10 @@ const useCopyToClipboard = (): UseCopyToClipboardReturn => {
       await navigator.clipboard.writeText(text)
       setCopied(true)
       setError(null)
-      
+
       // 2秒后重置复制状态
       setTimeout(() => setCopied(false), 2000)
-      
+
       return true
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '复制失败'
@@ -45,7 +45,7 @@ const useCopyToClipboard = (): UseCopyToClipboardReturn => {
     copied,
     copy,
     copyToClipboard,
-    error
+    error,
   }
 }
 

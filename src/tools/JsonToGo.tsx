@@ -43,11 +43,7 @@ const JsonToGo: React.FC = () => {
       const response = await convertJsonToGo(input, options)
       console.log('API Response:', response)
 
-      if (response.success) {
-        setOutput(response.data || '')
-      } else {
-        setError(response.error || '转换失败')
-      }
+      setOutput(response || '')
     } catch (err) {
       setError('转换出错: ' + (err as Error).message)
     }
