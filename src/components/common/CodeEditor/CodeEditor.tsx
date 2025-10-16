@@ -1,5 +1,5 @@
 import Editor from '@monaco-editor/react'
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useTheme } from '../../../hooks'
 
 interface CodeEditorProps {
@@ -35,9 +35,13 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
   onMount,
   options = {},
 }) => {
-  const { isDark } = useTheme()
+  const { isDark, isLoading, theme } = useTheme()
   const editorRef = useRef<any>(null)
   const monacoRef = useRef<any>(null)
+  const [editorReady, setEditorReady] = useState(false)
+
+  // 添加双重检查：主题加载完成 且 编辑器准备就绪
+  const shouldShowEditor = !isLoading
 
   const defaultOptions = {
     readOnly,
@@ -90,8 +94,11 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
     editorRef.current = editor
     monacoRef.current = monaco
 
-    // 设置初始主题
+    // 确保主题正确设置
     monaco.editor.setTheme(isDark ? 'vs-dark' : 'vs')
+
+    // 标记编辑器已准备就绪
+    setEditorReady(true)
 
     // 注册常用的语言配置
     monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
@@ -103,6 +110,19 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
     if (onMount) {
       onMount(editor, monaco)
     }
+  }
+
+  // 如果正在加载主题，显示加载状态
+  if (isLoading) {
+    return (
+      <div
+        className={`border border-gray-300 dark:border-gray-600 rounded-md overflow-hidden h-full ${className}`}>
+        <div className='flex items-center justify-center h-full'>
+          <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600'></div>
+          <span className='ml-2 text-gray-600 dark:text-gray-400'>加载主题中...</span>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -119,6 +139,7 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
         loading={
           <div className='flex items-center justify-center h-full'>
             <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600'></div>
+            <span className='ml-2 text-gray-600 dark:text-gray-400'>编辑器加载中...</span>
           </div>
         }
       />
