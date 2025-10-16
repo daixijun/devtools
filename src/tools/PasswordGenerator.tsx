@@ -173,7 +173,7 @@ const PasswordGenerator: React.FC = () => {
               </Button>
             </div>
           </div>
-          <div className='bg-gray-50 dark:bg-gray-700 rounded p-3 font-mono text-lg text-center break-all'>
+          <div className='bg-gray-50 dark:bg-gray-700 rounded p-3 font-mono text-lg text-center break-all text-gray-900 dark:text-gray-100'>
             {password || '点击生成按钮创建密码'}
           </div>
         </div>
@@ -268,7 +268,7 @@ const PasswordGenerator: React.FC = () => {
                     key={index}
                     type='button'
                     onClick={() => updateOption('customSymbols', group.value)}
-                    className='px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded border border-gray-300 dark:border-gray-500 transition-colors'>
+                    className='px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded border border-gray-300 dark:border-gray-500 transition-colors text-gray-900 dark:text-gray-100'>
                     {group.name}
                   </button>
                 ))}
