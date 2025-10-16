@@ -18,11 +18,12 @@ export const Toast: React.FC<ToastProps> = ({
   show,
   onClose,
   type = 'info',
-  position = 'bottom-right'
+  position = 'bottom-right',
 }) => {
   const getTypeStyles = () => {
-    const baseStyles = 'px-4 py-3 rounded-lg shadow-lg text-sm font-medium transition-all duration-300 max-w-sm'
-    
+    const baseStyles =
+      'px-4 py-3 rounded-lg shadow-lg text-sm font-medium transition-all duration-300 max-w-sm'
+
     switch (type) {
       case 'success':
         return `${baseStyles} bg-green-600 text-white border border-green-700`
@@ -38,7 +39,7 @@ export const Toast: React.FC<ToastProps> = ({
 
   const getPositionStyles = () => {
     const basePosition = 'fixed z-50'
-    
+
     switch (position) {
       case 'top-right':
         return `${basePosition} top-6 right-6`
@@ -61,19 +62,26 @@ export const Toast: React.FC<ToastProps> = ({
     <div
       className={`${getPositionStyles()} ${
         show ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
-      }`}
-    >
+      }`}>
       <div className={getTypeStyles()}>
-        <div className="flex items-center justify-between">
-          <span className="flex-1">{message}</span>
+        <div className='flex items-center justify-between'>
+          <span className='flex-1'>{message}</span>
           {onClose && (
             <button
               onClick={onClose}
-              className="ml-3 text-current opacity-70 hover:opacity-100 transition-opacity"
-              aria-label="关闭"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              className='ml-3 text-current opacity-70 hover:opacity-100 transition-opacity'
+              aria-label='关闭'>
+              <svg
+                className='w-4 h-4'
+                fill='none'
+                stroke='currentColor'
+                viewBox='0 0 24 24'>
+                <path
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                  strokeWidth={2}
+                  d='M6 18L18 6M6 6l12 12'
+                />
               </svg>
             </button>
           )}

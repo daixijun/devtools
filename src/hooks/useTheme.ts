@@ -33,7 +33,9 @@ export const useTheme = () => {
         const actualIsDark = theme === 'dark'
 
         // 保存到 localStorage 以供下次使用
-        localStorage.setItem('devtools-theme', theme)
+        if (theme) {
+          localStorage.setItem('devtools-theme', theme)
+        }
 
         setIsDark(actualIsDark)
 
@@ -41,7 +43,9 @@ export const useTheme = () => {
         const unlisten = await window.onThemeChanged(({ payload: theme }) => {
           const newIsDark = theme === 'dark'
           setIsDark(newIsDark)
-          localStorage.setItem('devtools-theme', theme)
+          if (theme) {
+            localStorage.setItem('devtools-theme', theme)
+          }
         })
 
         setIsLoading(false)
