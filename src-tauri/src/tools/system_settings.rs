@@ -10,6 +10,7 @@ use tauri::{AppHandle, Manager, State};
 pub struct AppConfig {
     pub tray_enabled: bool,
     pub start_minimized: bool,
+    pub close_to_tray: bool,
 }
 
 impl Default for AppConfig {
@@ -17,6 +18,7 @@ impl Default for AppConfig {
         Self {
             tray_enabled: true,
             start_minimized: false,
+            close_to_tray: true, // 默认启用关闭时最小化到托盘
         }
     }
 }
@@ -47,6 +49,7 @@ pub async fn toggle_tray(
 ) -> Result<bool, String> {
     let mut tray_icon = tray_state.tray_icon.lock().map_err(|e| e.to_string())?;
     let mut is_visible = tray_state.is_visible.lock().map_err(|e| e.to_string())?;
+    let mut config = tray_state.config.lock().map_err(|e| e.to_string())?;
 
     if enabled {
         // 启用托盘 - 如果没有托盘，创建一个；如果有托盘，设为可见
@@ -57,13 +60,18 @@ pub async fn toggle_tray(
             tray.set_visible(true).map_err(|e| e.to_string())?;
         }
         *is_visible = true;
+        config.tray_enabled = true;
     } else {
         // 禁用托盘 - 设为不可见
         if let Some(ref tray) = *tray_icon {
             tray.set_visible(false).map_err(|e| e.to_string())?;
         }
         *is_visible = false;
+        config.tray_enabled = false;
     }
+
+    // 保存配置
+    save_config(&config).map_err(|e| e.to_string())?;
 
     Ok(enabled)
 }
@@ -120,6 +128,25 @@ pub async fn get_start_minimized_status(
     Ok(config.start_minimized)
 }
 
+#[tauri::command]
+pub async fn set_close_to_tray(
+    tray_state: State<'_, GlobalTrayState>,
+    enabled: bool,
+) -> Result<bool, String> {
+    let mut config = tray_state.config.lock().map_err(|e| e.to_string())?;
+    config.close_to_tray = enabled;
+    save_config(&config).map_err(|e| e.to_string())?;
+    Ok(enabled)
+}
+
+#[tauri::command]
+pub async fn get_close_to_tray_status(
+    tray_state: State<'_, GlobalTrayState>,
+) -> Result<bool, String> {
+    let config = tray_state.config.lock().map_err(|e| e.to_string())?;
+    Ok(config.close_to_tray)
+}
+
 pub fn create_tray_icon(app: &AppHandle) -> tauri::Result<TrayIcon> {
     let show = MenuItem::with_id(app, "show", "显示", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
@@ -157,4 +184,23 @@ pub fn create_tray_icon(app: &AppHandle) -> tauri::Result<TrayIcon> {
         .build(app)?;
 
     Ok(tray)
+}
+
+// 处理窗口关闭事件
+pub fn handle_window_close_event(app: &AppHandle) -> bool {
+    // 检查托盘状态和关闭到托盘设置
+    let tray_state = app.state::<GlobalTrayState>();
+    let is_visible = tray_state.is_visible.lock().unwrap();
+    let config = tray_state.config.lock().unwrap();
+
+    // 如果托盘可见且启用了关闭到托盘功能，则隐藏窗口而不是退出程序
+    // 当托盘禁用时，即使 close_to_tray 为 true，也忽略此设置
+    if *is_visible && config.tray_enabled && config.close_to_tray {
+        if let Some(window) = app.get_webview_window("main") {
+            let _ = window.hide();
+        }
+        true // 阻止窗口关闭
+    } else {
+        false // 允许窗口关闭，程序会退出
+    }
 }

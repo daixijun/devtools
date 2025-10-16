@@ -1,0 +1,65 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle with gradient -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3B82F6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1E40AF;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="toolGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F3F4F6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#E5E7EB;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Main background circle -->
+  <circle cx="256" cy="256" r="240" fill="url(#bgGradient)" />
+  
+  <!-- Toolbox container -->
+  <rect x="120" y="180" width="272" height="160" rx="8" ry="8" fill="url(#toolGradient)" />
+  
+  <!-- Toolbox handle -->
+  <rect x="220" y="160" width="72" height="40" rx="20" ry="20" fill="url(#toolGradient)" />
+  <rect x="240" y="160" width="32" height="40" fill="#3B82F6" />
+  
+  <!-- Toolbox latch -->
+  <rect x="248" y="200" width="16" height="8" rx="2" ry="2" fill="#1E40AF" />
+  
+  <!-- Code symbols inside the toolbox -->
+  <!-- Left bracket -->
+  <path d="M160 220 L140 240 L160 260" stroke="#1E40AF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+  
+  <!-- Right bracket -->
+  <path d="M352 220 L372 240 L352 260" stroke="#1E40AF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+  
+  <!-- Forward slash -->
+  <path d="M230 220 L280 280" stroke="#1E40AF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+  
+  <!-- Tools floating above the toolbox -->
+  <!-- Wrench -->
+  <g transform="translate(180, 120) rotate(-30)">
+    <path d="M0 0 L30 0 L35 5 L35 15 L30 20 L5 20 L0 15 Z" fill="#F59E0B" />
+    <circle cx="17" cy="10" r="6" fill="#3B82F6" />
+  </g>
+  
+  <!-- Hammer -->
+  <g transform="translate(256, 110)">
+    <rect x="0" y="0" width="8" height="30" rx="2" fill="#8B5CF6" />
+    <rect x="-6" y="-5" width="20" height="10" rx="2" fill="#8B5CF6" />
+  </g>
+  
+  <!-- Screwdriver -->
+  <g transform="translate(330, 120) rotate(30)">
+    <rect x="0" y="0" width="6" height="30" rx="2" fill="#10B981" />
+    <path d="M0 0 L6 0 L3 -8 Z" fill="#10B981" />
+  </g>
+  
+  <!-- Gear icon -->
+  <g transform="translate(256, 290)">
+    <circle cx="0" cy="0" r="20" fill="#F59E0B" />
+    <circle cx="0" cy="0" r="10" fill="url(#bgGradient)" />
+    <rect x="-4" y="-25" width="8" height="50" fill="#F59E0B" />
+    <rect x="-25" y="-4" width="50" height="8" fill="#F59E0B" />
+    <rect x="-4" y="-25" width="8" height="50" fill="#F59E0B" transform="rotate(45)" />
+    <rect x="-25" y="-4" width="50" height="8" fill="#F59E0B" transform="rotate(45)" />
+  </g>
+</svg>

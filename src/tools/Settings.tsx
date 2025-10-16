@@ -14,6 +14,7 @@ interface SettingsConfig {
   showTray: boolean
   autoStart: boolean
   startMinimized: boolean
+  closeToTray: boolean
   hotkey: HotKeyConfig
 }
 
@@ -26,6 +27,7 @@ const Settings: React.FC = () => {
     showTray: true,
     autoStart: false,
     startMinimized: false,
+    closeToTray: true,
     hotkey: {
       modifier: isMac ? 'option' : 'alt',
       key: 'Space',
@@ -78,17 +80,23 @@ const Settings: React.FC = () => {
             // 获取启动时最小化状态
             return invoke<boolean>('get_start_minimized_status').then(
               (startMinimizedStatus) => {
-                setSettings((prev) => ({
-                  ...prev,
-                  showTray: trayStatus,
-                  autoStart: autostartStatus,
-                  startMinimized: startMinimizedStatus,
-                  // 确保 hotkey 字段存在
-                  hotkey: prev.hotkey || {
-                    modifier: isMac ? 'option' : 'alt',
-                    key: 'Space',
+                // 获取关闭时最小化到托盘状态
+                return invoke<boolean>('get_close_to_tray_status').then(
+                  (closeToTrayStatus) => {
+                    setSettings((prev) => ({
+                      ...prev,
+                      showTray: trayStatus,
+                      autoStart: autostartStatus,
+                      startMinimized: startMinimizedStatus,
+                      closeToTray: closeToTrayStatus,
+                      // 确保 hotkey 字段存在
+                      hotkey: prev.hotkey || {
+                        modifier: isMac ? 'option' : 'alt',
+                        key: 'Space',
+                      },
+                    }))
                   },
-                }))
+                )
               },
             )
           },
@@ -143,6 +151,23 @@ const Settings: React.FC = () => {
         if (!showTray) {
           // 这里可以显示一个提示，告知用户托盘图标会在下次启动时不再显示
           console.log('托盘图标将在下次应用启动时不再显示')
+        } else {
+          // 如果启用了托盘，需要从后端重新获取这两个选项的实际值
+          invoke<boolean>('get_start_minimized_status')
+            .then((startMinimizedStatus) => {
+              return invoke<boolean>('get_close_to_tray_status').then(
+                (closeToTrayStatus) => {
+                  setSettings((prev) => ({
+                    ...prev,
+                    startMinimized: startMinimizedStatus,
+                    closeToTray: closeToTrayStatus,
+                  }))
+                },
+              )
+            })
+            .catch((error) => {
+              console.error('Failed to load tray-related settings:', error)
+            })
         }
       })
       .catch((error) => {
@@ -180,6 +205,14 @@ const Settings: React.FC = () => {
   const handleStartMinimizedToggle = (startMinimized: boolean) => {
     if (!isTauri()) return
 
+    // 如果托盘未启用，不执行任何操作，只更新UI状态
+    if (!settings.showTray) {
+      // 只更新本地状态，不调用后端API
+      const newSettings = { ...settings, startMinimized }
+      saveSettings(newSettings)
+      return
+    }
+
     setLoading(true)
 
     invoke<boolean>('set_start_minimized', {
@@ -193,6 +226,36 @@ const Settings: React.FC = () => {
         console.error('Failed to set start minimized:', error)
         // 如果失败，恢复原状态
         setSettings((prev) => ({ ...prev, startMinimized: !startMinimized }))
+      })
+      .finally(() => {
+        setLoading(false)
+      })
+  }
+
+  const handleCloseToTrayToggle = (closeToTray: boolean) => {
+    if (!isTauri()) return
+
+    // 如果托盘未启用，不执行任何操作，只更新UI状态
+    if (!settings.showTray) {
+      // 只更新本地状态，不调用后端API
+      const newSettings = { ...settings, closeToTray }
+      saveSettings(newSettings)
+      return
+    }
+
+    setLoading(true)
+
+    invoke<boolean>('set_close_to_tray', {
+      enabled: closeToTray,
+    })
+      .then((result) => {
+        const newSettings = { ...settings, closeToTray: result }
+        saveSettings(newSettings)
+      })
+      .catch((error) => {
+        console.error('Failed to set close to tray:', error)
+        // 如果失败，恢复原状态
+        setSettings((prev) => ({ ...prev, closeToTray: !closeToTray }))
       })
       .finally(() => {
         setLoading(false)
@@ -309,6 +372,8 @@ const Settings: React.FC = () => {
               : false,
         }
         saveSettings(newSettings)
+        // 显示错误提示
+        alert(`快捷键注册失败: ${error}. 请检查快捷键是否已被其他应用占用。`)
       })
       .finally(() => {
         setLoading(false)
@@ -458,10 +523,20 @@ const Settings: React.FC = () => {
               {/* 启动时最小化到托盘 */}
               <div className='flex items-center justify-between'>
                 <div>
-                  <label className='text-sm font-medium text-gray-700 dark:text-gray-300'>
+                  <label
+                    className={`text-sm font-medium ${
+                      settings.showTray
+                        ? 'text-gray-700 dark:text-gray-300'
+                        : 'text-gray-400 dark:text-gray-500'
+                    }`}>
                     启动时最小化到托盘
                   </label>
-                  <p className='text-xs text-gray-500 dark:text-gray-400'>
+                  <p
+                    className={`text-xs ${
+                      settings.showTray
+                        ? 'text-gray-500 dark:text-gray-400'
+                        : 'text-gray-400 dark:text-gray-500'
+                    }`}>
                     应用程序启动时直接最小化到系统托盘
                   </p>
                 </div>
@@ -470,20 +545,65 @@ const Settings: React.FC = () => {
                     type='checkbox'
                     className='sr-only'
                     checked={settings.startMinimized}
-                    disabled={loading}
+                    disabled={loading || !settings.showTray}
                     onChange={(e) =>
                       handleStartMinimizedToggle(e.target.checked)
                     }
                   />
                   <div
                     className={`w-11 h-6 rounded-full transition-colors ${
-                      settings.startMinimized
+                      settings.startMinimized && settings.showTray
                         ? 'bg-blue-500'
                         : 'bg-gray-300 dark:bg-gray-600'
-                    } ${loading ? 'opacity-50' : ''}`}>
+                    } ${loading || !settings.showTray ? 'opacity-50' : ''}`}>
                     <div
                       className={`w-5 h-5 bg-white rounded-full shadow transform transition-transform ${
-                        settings.startMinimized
+                        settings.startMinimized && settings.showTray
+                          ? 'translate-x-5'
+                          : 'translate-x-0'
+                      } mt-0.5 ml-0.5`}
+                    />
+                  </div>
+                </label>
+              </div>
+
+              {/* 关闭时最小化到托盘 */}
+              <div className='flex items-center justify-between'>
+                <div>
+                  <label
+                    className={`text-sm font-medium ${
+                      settings.showTray
+                        ? 'text-gray-700 dark:text-gray-300'
+                        : 'text-gray-400 dark:text-gray-500'
+                    }`}>
+                    关闭时最小化到托盘
+                  </label>
+                  <p
+                    className={`text-xs ${
+                      settings.showTray
+                        ? 'text-gray-500 dark:text-gray-400'
+                        : 'text-gray-400 dark:text-gray-500'
+                    }`}>
+                    关闭窗口时最小化到系统托盘而非退出程序
+                  </p>
+                </div>
+                <label className='relative inline-flex items-center cursor-pointer'>
+                  <input
+                    type='checkbox'
+                    className='sr-only'
+                    checked={settings.closeToTray}
+                    disabled={loading || !settings.showTray}
+                    onChange={(e) => handleCloseToTrayToggle(e.target.checked)}
+                  />
+                  <div
+                    className={`w-11 h-6 rounded-full transition-colors ${
+                      settings.closeToTray && settings.showTray
+                        ? 'bg-blue-500'
+                        : 'bg-gray-300 dark:bg-gray-600'
+                    } ${loading || !settings.showTray ? 'opacity-50' : ''}`}>
+                    <div
+                      className={`w-5 h-5 bg-white rounded-full shadow transform transition-transform ${
+                        settings.closeToTray && settings.showTray
                           ? 'translate-x-5'
                           : 'translate-x-0'
                       } mt-0.5 ml-0.5`}

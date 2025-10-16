@@ -15,7 +15,17 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(
+            tauri_plugin_global_shortcut::Builder::new()
+                .with_handler(|app_handle, shortcut, event| {
+                    if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
+                        tools::global_shortcut::handle_global_shortcut_triggered(
+                            app_handle, shortcut, &event,
+                        );
+                    }
+                })
+                .build(),
+        )
         .manage(GlobalTrayState::new())
         .manage(GlobalShortcutState::new())
         .invoke_handler(tauri::generate_handler![
@@ -29,7 +39,6 @@ pub fn run() {
             tools::global_shortcut::unregister_global_shortcut,
             tools::global_shortcut::get_global_shortcut_config,
             tools::global_shortcut::set_global_shortcut_enabled,
-            tools::global_shortcut::handle_global_shortcut_triggered,
             tools::ip_info::query_ip_info,
             tools::json_to_go::convert_json_to_go,
             tools::regex_tester::test_regex,
@@ -42,6 +51,8 @@ pub fn run() {
             tools::system_settings::get_tray_status,
             tools::system_settings::set_start_minimized,
             tools::system_settings::get_start_minimized_status,
+            tools::system_settings::set_close_to_tray,
+            tools::system_settings::get_close_to_tray_status,
             tools::video_converter::convert_video,
             tools::video_converter::get_video_info,
             tools::video_converter::check_ffmpeg_available,
@@ -81,7 +92,8 @@ pub fn run() {
             if is_autostart {
                 let should_start_minimized = {
                     let config = tray_state.config.lock().unwrap();
-                    config.start_minimized
+                    // 只有当托盘启用且启动时最小化设置启用时，才隐藏窗口
+                    config.tray_enabled && config.start_minimized
                 };
 
                 if should_start_minimized {
@@ -89,6 +101,21 @@ pub fn run() {
                         let _ = window.hide();
                     }
                 }
+            }
+
+            // 添加窗口关闭事件监听器
+            let app_handle = app.handle().clone();
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.on_window_event(move |event| {
+                    if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                        // 调用处理函数决定是否阻止关闭
+                        let prevent_close =
+                            tools::system_settings::handle_window_close_event(&app_handle);
+                        if prevent_close {
+                            api.prevent_close();
+                        }
+                    }
+                });
             }
 
             Ok(())

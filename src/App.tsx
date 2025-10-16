@@ -11,16 +11,16 @@ const App = memo(() => {
       if (isMounted) {
         try {
           // 添加延迟以确保 Tauri API 完全初始化
-          await new Promise((resolve) => setTimeout(resolve, 1000))
+          await new Promise((resolve) => setTimeout(resolve, 2000))
           await globalShortcutManager.initialize()
         } catch (error) {
           console.error('Failed to initialize global shortcuts:', error)
           // 如果初始化失败，尝试在稍后重试
-          setTimeout(() => {
-            if (isMounted) {
+          if (isMounted) {
+            setTimeout(() => {
               initializeShortcuts()
-            }
-          }, 2000)
+            }, 3000)
+          }
         }
       }
     }
