@@ -17,6 +17,7 @@ import PemToPfxConverter from './tools/PemToPfxConverter'
 import PfxToPemConverter from './tools/PfxToPemConverter'
 import { RegexTester } from './tools/RegexTester'
 import Settings from './tools/Settings'
+import ShaCrypto from './tools/ShaCrypto'
 import SqlToEnt from './tools/SqlToEnt'
 import SqlToGo from './tools/SqlToGo'
 import SslChecker from './tools/SslChecker'
@@ -44,6 +45,7 @@ const toolCategories: ToolCategory[] = [
       { id: 'base64decode', name: 'Base64 解码' },
       { id: 'aescrypto', name: 'AES 加密/解密' },
       { id: 'md5crypto', name: 'MD5 加密' },
+      { id: 'shacrypto', name: 'SHA 哈希加密' },
       { id: 'jwtencode', name: 'JWT 生成' },
       { id: 'jwtdecode', name: 'JWT 解码' },
       { id: 'passwordgenerator', name: '密码生成器' },
@@ -113,6 +115,7 @@ const Toolbox: React.FC = () => {
     | 'jwtencode'
     | 'jwtdecode'
     | 'md5crypto'
+    | 'shacrypto'
     | 'passwordgenerator'
     | 'passwordhasher'
     | 'certificate'
@@ -212,6 +215,7 @@ const Toolbox: React.FC = () => {
         {activeTool === 'jwtencode' && <JwtEncode />}
         {activeTool === 'jwtdecode' && <JwtDecode />}
         {activeTool === 'md5crypto' && <Md5Crypto />}
+        {activeTool === 'shacrypto' && <ShaCrypto />}
         {activeTool === 'passwordgenerator' && <PasswordGenerator />}
         {activeTool === 'passwordhasher' && <PasswordHasher />}
         {activeTool === 'certificate' && <PemCertificateViewer />}
