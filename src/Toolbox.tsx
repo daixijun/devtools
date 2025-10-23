@@ -10,6 +10,7 @@ import JsonFormatter from './tools/JsonFormatter'
 import JsonToGo from './tools/JsonToGo'
 import JwtDecode from './tools/JwtDecode'
 import JwtEncode from './tools/JwtEncode'
+import Md5Crypto from './tools/Md5Crypto'
 import PasswordGenerator from './tools/PasswordGenerator'
 import PasswordHasher from './tools/PasswordHasher'
 import PemToPfxConverter from './tools/PemToPfxConverter'
@@ -42,6 +43,7 @@ const toolCategories: ToolCategory[] = [
       { id: 'base64encode', name: 'Base64 编码' },
       { id: 'base64decode', name: 'Base64 解码' },
       { id: 'aescrypto', name: 'AES 加密/解密' },
+      { id: 'md5crypto', name: 'MD5 加密' },
       { id: 'jwtencode', name: 'JWT 生成' },
       { id: 'jwtdecode', name: 'JWT 解码' },
       { id: 'passwordgenerator', name: '密码生成器' },
@@ -110,6 +112,7 @@ const Toolbox: React.FC = () => {
     | 'base64decode'
     | 'jwtencode'
     | 'jwtdecode'
+    | 'md5crypto'
     | 'passwordgenerator'
     | 'passwordhasher'
     | 'certificate'
@@ -208,6 +211,7 @@ const Toolbox: React.FC = () => {
         {activeTool === 'base64decode' && <Base64Decode />}
         {activeTool === 'jwtencode' && <JwtEncode />}
         {activeTool === 'jwtdecode' && <JwtDecode />}
+        {activeTool === 'md5crypto' && <Md5Crypto />}
         {activeTool === 'passwordgenerator' && <PasswordGenerator />}
         {activeTool === 'passwordhasher' && <PasswordHasher />}
         {activeTool === 'certificate' && <PemCertificateViewer />}

@@ -39,7 +39,7 @@ const InputField: React.FC<InputFieldProps> = ({
           error 
             ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
             : 'border-gray-300 focus:border-blue-500 dark:border-gray-600'
-        } ${disabled ? 'bg-gray-50 cursor-not-allowed' : 'bg-white dark:bg-gray-700'} dark:text-white`}
+        } ${disabled ? 'bg-gray-50 dark:bg-gray-800 cursor-not-allowed' : 'bg-white dark:bg-gray-700'} dark:text-white`}
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
