@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import AesCrypto from './tools/AesCrypto'
 import Base64Decode from './tools/Base64Decode'
 import Base64Encode from './tools/Base64Encode'
 import PemCertificateViewer from './tools/CertificateViewer'
@@ -40,6 +41,7 @@ const toolCategories: ToolCategory[] = [
     tools: [
       { id: 'base64encode', name: 'Base64 编码' },
       { id: 'base64decode', name: 'Base64 解码' },
+      { id: 'aescrypto', name: 'AES 加密/解密' },
       { id: 'jwtencode', name: 'JWT 生成' },
       { id: 'jwtdecode', name: 'JWT 解码' },
       { id: 'passwordgenerator', name: '密码生成器' },
@@ -103,6 +105,7 @@ const toolCategories: ToolCategory[] = [
 
 const Toolbox: React.FC = () => {
   const [activeTool, setActiveTool] = useState<
+    | 'aescrypto'
     | 'base64encode'
     | 'base64decode'
     | 'jwtencode'
@@ -200,6 +203,7 @@ const Toolbox: React.FC = () => {
 
       {/* Right content area */}
       <div className='toolbox-content flex-1 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md overflow-auto h-full w-full'>
+        {activeTool === 'aescrypto' && <AesCrypto />}
         {activeTool === 'base64encode' && <Base64Encode />}
         {activeTool === 'base64decode' && <Base64Decode />}
         {activeTool === 'jwtencode' && <JwtEncode />}
