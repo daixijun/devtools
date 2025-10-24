@@ -576,7 +576,7 @@ const VideoConverter: React.FC = () => {
       <div className='flex flex-col h-full'>
         {/* FFmpeg 状态检查 - 仅在未安装时显示 */}
         {ffmpegInstalled === false && (
-          <div className='mb-4 p-4 rounded-lg border bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'>
+          <div className='mb-4 p-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'>
             <div className='flex items-center space-x-2'>
               <div className='w-3 h-3 rounded-full bg-red-500'></div>
               <p className='text-sm font-medium text-red-700 dark:text-red-400'>
