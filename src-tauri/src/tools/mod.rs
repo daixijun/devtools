@@ -11,3 +11,4 @@ pub mod sql_to_go;
 pub mod ssl_checker;
 pub mod system_settings;
 pub mod video_converter;
+pub mod whois;

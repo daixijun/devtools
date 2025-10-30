@@ -58,7 +58,11 @@ pub fn run() {
             tools::video_converter::check_ffmpeg_available,
             tools::image_converter::convert_image,
             tools::image_converter::get_image_info_command,
-            tools::image_converter::get_image_exif_data
+            tools::image_converter::get_image_exif_data,
+            tools::whois::query_rdap,
+            tools::whois::query_whois,
+            tools::whois::query_domain_multi_source,
+            tools::whois::query_whois_unified
         ])
         .setup(|app| {
             let tray_state = app.state::<GlobalTrayState>();

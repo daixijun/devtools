@@ -6,6 +6,7 @@ import PemCertificateViewer from './tools/CertificateViewer'
 import FormatConverter from './tools/FormatConverter'
 import ImageConverter from './tools/ImageConverter'
 import IpInfo from './tools/IpInfo'
+import WhoisLookup from './tools/WhoisLookup'
 import JsonFormatter from './tools/JsonFormatter'
 import JsonToGo from './tools/JsonToGo'
 import JwtDecode from './tools/JwtDecode'
@@ -70,6 +71,7 @@ const toolCategories: ToolCategory[] = [
     tools: [
       { id: 'subnetcalculator', name: '子网掩码计算器' },
       { id: 'ipinfo', name: 'IP 地址信息查询' },
+      { id: 'whois', name: '域名 Whois 查询' },
     ],
   },
   {
@@ -123,6 +125,7 @@ const Toolbox: React.FC = () => {
     | 'pfxtopem'
     | 'subnetcalculator'
     | 'ipinfo'
+    | 'whois'
     | 'sslchecker'
     | 'jsonformatter'
     | 'jsontogo'
@@ -223,6 +226,7 @@ const Toolbox: React.FC = () => {
         {activeTool === 'pfxtopem' && <PfxToPemConverter />}
         {activeTool === 'subnetcalculator' && <SubnetCalculator />}
         {activeTool === 'ipinfo' && <IpInfo />}
+        {activeTool === 'whois' && <WhoisLookup />}
         {activeTool === 'sslchecker' && <SslChecker />}
         {activeTool === 'jsonformatter' && <JsonFormatter />}
         {activeTool === 'jsontogo' && <JsonToGo />}

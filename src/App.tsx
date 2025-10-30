@@ -2,8 +2,11 @@ import { memo, useEffect } from 'react'
 import './App.css'
 import Toolbox from './Toolbox'
 import { globalShortcutManager } from './utils/globalShortcut'
+import { useTheme } from './hooks/useTheme'
 
 const App = memo(() => {
+  // 确保主题 Hook 在应用级别初始化，从而切换全局暗黑/亮色类
+  useTheme()
   useEffect(() => {
     let isMounted = true
 

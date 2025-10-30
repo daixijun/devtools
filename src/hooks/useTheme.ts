@@ -10,6 +10,20 @@ export const useTheme = () => {
   // 尝试从 localStorage 获取上次的主题作为初始值
   const getInitialTheme = () => {
     try {
+      // 优先读取设置页保存的配置
+      const settingsRaw = localStorage.getItem('devtools-settings')
+      if (settingsRaw) {
+        const settings = JSON.parse(settingsRaw)
+        const theme = settings?.theme as 'light' | 'dark' | 'system' | undefined
+        if (theme === 'dark') return true
+        if (theme === 'light') return false
+        // system 模式走系统偏好
+        if (theme === 'system') {
+          return window.matchMedia('(prefers-color-scheme: dark)').matches
+        }
+      }
+
+      // 其次读取最近一次的实际主题值
       const saved = localStorage.getItem('devtools-theme')
       if (saved) return saved === 'dark'
 
@@ -70,6 +84,15 @@ export const useTheme = () => {
       }
     }
   }, [])
+
+  // 在主题变化时，切换文档根节点的 dark 类，以启用 Tailwind 暗黑样式
+  useEffect(() => {
+    try {
+      const root = document.documentElement
+      if (isDark) root.classList.add('dark')
+      else root.classList.remove('dark')
+    } catch {}
+  }, [isDark])
 
   return {
     isDark,
