@@ -6,7 +6,6 @@ import PemCertificateViewer from './tools/CertificateViewer'
 import FormatConverter from './tools/FormatConverter'
 import ImageConverter from './tools/ImageConverter'
 import IpInfo from './tools/IpInfo'
-import WhoisLookup from './tools/WhoisLookup'
 import JsonFormatter from './tools/JsonFormatter'
 import JsonToGo from './tools/JsonToGo'
 import JwtDecode from './tools/JwtDecode'
@@ -24,7 +23,9 @@ import SqlToGo from './tools/SqlToGo'
 import SslChecker from './tools/SslChecker'
 import SubnetCalculator from './tools/SubnetCalculator'
 import TimestampConverter from './tools/TimestampConverter'
+import UrlEncoderDecoder from './tools/UrlEncoderDecoder'
 import VideoConverter from './tools/VideoConverter'
+import WhoisLookup from './tools/WhoisLookup'
 
 type ToolCategory = {
   id: string
@@ -44,6 +45,7 @@ const toolCategories: ToolCategory[] = [
     tools: [
       { id: 'base64encode', name: 'Base64 编码' },
       { id: 'base64decode', name: 'Base64 解码' },
+      { id: 'urlencoderdecoder', name: 'URL 编码/解码' },
       { id: 'aescrypto', name: 'AES 加密/解密' },
       { id: 'md5crypto', name: 'MD5 加密' },
       { id: 'shacrypto', name: 'SHA 哈希加密' },
@@ -114,6 +116,7 @@ const Toolbox: React.FC = () => {
     | 'aescrypto'
     | 'base64encode'
     | 'base64decode'
+    | 'urlencoderdecoder'
     | 'jwtencode'
     | 'jwtdecode'
     | 'md5crypto'
@@ -215,6 +218,7 @@ const Toolbox: React.FC = () => {
         {activeTool === 'aescrypto' && <AesCrypto />}
         {activeTool === 'base64encode' && <Base64Encode />}
         {activeTool === 'base64decode' && <Base64Decode />}
+        {activeTool === 'urlencoderdecoder' && <UrlEncoderDecoder />}
         {activeTool === 'jwtencode' && <JwtEncode />}
         {activeTool === 'jwtdecode' && <JwtDecode />}
         {activeTool === 'md5crypto' && <Md5Crypto />}
