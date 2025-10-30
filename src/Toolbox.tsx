@@ -1,7 +1,6 @@
 import React, { useState } from 'react'
 import AesCrypto from './tools/AesCrypto'
-import Base64Decode from './tools/Base64Decode'
-import Base64Encode from './tools/Base64Encode'
+import Base64Converter from './tools/Base64Converter'
 import PemCertificateViewer from './tools/CertificateViewer'
 import FormatConverter from './tools/FormatConverter'
 import ImageConverter from './tools/ImageConverter'
@@ -43,9 +42,8 @@ const toolCategories: ToolCategory[] = [
     name: '编码/解码',
     icon: '🔐',
     tools: [
-      { id: 'base64encode', name: 'Base64 编码' },
-      { id: 'base64decode', name: 'Base64 解码' },
-      { id: 'urlencoderdecoder', name: 'URL 编码/解码' },
+      { id: 'base64converter', name: 'Base64 编解码' },
+      { id: 'urlencoderdecoder', name: 'URL 编解码' },
       { id: 'aescrypto', name: 'AES 加密/解密' },
       { id: 'md5crypto', name: 'MD5 加密' },
       { id: 'shacrypto', name: 'SHA 哈希加密' },
@@ -114,8 +112,7 @@ const toolCategories: ToolCategory[] = [
 const Toolbox: React.FC = () => {
   const [activeTool, setActiveTool] = useState<
     | 'aescrypto'
-    | 'base64encode'
-    | 'base64decode'
+    | 'base64converter'
     | 'urlencoderdecoder'
     | 'jwtencode'
     | 'jwtdecode'
@@ -140,7 +137,7 @@ const Toolbox: React.FC = () => {
     | 'regextester'
     | 'timestamp'
     | 'settings'
-  >('base64encode')
+  >('base64converter')
 
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
     new Set(['encoding', 'media']),
@@ -216,8 +213,7 @@ const Toolbox: React.FC = () => {
       {/* Right content area */}
       <div className='toolbox-content flex-1 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md overflow-auto h-full w-full'>
         {activeTool === 'aescrypto' && <AesCrypto />}
-        {activeTool === 'base64encode' && <Base64Encode />}
-        {activeTool === 'base64decode' && <Base64Decode />}
+        {activeTool === 'base64converter' && <Base64Converter />}
         {activeTool === 'urlencoderdecoder' && <UrlEncoderDecoder />}
         {activeTool === 'jwtencode' && <JwtEncode />}
         {activeTool === 'jwtdecode' && <JwtDecode />}
