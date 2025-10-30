@@ -1,8 +1,8 @@
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import React, { useEffect, useState } from 'react'
-import Card from '../components/common/Card/Card'
-import PageHeader from '../components/common/PageHeader'
+import { Card } from '../components/common'
+import { ToolLayout } from '../components/layouts'
 
 interface HotKeyConfig {
   modifier: 'option' | 'alt' | 'ctrl' | 'cmd'
@@ -406,10 +406,8 @@ const Settings: React.FC = () => {
   }
 
   return (
-    <div className='h-full flex flex-col'>
-      <PageHeader title='设置' subtitle='配置应用程序偏好设置' />
-
-      <div className='flex-1 space-y-6 p-6'>
+    <ToolLayout title='设置' description='配置应用程序偏好设置'>
+      <div className='space-y-6'>
         {/* 外观设置 */}
         <Card>
           <div className='p-6'>
@@ -716,7 +714,7 @@ const Settings: React.FC = () => {
           </div>
         </Card>
       </div>
-    </div>
+    </ToolLayout>
   )
 }
 

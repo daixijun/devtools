@@ -2,6 +2,7 @@ import * as yaml from 'js-yaml'
 import React, { useEffect, useState } from 'react'
 import { parse as parseToml } from 'smol-toml'
 import { CodeEditor } from '../components/common'
+import { ToolLayout } from '../components/layouts'
 
 const FormatConverter: React.FC = () => {
   const [input, setInput] = useState('')
@@ -223,16 +224,9 @@ const FormatConverter: React.FC = () => {
   }
 
   return (
-    <div className='flex flex-col h-full p-6'>
-      <div className='mb-6'>
-        <h1 className='text-2xl font-bold text-gray-900 dark:text-gray-100'>
-          格式转换器
-        </h1>
-        <p className='text-gray-600 dark:text-gray-400'>
-          支持 JSON、YAML、TOML 之间的双向转换
-        </p>
-      </div>
-
+    <ToolLayout
+      title='格式转换器'
+      description='支持 JSON、YAML、TOML 之间的双向转换'>
       {/* 格式选择器 */}
       <div className='flex-shrink-0 p-4 bg-gray-50 dark:bg-gray-800 border-b dark:border-gray-700 mb-6'>
         <div className='flex items-center space-x-4'>
@@ -346,7 +340,7 @@ const FormatConverter: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+    </ToolLayout>
   )
 }
 
