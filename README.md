@@ -6,8 +6,15 @@ A desktop developer toolbox application built with Tauri 2 + React
 
 ### Encoding/Decoding Tools
 
-- **Base64 Encoding/Decoding** - Text encoding utilities
-- **JWT Encoding/Decoding** - JWT token handling and validation
+- **Base64 Converter** - Integrated Base64 encoding and decoding utility with mode switching
+- **URL Encoder/Decoder** - URL encoding and decoding utility
+- **AES Encryption/Decryption** - AES encryption and decryption tool
+- **MD5 Encryption** - MD5 hash generation tool
+- **SHA Hash Encryption** - SHA hash generation tool
+- **JWT Encoding** - JWT token generation tool
+- **JWT Decoding** - JWT token decoding and validation
+- **Password Generator** - Generate secure passwords with customizable options
+- **Password Hasher** - Password encryption and verification tool
 
 ### Certificate Tools
 
@@ -18,8 +25,9 @@ A desktop developer toolbox application built with Tauri 2 + React
 
 ### Network Tools
 
-- **IP/CIDR Calculator** - Subnet calculations and IP address manipulation
+- **Subnet Calculator** - Subnet calculations and IP address manipulation
 - **IP Address Information Lookup** - IP address details and geolocation
+- **Domain Whois Lookup** - Domain whois information query
 
 ### Data Format Tools
 
@@ -32,10 +40,21 @@ A desktop developer toolbox application built with Tauri 2 + React
 - **SQL to Go Struct** - Generate Go struct definitions from SQL schema with multi-table support
 - **SQL to Go Ent ORM** - Generate Go Ent ORM schema from SQL schema with multi-table support
 
-### Other Tools
+### Media Format Conversion
+
+- **Image Format Converter** - Convert between different image formats
+- **Video Format Converter** - Convert between different video formats
+
+### Development Tools
+
+- **Regular Expression Tester** - Test and debug regular expressions with real-time matching
+
+### Time Tools
 
 - **Timestamp Converter** - Unix timestamp conversion to human-readable dates
-- **Regular Expression Tester** - Test and debug regular expressions with real-time matching
+
+### Other Tools
+
 - **Settings** - Application configuration and preferences
 
 ## 🛠️ Tech Stack
@@ -149,24 +168,33 @@ devtools/                    # Project root directory
 │   │   ├── useTheme.ts
 │   │   ├── useToast.ts
 │   ├── main.tsx           # React application entry point
-│   ├── tools/             # Individual tool components (19 tools)
-│   │   ├── Base64Decode.tsx
-│   │   ├── Base64Encode.tsx
+│   ├── tools/             # Individual tool components (25 tools)
+│   │   ├── AesCrypto.tsx
+│   │   ├── Base64Converter.tsx
 │   │   ├── CertificateViewer.tsx
+│   │   ├── FormatConverter.tsx
+│   │   ├── ImageConverter.tsx
 │   │   ├── IpInfo.tsx
 │   │   ├── JsonFormatter.tsx
 │   │   ├── JsonToGo.tsx
 │   │   ├── JwtDecode.tsx
 │   │   ├── JwtEncode.tsx
+│   │   ├── Md5Crypto.tsx
+│   │   ├── PasswordGenerator.tsx
+│   │   ├── PasswordHasher.tsx
 │   │   ├── PemToPfxConverter.tsx
 │   │   ├── PfxToPemConverter.tsx
 │   │   ├── RegexTester.tsx
 │   │   ├── Settings.tsx
+│   │   ├── ShaCrypto.tsx
 │   │   ├── SqlToEnt.tsx
 │   │   ├── SqlToGo.tsx
 │   │   ├── SslChecker.tsx
 │   │   ├── SubnetCalculator.tsx
 │   │   ├── TimestampConverter.tsx
+│   │   ├── UrlEncoderDecoder.tsx
+│   │   ├── VideoConverter.tsx
+│   │   └── WhoisLookup.tsx
 │   ├── utils/             # Utility functions
 │   │   ├── api.ts         # Tauri API wrapper
 │   │   ├── globalShortcut.ts # Global shortcut utilities

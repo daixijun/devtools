@@ -6,8 +6,15 @@
 
 ### 编码/解码工具
 
-- **Base64 编码/解码** - 文本编码工具
-- **JWT 编码/解码** - JWT 令牌处理和验证
+- **Base64 编解码** - 集成Base64编码和解码功能的工具，支持模式切换
+- **URL 编解码** - URL编码和解码工具
+- **AES 加密/解密** - AES加密和解密工具
+- **MD5 加密** - MD5哈希生成工具
+- **SHA 哈希加密** - SHA哈希生成工具
+- **JWT 生成** - JWT令牌生成工具
+- **JWT 解码** - JWT令牌解码和验证
+- **密码生成器** - 生成可自定义的安全密码
+- **密码加密验证** - 密码加密和验证工具
 
 ### 证书工具
 
@@ -18,8 +25,9 @@
 
 ### 网络工具
 
-- **IP/CIDR 计算器** - 子网计算和 IP 地址操作
-- **IP 地址信息查询** - IP 地址详细信息和地理位置查询
+- **子网掩码计算器** - 子网计算和IP地址操作
+- **IP 地址信息查询** - IP地址详细信息和地理位置查询
+- **域名 Whois 查询** - 域名Whois信息查询
 
 ### 数据格式工具
 
@@ -32,10 +40,21 @@
 - **SQL 转 Go 结构体** - 从 SQL 架构生成 Go 结构体定义，支持多表
 - **SQL 转 Go Ent ORM** - 从 SQL 架构生成 Go Ent ORM 架构，支持多表
 
+### 媒体格式转换
+
+- **图片格式转换** - 在不同图片格式之间转换
+- **视频格式转换** - 在不同视频格式之间转换
+
+### 开发工具
+
+- **正则表达式测试器** - 测试和调试正则表达式，支持实时匹配
+
+### 时间工具
+
+- **时间戳转换器** - Unix时间戳转换为人类可读日期
+
 ### 其他工具
 
-- **时间戳转换器** - Unix 时间戳转换为人类可读日期
-- **正则表达式测试器** - 测试和调试正则表达式，支持实时匹配
 - **设置** - 应用配置和偏好设置
 
 ## 🛠️ 技术栈
@@ -149,24 +168,33 @@ devtools/                    # 项目根目录
 │   │   ├── useTheme.ts
 │   │   └── useToast.ts
 │   ├── main.tsx           # React 应用入口点
-│   ├── tools/             # 各个工具组件（19个工具）
-│   │   ├── Base64Decode.tsx
-│   │   ├── Base64Encode.tsx
+│   ├── tools/             # 各个工具组件（25个工具）
+│   │   ├── AesCrypto.tsx
+│   │   ├── Base64Converter.tsx
 │   │   ├── CertificateViewer.tsx
+│   │   ├── FormatConverter.tsx
+│   │   ├── ImageConverter.tsx
 │   │   ├── IpInfo.tsx
 │   │   ├── JsonFormatter.tsx
 │   │   ├── JsonToGo.tsx
 │   │   ├── JwtDecode.tsx
 │   │   ├── JwtEncode.tsx
+│   │   ├── Md5Crypto.tsx
+│   │   ├── PasswordGenerator.tsx
+│   │   ├── PasswordHasher.tsx
 │   │   ├── PemToPfxConverter.tsx
 │   │   ├── PfxToPemConverter.tsx
 │   │   ├── RegexTester.tsx
 │   │   ├── Settings.tsx
+│   │   ├── ShaCrypto.tsx
 │   │   ├── SqlToEnt.tsx
 │   │   ├── SqlToGo.tsx
 │   │   ├── SslChecker.tsx
 │   │   ├── SubnetCalculator.tsx
 │   │   ├── TimestampConverter.tsx
+│   │   ├── UrlEncoderDecoder.tsx
+│   │   ├── VideoConverter.tsx
+│   │   └── WhoisLookup.tsx
 │   ├── utils/             # 工具函数
 │   │   ├── api.ts         # Tauri API 包装器
 │   │   ├── globalShortcut.ts # 全局快捷键工具
