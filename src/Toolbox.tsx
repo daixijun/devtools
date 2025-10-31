@@ -139,48 +139,44 @@ const Toolbox: React.FC = () => {
     | 'settings'
   >('base64converter')
 
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
-    new Set(['encoding', 'media']),
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(
+    'encoding',
   )
 
   const toggleCategory = (categoryId: string) => {
-    setExpandedCategories((prev) => {
-      const newExpanded = new Set<string>()
-      // 如果点击的是已展开的分类，则折叠它；否则只展开当前分类
-      if (!prev.has(categoryId)) {
-        newExpanded.add(categoryId)
-      }
-      return newExpanded
-    })
+    // 如果点击的是已展开的分类，则折叠它；否则只展开当前分类
+    setExpandedCategory((prev) => (prev === categoryId ? null : categoryId))
   }
 
   return (
     <div className='toolbox flex flex-row w-full h-full'>
       {/* Left sidebar */}
-      <nav className='toolbox-nav w-48 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md mr-4 h-full flex flex-col'>
-        <div className='space-y-2 flex-1 overflow-y-auto'>
+      <nav className='toolbox-nav w-48 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md mr-4 h-full flex flex-col max-h-[calc(100vh-2rem)]'>
+        <div
+          className='space-y-2 flex-1 overflow-y-auto'
+          style={{ maxHeight: 'calc(100vh - 8rem)' }}>
           {toolCategories.map((category) => (
             <div key={category.id} className='mb-2'>
               <button
                 onClick={() => toggleCategory(category.id)}
                 className='w-full px-3 py-2 flex items-center justify-between rounded-md bg-gray-100 hover:bg-gray-200 dark:bg-gray-600 dark:hover:bg-gray-500 transition-colors'>
-                <div className='flex items-center space-x-2'>
+                <div className='flex items-center space-x-2 min-w-0 flex-1'>
                   <span>{category.icon}</span>
-                  <span className='text-sm font-medium text-gray-700 dark:text-gray-200'>
+                  <span className='text-sm font-medium text-gray-700 dark:text-gray-200 whitespace-nowrap truncate'>
                     {category.name}
                   </span>
                 </div>
-                <span className='text-gray-500 dark:text-gray-400'>
-                  {expandedCategories.has(category.id) ? '▼' : '▶'}
+                <span className='text-gray-500 dark:text-gray-400 flex-shrink-0 ml-2'>
+                  {expandedCategory === category.id ? '▼' : '▶'}
                 </span>
               </button>
 
-              {expandedCategories.has(category.id) && (
+              {expandedCategory === category.id && (
                 <div className='mt-1 ml-2 space-y-1'>
                   {category.tools.map((tool) => (
                     <div
                       key={tool.id}
-                      className={`px-3 py-2 rounded-md cursor-pointer transition-colors text-sm ${
+                      className={`px-3 py-2 rounded-md cursor-pointer transition-colors text-sm whitespace-nowrap ${
                         activeTool === tool.id
                           ? 'bg-blue-500 text-white'
                           : 'bg-gray-50 text-gray-600 hover:bg-gray-100 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
