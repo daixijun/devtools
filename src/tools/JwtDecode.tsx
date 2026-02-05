@@ -363,7 +363,7 @@ const JwtDecode: React.FC = () => {
                 {/* 验证按钮 */}
                 <div className='flex justify-center'>
                   <Button
-                    variant='primary'
+                    variant={copied ? 'ghost' : 'primary'}
                     size='md'
                     onClick={handleVerifyJWT}
                     disabled={
@@ -473,7 +473,7 @@ const JwtDecode: React.FC = () => {
                       className={
                         copied ? 'bg-green-600 hover:bg-green-700' : ''
                       }>
-                      {copied ? '已复制' : '复制'}
+                      {copied ? '已复制 ✓' : '复制'}
                     </Button>
                   )}
                 </div>
@@ -510,7 +510,7 @@ const JwtDecode: React.FC = () => {
                       className={
                         copied ? 'bg-green-600 hover:bg-green-700' : ''
                       }>
-                      {copied ? '已复制' : '复制'}
+                      {copied ? '已复制 ✓' : '复制'}
                     </Button>
                   )}
                 </div>
@@ -545,8 +545,8 @@ const JwtDecode: React.FC = () => {
                     variant='secondary'
                     size='sm'
                     onClick={handleCopySignature}
-                    className={copied ? 'bg-green-600 hover:bg-green-700' : ''}>
-                    {copied ? '已复制' : '复制'}
+                    className={copied ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900 dark:text-green-200 border-green-300 dark:border-green-700' : ''}>
+                    {copied ? '已复制 ✓' : '复制'}
                   </Button>
                 )}
               </div>

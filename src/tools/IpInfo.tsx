@@ -151,7 +151,7 @@ const IpInfo: React.FC = () => {
             />
             <div className='flex gap-2'>
               <Button
-                variant='primary'
+                variant={copied ? 'ghost' : 'primary'}
                 size='sm'
                 onClick={handleSearch}
                 disabled={loading}>

@@ -1290,7 +1290,7 @@ const ImageConverter: React.FC = () => {
               <div className='flex space-x-3'>
                 <Button
                   onClick={startBatchConversion}
-                  variant='primary'
+                  variant={copied ? 'ghost' : 'primary'}
                   disabled={
                     isConverting ||
                     imageFiles.length === 0 ||

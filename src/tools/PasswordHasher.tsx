@@ -376,7 +376,7 @@ const PasswordHasher: React.FC = () => {
                   {/* 加密按钮 */}
                   <div className='flex space-x-3'>
                     <Button
-                      variant='primary'
+                      variant={copied ? 'ghost' : 'primary'}
                       onClick={hashPassword}
                       disabled={isHashing}
                       className='flex-1'>
@@ -400,7 +400,7 @@ const PasswordHasher: React.FC = () => {
                       加密结果
                     </h3>
                     <Button
-                      variant='primary'
+                      variant={copied ? 'ghost' : 'primary'}
                       size='sm'
                       onClick={handleCopyHash}
                       disabled={
@@ -410,8 +410,8 @@ const PasswordHasher: React.FC = () => {
                         hash.startsWith('迭代次数必须在') ||
                         hash.startsWith('加密过程中发生错误')
                       }
-                      className={copied ? 'bg-green-600 hover:bg-green-700' : ''}>
-                      {copied ? '已复制' : '复制'}
+                      className={copied ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900 dark:text-green-200 border-green-300 dark:border-green-700' : ''}>
+                      {copied ? '已复制 ✓' : '复制'}
                     </Button>
                   </div>
                   <div className='bg-slate-50 dark:bg-slate-700 rounded-lg p-4 font-mono text-sm break-all text-slate-900 dark:text-slate-100'>
@@ -572,7 +572,7 @@ const PasswordHasher: React.FC = () => {
                   {/* 验证按钮 */}
                   <div className='flex space-x-3'>
                     <Button
-                      variant='primary'
+                      variant={copied ? 'ghost' : 'primary'}
                       onClick={verifyPasswordHash}
                       disabled={isVerifying}
                       className='flex-1'>

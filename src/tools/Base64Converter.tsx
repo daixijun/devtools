@@ -178,12 +178,12 @@ const Base64Converter: React.FC = () => {
               输出长度: <span className='font-mono text-primary-600 dark:text-primary-400'>{output.length}</span>
             </div>
             <Button
-              variant='primary'
+              variant={copied ? 'ghost' : 'primary'}
               size='sm'
               onClick={handleCopyOutput}
               disabled={!output || !!error}
-              className={copied ? 'bg-green-600 hover:bg-green-700' : ''}>
-              {copied ? '已复制' : '复制结果'}
+              className={copied ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900 dark:text-green-200 border-green-300 dark:border-green-700' : ''}>
+              {copied ? '已复制 ✓' : '复制结果'}
             </Button>
           </div>
           <textarea

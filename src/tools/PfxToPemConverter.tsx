@@ -337,7 +337,7 @@ const PfxToPemConverter: React.FC = () => {
         {/* 操作按钮区域 */}
         <div className='mb-6'>
           <Button
-            variant='primary'
+            variant={copied ? 'ghost' : 'primary'}
             size='lg'
             onClick={performConversion}
             disabled={isLoading || !fileBuffer}
@@ -354,10 +354,10 @@ const PfxToPemConverter: React.FC = () => {
                 转换结果:
               </label>
               <div className='space-x-2'>
-                <Button variant='primary' size='sm' onClick={copyToClipboard}>
+                <Button variant={copied ? 'ghost' : 'primary'} size='sm' onClick={copyToClipboard}>
                   复制结果
                 </Button>
-                <Button variant='primary' size='sm' onClick={downloadPem}>
+                <Button variant={copied ? 'ghost' : 'primary'} size='sm' onClick={downloadPem}>
                   下载PEM
                 </Button>
               </div>

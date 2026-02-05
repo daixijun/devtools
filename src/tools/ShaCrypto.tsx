@@ -409,12 +409,12 @@ const ShaCrypto: React.FC = () => {
                   {getAlgorithmName(algorithm)} 哈希值
                 </h3>
                 <Button
-                  variant='primary'
+                  variant={copied ? 'ghost' : 'primary'}
                   size='sm'
                   onClick={copyTextSha}
                   disabled={!textShaHash || !!textError}
-                  className={copied ? 'bg-green-600 hover:bg-green-700' : ''}>
-                  {copied ? '已复制' : '复制结果'}
+                  className={copied ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900 dark:text-green-200 border-green-300 dark:border-green-700' : ''}>
+                  {copied ? '已复制 ✓' : '复制结果'}
                 </Button>
               </div>
               <div className='flex-1 p-3 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg'>
@@ -451,7 +451,7 @@ const ShaCrypto: React.FC = () => {
                   disabled // 使用disabled替代readOnly
                   className='flex-1'
                 />
-                <Button variant='primary' onClick={selectFile}>
+                <Button variant={copied ? 'ghost' : 'primary'} onClick={selectFile}>
                   选择文件
                 </Button>
               </div>
@@ -471,12 +471,12 @@ const ShaCrypto: React.FC = () => {
                   {getAlgorithmName(algorithm)} 哈希值
                 </h3>
                 <Button
-                  variant='primary'
+                  variant={copied ? 'ghost' : 'primary'}
                   size='sm'
                   onClick={copyFileSha}
                   disabled={!fileShaHash || !!fileError || isProcessingFile}
-                  className={copied ? 'bg-green-600 hover:bg-green-700' : ''}>
-                  {copied ? '已复制' : '复制结果'}
+                  className={copied ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900 dark:text-green-200 border-green-300 dark:border-green-700' : ''}>
+                  {copied ? '已复制 ✓' : '复制结果'}
                 </Button>
               </div>
               <div className='flex-1 p-3 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg flex items-center justify-center'>
@@ -511,7 +511,7 @@ const ShaCrypto: React.FC = () => {
                     disabled={batchFiles.length === 0}>
                     清空
                   </Button>
-                  <Button variant='primary' onClick={selectBatchFiles}>
+                  <Button variant={copied ? 'ghost' : 'primary'} onClick={selectBatchFiles}>
                     选择文件
                   </Button>
                 </div>
@@ -535,7 +535,7 @@ const ShaCrypto: React.FC = () => {
                       className={
                         copied ? 'bg-green-600 hover:bg-green-700' : ''
                       }>
-                      {copied ? '已复制' : '复制结果'}
+                      {copied ? '已复制 ✓' : '复制结果'}
                     </Button>
                     <Button
                       variant='secondary'

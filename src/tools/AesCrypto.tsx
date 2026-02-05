@@ -321,7 +321,7 @@ const AesCrypto: React.FC = () => {
                     <button
                       onClick={copyEncryptedText}
                       className='absolute top-2 right-2 px-2 py-1 text-xs bg-primary-500 text-white rounded hover:bg-primary-600 focus:outline-none shadow-sm'>
-                      {copied ? '已复制' : '复制'}
+                      {copied ? '已复制 ✓' : '复制'}
                     </button>
                   )}
                 </div>
@@ -426,7 +426,7 @@ const AesCrypto: React.FC = () => {
                     <button
                       onClick={copyDecryptedText}
                       className='absolute top-2 right-2 px-2 py-1 text-xs bg-primary-500 text-white rounded hover:bg-primary-600 focus:outline-none shadow-sm'>
-                      {copied ? '已复制' : '复制'}
+                      {copied ? '已复制 ✓' : '复制'}
                     </button>
                   )}
                 </div>

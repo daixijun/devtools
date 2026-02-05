@@ -297,7 +297,7 @@ const PasswordGenerator: React.FC = () => {
         {/* 操作按钮 */}
         <div className='flex space-x-3'>
           <Button
-            variant='primary'
+            variant={copied ? 'ghost' : 'primary'}
             onClick={generatePassword}
             className='flex-1'>
             生成新密码
