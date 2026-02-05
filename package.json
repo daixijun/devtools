@@ -10,7 +10,7 @@
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
-    "check:styles": "node scripts/check-styles.js",
+    "check:styles": "node scripts/check-styles.cjs",
     "test:visual": "npm run check:styles"
   },
   "dependencies": {
