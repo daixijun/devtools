@@ -1,21 +1,57 @@
 import React from 'react'
 
 interface ButtonProps {
-  onClick: () => void
+  onClick?: () => void
   children: React.ReactNode
   loading?: boolean
   disabled?: boolean
-  variant?: 'primary' | 'secondary' | 'danger' | 'success'
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger'
   size?: 'sm' | 'md' | 'lg'
   className?: string
   type?: 'button' | 'submit'
   icon?: React.ReactNode
   iconPosition?: 'left' | 'right'
+  'aria-label'?: string
 }
 
 /**
- * 通用按钮组件
- * 支持多种样式、尺寸和状态
+ * Button - 统一的按钮组件
+ *
+ * @description
+ * 符合设计系统规范的按钮组件,提供统一的视觉和交互体验
+ *
+ * @features
+ * - 使用 Slate 色系替代 gray
+ * - 统一圆角 rounded-lg
+ * - 标准过渡 duration-200
+ * - 完整的 focus ring
+ * - 支持 loading 和 disabled 状态
+ * - 支持 icon 和不同位置
+ *
+ * @accessibility
+ * - 完整键盘导航支持
+ * - 焦点管理符合 WCAG 2.1 AA
+ * - 支持自定义 aria-label
+ *
+ * @example
+ * ```tsx
+ * // Primary 按钮
+ * <Button variant="primary" size="md" onClick={handleClick}>
+ *   确定
+ * </Button>
+ *
+ * // 带 icon 的按钮
+ * <Button variant="secondary" icon={<Icon />} iconPosition="left">
+ *   返回
+ * </Button>
+ *
+ * // Loading 按钮
+ * <Button variant="primary" loading={isLoading}>
+ *   提交
+ * </Button>
+ * ```
+ *
+ * @see DESIGN_SYSTEM.md - 设计系统规范
  */
 const Button: React.FC<ButtonProps> = ({
   onClick,
@@ -28,27 +64,45 @@ const Button: React.FC<ButtonProps> = ({
   type = 'button',
   icon,
   iconPosition = 'left',
+  'aria-label': ariaLabel,
 }) => {
+  // 基础样式 - 统一使用 rounded-lg, duration-200
   const baseClasses =
-    'inline-flex items-center justify-center rounded-md font-medium focus:outline-none focus:ring-2 transition-all duration-200 disabled:cursor-not-allowed'
+    'inline-flex items-center justify-center rounded-lg font-medium ' +
+    'transition-all duration-200 cursor-pointer ' +
+    'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ' +
+    'disabled:opacity-50 disabled:cursor-not-allowed ' +
+    'active:scale-[0.98]'
 
+  // 尺寸样式
   const sizeClasses = {
     sm: 'px-3 py-1.5 text-sm',
-    md: 'px-4 py-2 text-sm',
-    lg: 'px-6 py-3 text-base',
+    md: 'px-4 py-2 text-base',
+    lg: 'px-6 py-3 text-lg',
   }
 
+  // 变体样式 - 使用 primary-500/600 和 slate 色系
   const variantClasses = {
     primary:
-      'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500 disabled:opacity-50 disabled:hover:bg-blue-600 shadow-sm',
+      'bg-primary-500 text-white hover:bg-primary-600 ' +
+      'disabled:bg-primary-500 disabled:hover:bg-primary-500 ' +
+      'shadow-md',
     secondary:
-      'bg-gray-200 text-gray-700 hover:bg-gray-300 focus:ring-gray-500 disabled:opacity-50 disabled:hover:bg-gray-200 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600 dark:disabled:hover:bg-gray-700 border border-gray-300 dark:border-gray-600',
+      'bg-slate-100 text-slate-700 hover:bg-slate-200 ' +
+      'dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 ' +
+      'disabled:bg-slate-100 disabled:hover:bg-slate-100 ' +
+      'dark:disabled:bg-slate-700 dark:disabled:hover:bg-slate-700',
+    ghost:
+      'bg-transparent text-slate-700 hover:bg-slate-100 ' +
+      'dark:text-slate-300 dark:hover:bg-slate-800 ' +
+      'disabled:bg-transparent disabled:hover:bg-transparent',
     danger:
-      'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 disabled:opacity-50 disabled:hover:bg-red-600 shadow-sm',
-    success:
-      'bg-green-600 text-white hover:bg-green-700 focus:ring-green-500 disabled:opacity-50 disabled:hover:bg-green-600 shadow-sm',
+      'bg-red-500 text-white hover:bg-red-600 ' +
+      'disabled:bg-red-500 disabled:hover:bg-red-500 ' +
+      'shadow-md',
   }
 
+  // 渲染内容 (loading 或 children + icon)
   const renderContent = () => {
     if (loading) {
       return (
@@ -56,7 +110,8 @@ const Button: React.FC<ButtonProps> = ({
           <svg
             className='animate-spin -ml-1 mr-2 h-4 w-4 text-current'
             fill='none'
-            viewBox='0 0 24 24'>
+            viewBox='0 0 24 24'
+            aria-hidden='true'>
             <circle
               className='opacity-25'
               cx='12'
@@ -78,7 +133,8 @@ const Button: React.FC<ButtonProps> = ({
       <span
         className={`${
           children ? (iconPosition === 'left' ? 'mr-2' : 'ml-2') : ''
-        }`}>
+        }`}
+        aria-hidden='true'>
         {icon}
       </span>
     )
@@ -95,9 +151,11 @@ const Button: React.FC<ButtonProps> = ({
   return (
     <button
       type={type}
-      className={`${baseClasses} ${sizeClasses[size]} ${variantClasses[variant]} ${className}`}
+      className={`${baseClasses} ${sizeClasses[size]} ${variantClasses[variant]} ${className}`.trim()}
       onClick={onClick}
-      disabled={disabled || loading}>
+      disabled={disabled || loading}
+      aria-label={ariaLabel}
+      aria-busy={loading}>
       {renderContent()}
     </button>
   )
