@@ -162,14 +162,14 @@ const PasswordGenerator: React.FC = () => {
                 </span>
               )}
               <Button
-                variant='primary'
+                variant={copied ? 'ghost' : 'primary'}
                 size='sm'
                 onClick={handleCopyPassword}
                 disabled={
                   !password || password.includes('请至少选择一种字符类型')
                 }
-                className={copied ? 'bg-green-600 hover:bg-green-700' : ''}>
-                {copied ? '已复制' : '复制密码'}
+                className={copied ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900 dark:text-green-200 border-green-300 dark:border-green-700' : ''}>
+                {copied ? '已复制 ✓' : '复制密码'}
               </Button>
             </div>
           </div>
