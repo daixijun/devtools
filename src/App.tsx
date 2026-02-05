@@ -37,7 +37,7 @@ const App = memo(() => {
   }, [])
 
   return (
-    <main className='w-screen h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300'>
+    <main className='w-screen h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-200'>
       <Toolbox />
     </main>
   )

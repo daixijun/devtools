@@ -51,7 +51,7 @@ const SplitEditorLayout: React.FC<SplitEditorLayoutProps> = ({
     <div className={`flex flex-col h-full ${className}`}>
       {/* 顶部操作区域 */}
       {headerActions && (
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+        <div className="p-4 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
           {headerActions}
         </div>
       )}
@@ -70,10 +70,10 @@ const SplitEditorLayout: React.FC<SplitEditorLayoutProps> = ({
         className='flex flex-row h-full flex-1 overflow-hidden'
       >
         {/* 左侧编辑器 */}
-        <div className='flex flex-col w-full h-full border-r border-gray-200 dark:border-gray-700'>
+        <div className='flex flex-col w-full h-full border-r border-slate-200 dark:border-slate-700'>
           {/* 左侧标题栏 */}
-          <div className='flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600'>
-            <h3 className='font-medium text-gray-800 dark:text-gray-200'>
+          <div className='flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600'>
+            <h3 className='font-medium text-slate-800 dark:text-slate-200'>
               {leftTitle}
             </h3>
             {leftActions && (
@@ -105,8 +105,8 @@ const SplitEditorLayout: React.FC<SplitEditorLayoutProps> = ({
         {/* 右侧编辑器 */}
         <div className='flex flex-col w-full h-full'>
           {/* 右侧标题栏 */}
-          <div className='flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600'>
-            <h3 className='font-medium text-gray-800 dark:text-gray-200'>
+          <div className='flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600'>
+            <h3 className='font-medium text-slate-800 dark:text-slate-200'>
               {rightTitle}
             </h3>
             {rightActions && (

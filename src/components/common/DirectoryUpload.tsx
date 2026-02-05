@@ -253,8 +253,8 @@ const DirectoryUpload: React.FC<DirectoryUploadProps> = ({
           <div
             className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg transition-colors duration-200 cursor-pointer ${
               isDragOver
-                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                : 'border-gray-300 bg-gray-50 hover:bg-gray-100 dark:bg-gray-700 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600'
+                ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                : 'border-slate-300 bg-slate-50 hover:bg-slate-100 dark:bg-slate-700 dark:border-slate-600 dark:hover:border-slate-500 dark:hover:bg-slate-600'
             } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
@@ -263,7 +263,7 @@ const DirectoryUpload: React.FC<DirectoryUploadProps> = ({
             {/* 上传按钮区域 */}
             <div className='flex flex-col items-center justify-center w-2/5 h-full upload-button-area'>
               <svg
-                className='w-8 h-8 mb-4 text-gray-500 dark:text-gray-400'
+                className='w-8 h-8 mb-4 text-slate-500 dark:text-slate-400'
                 aria-hidden='true'
                 xmlns='http://www.w3.org/2000/svg'
                 fill='none'
@@ -276,11 +276,11 @@ const DirectoryUpload: React.FC<DirectoryUploadProps> = ({
                   d='M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2'
                 />
               </svg>
-              <p className='mb-2 text-sm text-gray-500 dark:text-gray-400'>
+              <p className='mb-2 text-sm text-slate-500 dark:text-slate-400'>
                 <span className='font-semibold'>点击选择目录</span>
                 {' 或 拖拽目录到此处'}
               </p>
-              <p className='text-xs text-gray-500 dark:text-gray-400'>
+              <p className='text-xs text-slate-500 dark:text-slate-400'>
                 支持选择包含
                 {acceptedExtensions.length > 0
                   ? acceptedExtensions.join(', ')
@@ -293,13 +293,13 @@ const DirectoryUpload: React.FC<DirectoryUploadProps> = ({
       ) : (
         <div>
           <div className='flex items-center justify-between mb-2'>
-            <span className='text-sm text-gray-600 dark:text-gray-400'>
+            <span className='text-sm text-slate-600 dark:text-slate-400'>
               已选择目录: {selectedDirectory.split(/[/\\]/).pop() || '未知目录'}
             </span>
             <div className='flex gap-2'>
               <button
                 onClick={() => handleDirectorySelect()}
-                className='text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300'
+                className='text-xs text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-300'
                 disabled={disabled}>
                 重新选择目录
               </button>
@@ -313,8 +313,8 @@ const DirectoryUpload: React.FC<DirectoryUploadProps> = ({
           </div>
 
           {/* 显示找到的文件数量 */}
-          <div className='border border-gray-300 rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600 p-3'>
-            <p className='text-sm font-medium text-gray-700 dark:text-gray-300'>
+          <div className='border border-slate-300 rounded-lg shadow-sm dark:bg-slate-700 dark:border-slate-600 p-3'>
+            <p className='text-sm font-medium text-slate-700 dark:text-slate-300'>
               {foundFiles.length > 0
                 ? `已找到 ${foundFiles.length} 个文件`
                 : '未找到文件'}
@@ -325,7 +325,7 @@ const DirectoryUpload: React.FC<DirectoryUploadProps> = ({
 
       {/* 错误信息 */}
       {error && (
-        <div className='mt-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md'>
+        <div className='mt-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg'>
           <p className='text-red-700 dark:text-red-400 text-sm'>{error}</p>
         </div>
       )}

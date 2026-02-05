@@ -201,7 +201,7 @@ const Toolbox: React.FC = () => {
           flex flex-col
           max-h-[calc(100vh-2rem)]
           my-4 mx-0 md:mx-4
-          transition-all duration-300
+          transition-all duration-200
           fixed md:relative
           z-40
           ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
@@ -295,7 +295,7 @@ const Toolbox: React.FC = () => {
       )}
 
       {/* Right content area */}
-      <div className='toolbox-content flex-1 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md p-4 rounded-lg shadow-lg overflow-auto h-full w-full my-4 mx-4 transition-colors duration-300'>
+      <div className='toolbox-content flex-1 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md p-4 rounded-lg shadow-lg overflow-auto h-full w-full my-4 mx-4 transition-colors duration-200'>
         {activeTool === 'aescrypto' && <AesCrypto />}
         {activeTool === 'base64converter' && <Base64Converter />}
         {activeTool === 'urlencoderdecoder' && <UrlEncoderDecoder />}

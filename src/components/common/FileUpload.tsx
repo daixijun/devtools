@@ -284,8 +284,8 @@ const FileUpload: React.FC<FileUploadProps> = ({
           <div
             className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg transition-colors duration-200 cursor-pointer ${
               isDragOver
-                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                : 'border-gray-300 bg-gray-50 hover:bg-gray-100 dark:bg-gray-700 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600'
+                ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                : 'border-slate-300 bg-slate-50 hover:bg-slate-100 dark:bg-slate-700 dark:border-slate-600 dark:hover:border-slate-500 dark:hover:bg-slate-600'
             }`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
@@ -294,7 +294,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
             {/* 上传按钮区域 */}
             <div className='flex flex-col items-center justify-center w-2/5 h-full upload-button-area'>
               <svg
-                className='w-8 h-8 mb-4 text-gray-500 dark:text-gray-400'
+                className='w-8 h-8 mb-4 text-slate-500 dark:text-slate-400'
                 aria-hidden='true'
                 xmlns='http://www.w3.org/2000/svg'
                 fill='none'
@@ -307,14 +307,14 @@ const FileUpload: React.FC<FileUploadProps> = ({
                   d='M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2'
                 />
               </svg>
-              <p className='mb-2 text-sm text-gray-500 dark:text-gray-400'>
+              <p className='mb-2 text-sm text-slate-500 dark:text-slate-400'>
                 <span className='font-semibold'>点击上传</span>
                 {' 或 拖拽文件'}
               </p>
-              <p className='text-xs text-gray-500 dark:text-gray-400'>
+              <p className='text-xs text-slate-500 dark:text-slate-400'>
                 {getFileTypeDescription()}
               </p>
-              <p className='text-xs text-blue-500 dark:text-blue-400 mt-1'>
+              <p className='text-xs text-primary-500 dark:text-primary-400 mt-1'>
                 💡 点击空白区域切换到文本输入模式
               </p>
             </div>
@@ -324,14 +324,14 @@ const FileUpload: React.FC<FileUploadProps> = ({
         <div>
           <div className='flex items-center justify-between mb-2'>
             {uploadedFileName && (
-              <span className='text-sm text-gray-600 dark:text-gray-400'>
+              <span className='text-sm text-slate-600 dark:text-slate-400'>
                 当前文件: {uploadedFileName}
               </span>
             )}
             <div className='flex gap-2'>
               <button
                 onClick={() => handleFileSelect()}
-                className='text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300'
+                className='text-xs text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-300'
                 disabled={disabled}>
                 重新选择文件
               </button>
@@ -344,7 +344,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
             </div>
           </div>
           <textarea
-            className={`w-full h-48 p-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white font-mono resize-none ${textareaClassName}`}
+            className={`w-full h-48 p-3 border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-slate-700 dark:border-slate-600 dark:text-white font-mono resize-none ${textareaClassName}`}
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onBlur={handleTextareaBlur}
@@ -362,7 +362,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
       {/* 错误信息 */}
       {error && (
-        <div className='mt-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md'>
+        <div className='mt-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg'>
           <p className='text-red-700 dark:text-red-400 text-sm'>{error}</p>
         </div>
       )}

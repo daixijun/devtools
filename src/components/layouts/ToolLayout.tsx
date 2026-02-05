@@ -30,7 +30,7 @@ const ToolLayout: React.FC<ToolLayoutProps> = ({
   return (
     <div className={`flex flex-col ${fullHeight ? 'h-full' : 'min-h-screen'} ${className}`}>
       {/* 页面头部 - 玻璃态效果 */}
-      <div className="flex-shrink-0 border-b border-slate-200 dark:border-slate-700 bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm transition-colors duration-300">
+      <div className="flex-shrink-0 border-b border-slate-200 dark:border-slate-700 bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm transition-colors duration-200">
         <div className={`${padding ? 'p-4' : 'p-3'}`}>
           <div className="flex items-start justify-between">
             <div className="flex-1">
@@ -51,7 +51,7 @@ const ToolLayout: React.FC<ToolLayoutProps> = ({
       </div>
 
       {/* 页面内容区域 */}
-      <div className={`flex-1 overflow-y-auto ${padding ? 'p-4' : ''} transition-colors duration-300`}>
+      <div className={`flex-1 overflow-y-auto ${padding ? 'p-4' : ''} transition-colors duration-200`}>
         {children}
       </div>
     </div>

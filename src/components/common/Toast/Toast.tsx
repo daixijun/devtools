@@ -22,7 +22,7 @@ export const Toast: React.FC<ToastProps> = ({
 }) => {
   const getTypeStyles = () => {
     const baseStyles =
-      'px-4 py-3 rounded-lg shadow-lg text-sm font-medium transition-all duration-300 max-w-sm'
+      'px-4 py-3 rounded-lg shadow-lg text-sm font-medium transition-all duration-200 max-w-sm'
 
     switch (type) {
       case 'success':
@@ -33,7 +33,7 @@ export const Toast: React.FC<ToastProps> = ({
         return `${baseStyles} bg-yellow-600 text-white border border-yellow-700`
       case 'info':
       default:
-        return `${baseStyles} bg-gray-800 text-white border border-gray-700 dark:bg-gray-100 dark:text-gray-900 dark:border-gray-200`
+        return `${baseStyles} bg-slate-800 text-white border border-slate-700 dark:bg-slate-100 dark:text-slate-900 dark:border-slate-200`
     }
   }
 
