@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:build": "tauri build",
+    "check:styles": "node scripts/check-styles.js",
+    "test:visual": "npm run check:styles"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
