@@ -427,8 +427,8 @@ const Settings: React.FC = () => {
                       onClick={() => handleThemeChange(themeOption)}
                       className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                         settings.theme === themeOption
-                          ? 'bg-blue-500 text-white'
-                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-gray-600'
+                          ? 'bg-primary-500 text-white'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'
                       }`}>
                       {themeOption === 'light' && '☀️ 浅色'}
                       {themeOption === 'dark' && '🌙 深色'}
@@ -473,8 +473,8 @@ const Settings: React.FC = () => {
                   <div
                     className={`w-11 h-6 rounded-full transition-colors ${
                       settings.showTray
-                        ? 'bg-blue-500'
-                        : 'bg-slate-300 dark:bg-gray-600'
+                        ? 'bg-primary-500'
+                        : 'bg-slate-300 dark:bg-slate-600'
                     } ${loading ? 'opacity-50' : ''}`}>
                     <div
                       className={`w-5 h-5 bg-white rounded-full shadow transform transition-transform ${
@@ -506,8 +506,8 @@ const Settings: React.FC = () => {
                   <div
                     className={`w-11 h-6 rounded-full transition-colors ${
                       settings.autoStart
-                        ? 'bg-blue-500'
-                        : 'bg-slate-300 dark:bg-gray-600'
+                        ? 'bg-primary-500'
+                        : 'bg-slate-300 dark:bg-slate-600'
                     } ${loading ? 'opacity-50' : ''}`}>
                     <div
                       className={`w-5 h-5 bg-white rounded-full shadow transform transition-transform ${
@@ -551,8 +551,8 @@ const Settings: React.FC = () => {
                   <div
                     className={`w-11 h-6 rounded-full transition-colors ${
                       settings.startMinimized && settings.showTray
-                        ? 'bg-blue-500'
-                        : 'bg-slate-300 dark:bg-gray-600'
+                        ? 'bg-primary-500'
+                        : 'bg-slate-300 dark:bg-slate-600'
                     } ${loading || !settings.showTray ? 'opacity-50' : ''}`}>
                     <div
                       className={`w-5 h-5 bg-white rounded-full shadow transform transition-transform ${
@@ -596,8 +596,8 @@ const Settings: React.FC = () => {
                   <div
                     className={`w-11 h-6 rounded-full transition-colors ${
                       settings.closeToTray && settings.showTray
-                        ? 'bg-blue-500'
-                        : 'bg-slate-300 dark:bg-gray-600'
+                        ? 'bg-primary-500'
+                        : 'bg-slate-300 dark:bg-slate-600'
                     } ${loading || !settings.showTray ? 'opacity-50' : ''}`}>
                     <div
                       className={`w-5 h-5 bg-white rounded-full shadow transform transition-transform ${
@@ -643,7 +643,7 @@ const Settings: React.FC = () => {
                     className={`px-3 py-2 text-sm rounded-lg transition-colors ${
                       isRecordingHotkey
                         ? 'bg-orange-500 text-white cursor-not-allowed'
-                        : 'bg-blue-500 hover:bg-blue-600 text-white'
+                        : 'bg-primary-500 hover:bg-primary-600 text-white'
                     }`}>
                     {isRecordingHotkey ? '按下新组合键...' : '修改'}
                   </button>
@@ -662,11 +662,11 @@ const Settings: React.FC = () => {
                 </div>
               )}
 
-              <div className='p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg'>
-                <p className='text-sm text-blue-700 dark:text-blue-300'>
+              <div className='p-3 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-lg'>
+                <p className='text-sm text-primary-700 dark:text-primary-300'>
                   💡 <strong>使用说明：</strong>
                 </p>
-                <ul className='text-xs text-blue-600 dark:text-blue-400 mt-1 space-y-1'>
+                <ul className='text-xs text-primary-600 dark:text-primary-400 mt-1 space-y-1'>
                   <li>• 全局快捷键可以在任何应用程序中使用</li>
                   <li>
                     • 默认快捷键：{isMac ? 'Option + 空格' : 'Alt + 空格'}

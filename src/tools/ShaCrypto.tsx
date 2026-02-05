@@ -340,7 +340,7 @@ const ShaCrypto: React.FC = () => {
           <button
             className={`px-4 py-2 font-medium text-sm ${
               activeTab === 'text'
-                ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400'
+                ? 'border-b-2 border-primary-500 text-primary-600 dark:text-primary-400'
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
             }`}
             onClick={() => setActiveTab('text')}>
@@ -349,7 +349,7 @@ const ShaCrypto: React.FC = () => {
           <button
             className={`px-4 py-2 font-medium text-sm ${
               activeTab === 'file'
-                ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400'
+                ? 'border-b-2 border-primary-500 text-primary-600 dark:text-primary-400'
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
             }`}
             onClick={() => setActiveTab('file')}>
@@ -358,7 +358,7 @@ const ShaCrypto: React.FC = () => {
           <button
             className={`px-4 py-2 font-medium text-sm ${
               activeTab === 'batch'
-                ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400'
+                ? 'border-b-2 border-primary-500 text-primary-600 dark:text-primary-400'
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
             }`}
             onClick={() => setActiveTab('batch')}>
@@ -571,7 +571,7 @@ const ShaCrypto: React.FC = () => {
                         </th>
                       </tr>
                     </thead>
-                    <tbody className='divide-y divide-gray-200 dark:divide-gray-700'>
+                    <tbody className='divide-y divide-slate-200 dark:divide-slate-700'>
                       {batchFiles.map((file, index) => (
                         <tr
                           key={index}
@@ -588,7 +588,7 @@ const ShaCrypto: React.FC = () => {
                               </span>
                             )}
                             {file.status === 'processing' && (
-                              <span className='inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'>
+                              <span className='inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200'>
                                 处理中
                               </span>
                             )}

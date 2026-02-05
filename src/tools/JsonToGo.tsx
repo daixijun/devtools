@@ -137,7 +137,7 @@ const JsonToGo: React.FC = () => {
                   type='checkbox'
                   checked={exportedFields}
                   onChange={(e) => setExportedFields(e.target.checked)}
-                  className='h-4 w-4 text-blue-600 focus:ring-primary-500 border-slate-300 rounded'
+                  className='h-4 w-4 text-primary-600 focus:ring-primary-500 border-slate-300 rounded'
                 />
                 <span className='text-base font-medium text-slate-700 dark:text-slate-300 ml-2 whitespace-nowrap'>
                   导出字段
@@ -150,7 +150,7 @@ const JsonToGo: React.FC = () => {
                   type='checkbox'
                   checked={isGo118OrAbove}
                   onChange={(e) => setIsGo118OrAbove(e.target.checked)}
-                  className='h-4 w-4 text-blue-600 focus:ring-primary-500 border-slate-300 rounded'
+                  className='h-4 w-4 text-primary-600 focus:ring-primary-500 border-slate-300 rounded'
                 />
                 <span className='text-base font-medium text-slate-700 dark:text-slate-300 ml-2 whitespace-nowrap'>
                   Go 1.18+ (any)
@@ -163,7 +163,7 @@ const JsonToGo: React.FC = () => {
                   type='checkbox'
                   checked={isGo124OrAbove}
                   onChange={(e) => setIsGo124OrAbove(e.target.checked)}
-                  className='h-4 w-4 text-blue-600 focus:ring-primary-500 border-slate-300 rounded'
+                  className='h-4 w-4 text-primary-600 focus:ring-primary-500 border-slate-300 rounded'
                 />
                 <span className='text-base font-medium text-slate-700 dark:text-slate-300 ml-2 whitespace-nowrap'>
                   Go 1.24+ (omitzero)
@@ -190,7 +190,7 @@ const JsonToGo: React.FC = () => {
                         [tag]: e.target.checked,
                       }))
                     }
-                    className='h-4 w-4 text-blue-600 focus:ring-primary-500 border-slate-300 rounded'
+                    className='h-4 w-4 text-primary-600 focus:ring-primary-500 border-slate-300 rounded'
                   />
                   <span className='text-base font-medium text-slate-700 dark:text-slate-300 ml-1 px-2 py-1'>
                     {tag}

@@ -392,7 +392,7 @@ const SubnetCalculator: React.FC = () => {
           {/* 输入区域 */}
           <div className='flex gap-3 mb-4'>
             <input
-              className='flex-1 p-3 border border-slate-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-blue-500 dark:bg-slate-700 dark:border-slate-600 dark:text-white'
+              className='flex-1 p-3 border border-slate-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500 dark:bg-slate-700 dark:border-slate-600 dark:text-white'
               placeholder={
                 ipVersion === 'ipv6'
                   ? '输入IPv6和前缀 (例如: 2001:db8::/64)'
@@ -404,18 +404,18 @@ const SubnetCalculator: React.FC = () => {
               onChange={(e) => setInput(e.target.value)}
             />
             <button
-              className='px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 whitespace-nowrap'
+              className='px-6 py-3 bg-primary-500 text-white rounded-lg hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 whitespace-nowrap'
               onClick={handleCalculate}>
               计算
             </button>
           </div>
 
           {/* 示例提示 */}
-          <div className='mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg'>
-            <h4 className='font-medium text-blue-800 dark:text-blue-200 mb-2'>
+          <div className='mb-4 p-3 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-lg'>
+            <h4 className='font-medium text-primary-800 dark:text-primary-200 mb-2'>
               示例格式:
             </h4>
-            <div className='text-sm text-blue-700 dark:text-blue-300 space-y-1'>
+            <div className='text-sm text-primary-700 dark:text-primary-300 space-y-1'>
               <div>
                 <strong>IPv4:</strong> 192.168.1.0/24 或 10.0.0.0/255.0.0.0
               </div>

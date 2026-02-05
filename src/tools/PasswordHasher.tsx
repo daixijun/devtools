@@ -244,7 +244,7 @@ const PasswordHasher: React.FC = () => {
           <button
             className={`px-6 py-3 font-medium text-sm transition-colors ${
               activeTab === 'hash'
-                ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
+                ? 'text-primary-600 dark:text-primary-400 border-b-2 border-primary-600 dark:border-primary-400'
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
             }`}
             onClick={() => setActiveTab('hash')}>
@@ -253,7 +253,7 @@ const PasswordHasher: React.FC = () => {
           <button
             className={`px-6 py-3 font-medium text-sm transition-colors ${
               activeTab === 'verify'
-                ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
+                ? 'text-primary-600 dark:text-primary-400 border-b-2 border-primary-600 dark:border-primary-400'
                 : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
             }`}
             onClick={() => setActiveTab('verify')}>
@@ -282,8 +282,8 @@ const PasswordHasher: React.FC = () => {
                       onClick={() => setAlgorithm(alg)}
                       className={`p-3 rounded-lg border-2 transition-all text-left ${
                         algorithm === alg
-                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                          : 'border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-gray-500'
+                          ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                          : 'border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500'
                       }`}>
                       <div className='flex items-center justify-between mb-1'>
                         <span className='font-medium text-slate-900 dark:text-white'>
@@ -425,14 +425,14 @@ const PasswordHasher: React.FC = () => {
               )}
 
               {/* 算法说明 */}
-              <div className='bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 p-4'>
-                <h4 className='text-sm font-medium text-blue-800 dark:text-blue-200 mb-2'>
+              <div className='bg-primary-50 dark:bg-primary-900/20 rounded-lg border border-primary-200 dark:border-primary-800 p-4'>
+                <h4 className='text-sm font-medium text-primary-800 dark:text-primary-200 mb-2'>
                   当前算法: {algorithmInfoMap[algorithm].name}
                 </h4>
-                <p className='text-xs text-blue-700 dark:text-blue-300 mb-2'>
+                <p className='text-xs text-primary-700 dark:text-primary-300 mb-2'>
                   {algorithmInfoMap[algorithm].description}
                 </p>
-                <p className='text-xs text-blue-600 dark:text-blue-400'>
+                <p className='text-xs text-primary-600 dark:text-primary-400'>
                   <strong>使用场景:</strong>{' '}
                   {algorithmInfoMap[algorithm].useCase}
                 </p>
@@ -459,8 +459,8 @@ const PasswordHasher: React.FC = () => {
                       onClick={() => setVerifyAlgorithm(alg)}
                       className={`p-3 rounded-lg border-2 transition-all text-left ${
                         verifyAlgorithm === alg
-                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                          : 'border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-gray-500'
+                          ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                          : 'border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500'
                       }`}>
                       <div className='flex items-center justify-between mb-1'>
                         <span className='font-medium text-slate-900 dark:text-white'>
@@ -600,7 +600,7 @@ const PasswordHasher: React.FC = () => {
                         ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200'
                         : verifyResult.isValid === false
                           ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200'
-                          : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200'
+                          : 'bg-primary-100 text-primary-800 dark:bg-primary-900/30 dark:text-primary-200'
                     }`}>
                     <div className='text-base font-medium'>
                       {verifyResult.message}

@@ -283,13 +283,13 @@ const FormatConverter: React.FC = () => {
               </span>
               <button
                 onClick={handleLoadExample}
-                className='px-3 py-1 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600'>
+                className='px-3 py-1 text-sm bg-primary-500 text-white rounded-lg hover:bg-primary-600'>
                 示例
               </button>
               <button
                 onClick={handleClearInput}
                 disabled={!input}
-                className='px-3 py-1 text-sm bg-slate-500 text-white rounded-lg hover:bg-gray-600 disabled:opacity-50'>
+                className='px-3 py-1 text-sm bg-slate-500 text-white rounded-lg hover:bg-slate-600 disabled:opacity-50'>
                 清空
               </button>
             </div>

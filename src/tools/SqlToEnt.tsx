@@ -265,12 +265,12 @@ CREATE TABLE posts (
                 <div className='flex items-center space-x-2'>
                   <button
                     onClick={loadExample}
-                    className='px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-primary-500'>
+                    className='px-3 py-1 text-sm bg-primary-500 text-white rounded hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500'>
                     示例
                   </button>
                   <button
                     onClick={clearAll}
-                    className='px-3 py-1 text-sm bg-slate-500 text-white rounded hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500'>
+                    className='px-3 py-1 text-sm bg-slate-500 text-white rounded hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-500'>
                     清空
                   </button>
                 </div>
@@ -306,7 +306,7 @@ CREATE TABLE posts (
                         onClick={() => setActiveTab(index)}
                         className={`px-4 py-2 text-sm font-medium whitespace-nowrap border-b-2 ${
                           activeTab === index
-                            ? 'border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20'
+                            ? 'border-primary-500 text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20'
                             : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:text-slate-400 dark:hover:text-slate-300'
                         }`}>
                         {tableName}.go

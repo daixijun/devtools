@@ -108,12 +108,12 @@ const Base64Converter: React.FC = () => {
     <ToolLayout title={getModeTitle()} subtitle={getModeSubtitle()}>
       <div className='flex flex-col h-full'>
         {/* 模式切换区域 - 现代设计 */}
-        <div className='flex-shrink-0 p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 transition-colors duration-300'>
+        <div className='flex-shrink-0 p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 transition-colors duration-200'>
           <div className='flex items-center justify-between'>
             <div className='flex items-center space-x-4'>
               <div className='flex items-center space-x-2 bg-slate-200/50 dark:bg-slate-700/50 rounded-lg p-1'>
                 <button
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 ${
                     mode === 'encode'
                       ? 'bg-white dark:bg-slate-600 text-primary-700 dark:text-primary-300 shadow-sm'
                       : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-600/50'
@@ -123,7 +123,7 @@ const Base64Converter: React.FC = () => {
                   编码
                 </button>
                 <button
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 ${
                     mode === 'decode'
                       ? 'bg-white dark:bg-slate-600 text-primary-700 dark:text-primary-300 shadow-sm'
                       : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-600/50'

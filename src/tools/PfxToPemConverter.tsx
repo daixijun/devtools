@@ -177,14 +177,14 @@ const PfxToPemConverter: React.FC = () => {
       <div className='flex flex-col h-full space-y-4 overflow-y-auto'>
         {/* OpenSSL命令提示 */}
         {showOpensslInfo && (
-          <div className='mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg'>
+          <div className='mb-4 p-4 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-lg'>
             <div className='flex items-center justify-between mb-3'>
-              <h3 className='text-sm font-medium text-blue-800 dark:text-blue-200'>
+              <h3 className='text-sm font-medium text-primary-800 dark:text-primary-200'>
                 📋 OpenSSL命令参考
               </h3>
               <button
                 onClick={() => setShowOpensslInfo(false)}
-                className='text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200'>
+                className='text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-200'>
                 <svg
                   className='w-4 h-4'
                   fill='none'
@@ -201,42 +201,42 @@ const PfxToPemConverter: React.FC = () => {
             </div>
             <div className='space-y-3 text-xs'>
               <div>
-                <p className='font-medium text-blue-800 dark:text-blue-200 mb-1'>
+                <p className='font-medium text-primary-800 dark:text-primary-200 mb-1'>
                   基本转换（无密码）：
                 </p>
-                <code className='block p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded font-mono text-blue-700 dark:text-blue-300'>
+                <code className='block p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded font-mono text-primary-700 dark:text-primary-300'>
                   openssl pkcs12 -in certificate.pfx -out certificate.pem -nodes
                 </code>
               </div>
               <div>
-                <p className='font-medium text-blue-800 dark:text-blue-200 mb-1'>
+                <p className='font-medium text-primary-800 dark:text-primary-200 mb-1'>
                   带密码转换：
                 </p>
-                <code className='block p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded font-mono text-blue-700 dark:text-blue-300'>
+                <code className='block p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded font-mono text-primary-700 dark:text-primary-300'>
                   openssl pkcs12 -in certificate.pfx -out certificate.pem -nodes
                   -password pass:yourpassword
                 </code>
               </div>
               <div>
-                <p className='font-medium text-blue-800 dark:text-blue-200 mb-1'>
+                <p className='font-medium text-primary-800 dark:text-primary-200 mb-1'>
                   仅导出证书（不含私钥）：
                 </p>
-                <code className='block p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded font-mono text-blue-700 dark:text-blue-300'>
+                <code className='block p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded font-mono text-primary-700 dark:text-primary-300'>
                   openssl pkcs12 -in certificate.pfx -out certificate.pem
                   -nokeys
                 </code>
               </div>
               <div>
-                <p className='font-medium text-blue-800 dark:text-blue-200 mb-1'>
+                <p className='font-medium text-primary-800 dark:text-primary-200 mb-1'>
                   仅导出私钥：
                 </p>
-                <code className='block p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded font-mono text-blue-700 dark:text-blue-300'>
+                <code className='block p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded font-mono text-primary-700 dark:text-primary-300'>
                   openssl pkcs12 -in certificate.pfx -out privatekey.pem
                   -nocerts -nodes
                 </code>
               </div>
             </div>
-            <p className='mt-3 text-xs text-blue-700 dark:text-blue-300 italic'>
+            <p className='mt-3 text-xs text-primary-700 dark:text-primary-300 italic'>
               💡
               此工具为可视化版本，上述命令仅供参考。转换结果与命令行工具完全一致。
             </p>
@@ -244,11 +244,11 @@ const PfxToPemConverter: React.FC = () => {
         )}
 
         {/* 使用说明 */}
-        <div className='mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg'>
-          <h3 className='text-sm font-medium text-blue-800 dark:text-blue-200 mb-2'>
+        <div className='mb-4 p-3 bg-primary-50 dark:bg-primary-900/20 rounded-lg'>
+          <h3 className='text-sm font-medium text-primary-800 dark:text-primary-200 mb-2'>
             💡 使用提示
           </h3>
-          <div className='text-xs text-blue-700 dark:text-blue-300 space-y-1'>
+          <div className='text-xs text-primary-700 dark:text-primary-300 space-y-1'>
             <p>• 选择PFX/P12文件，如有密码请输入</p>
             <p>• 点击"开始转换"获取PEM格式证书</p>
             <p>• 转换后可复制或下载PEM文件</p>
@@ -295,7 +295,7 @@ const PfxToPemConverter: React.FC = () => {
             />
             <button
               type='button'
-              className='px-3 py-2 bg-slate-200 text-slate-700 border border-l-0 border-slate-300 rounded-r-md hover:bg-slate-300 hover:text-slate-700 dark:bg-gray-600 dark:text-slate-200 dark:border-slate-600 dark:hover:bg-slate-500 dark:hover:text-slate-100 flex items-center justify-center'
+              className='px-3 py-2 bg-slate-200 text-slate-700 border border-l-0 border-slate-300 rounded-r-md hover:bg-slate-300 hover:text-slate-700 dark:bg-slate-600 dark:text-slate-200 dark:border-slate-600 dark:hover:bg-slate-500 dark:hover:text-slate-100 flex items-center justify-center'
               onClick={() => setShowPassword(!showPassword)}>
               {showPassword ? (
                 <svg

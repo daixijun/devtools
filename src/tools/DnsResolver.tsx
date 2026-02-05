@@ -146,7 +146,7 @@ const DnsResolver: React.FC = () => {
             <button
               className={`px-4 py-2 font-medium ${
                 activeTab === 'forward'
-                  ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
+                  ? 'text-primary-600 dark:text-primary-400 border-b-2 border-primary-600 dark:border-primary-400'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
               }`}
               onClick={() => setActiveTab('forward')}>
@@ -155,7 +155,7 @@ const DnsResolver: React.FC = () => {
             <button
               className={`px-4 py-2 font-medium ${
                 activeTab === 'reverse'
-                  ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
+                  ? 'text-primary-600 dark:text-primary-400 border-b-2 border-primary-600 dark:border-primary-400'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
               }`}
               onClick={() => setActiveTab('reverse')}>
@@ -180,7 +180,7 @@ const DnsResolver: React.FC = () => {
                         DNS 服务器
                       </label>
                       <select
-                        className='w-full p-2 border border-slate-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-blue-500 dark:bg-slate-700 dark:border-slate-600 dark:text-white'
+                        className='w-full p-2 border border-slate-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500 dark:bg-slate-700 dark:border-slate-600 dark:text-white'
                         value={selectedDnsServer}
                         onChange={(e) => setSelectedDnsServer(e.target.value)}>
                         <option value=''>选择预设 DNS 服务器</option>
@@ -198,7 +198,7 @@ const DnsResolver: React.FC = () => {
                       </label>
                       <input
                         type='text'
-                        className='w-full p-2 border border-slate-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-blue-500 dark:bg-slate-700 dark:border-slate-600 dark:text-white'
+                        className='w-full p-2 border border-slate-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500 dark:bg-slate-700 dark:border-slate-600 dark:text-white'
                         placeholder='例如: 8.8.8.8'
                         value={customDnsServer}
                         onChange={(e) => setCustomDnsServer(e.target.value)}
@@ -210,7 +210,7 @@ const DnsResolver: React.FC = () => {
                         记录类型
                       </label>
                       <select
-                        className='w-full p-2 border border-slate-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-blue-500 dark:bg-slate-700 dark:border-slate-600 dark:text-white'
+                        className='w-full p-2 border border-slate-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500 dark:bg-slate-700 dark:border-slate-600 dark:text-white'
                         value={recordType}
                         onChange={(e) => setRecordType(e.target.value as any)}>
                         <option value='ALL'>全部记录</option>
@@ -230,7 +230,7 @@ const DnsResolver: React.FC = () => {
                       </label>
                       <input
                         type='text'
-                        className='w-full p-2 border border-slate-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-blue-500 dark:bg-slate-700 dark:border-slate-600 dark:text-white'
+                        className='w-full p-2 border border-slate-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500 dark:bg-slate-700 dark:border-slate-600 dark:text-white'
                         placeholder='例如: www.example.com'
                         value={domain}
                         onChange={(e) => setDomain(e.target.value)}
@@ -289,7 +289,7 @@ const DnsResolver: React.FC = () => {
                                 DNS 记录:
                               </h4>
                               <div className='overflow-x-auto'>
-                                <table className='min-w-full divide-y divide-gray-200 dark:divide-gray-700'>
+                                <table className='min-w-full divide-y divide-slate-200 dark:divide-slate-700'>
                                   <thead className='bg-slate-100 dark:bg-slate-800'>
                                     <tr>
                                       <th className='px-4 py-2 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider'>
@@ -300,7 +300,7 @@ const DnsResolver: React.FC = () => {
                                       </th>
                                     </tr>
                                   </thead>
-                                  <tbody className='bg-white dark:bg-slate-700 divide-y divide-gray-200 dark:divide-gray-600'>
+                                  <tbody className='bg-white dark:bg-slate-700 divide-y divide-slate-200 dark:divide-slate-600'>
                                     {dnsResponse.records.map(
                                       (record: any, idx: number) => (
                                         <tr key={idx}>
@@ -408,7 +408,7 @@ const DnsResolver: React.FC = () => {
                       </label>
                       <input
                         type='text'
-                        className='w-full p-2 border border-slate-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-blue-500 dark:bg-slate-700 dark:border-slate-600 dark:text-white'
+                        className='w-full p-2 border border-slate-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500 dark:bg-slate-700 dark:border-slate-600 dark:text-white'
                         placeholder='例如: 8.8.8.8'
                         value={reverseIp}
                         onChange={(e) => setReverseIp(e.target.value)}
@@ -440,7 +440,7 @@ const DnsResolver: React.FC = () => {
                         批量反向解析 (每行一个 IP)
                       </label>
                       <textarea
-                        className='w-full p-2 border border-slate-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-blue-500 dark:bg-slate-700 dark:border-slate-600 dark:text-white'
+                        className='w-full p-2 border border-slate-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500 dark:bg-slate-700 dark:border-slate-600 dark:text-white'
                         rows={6}
                         placeholder='输入多个 IP 地址，每行一个'
                         value={batchIps}

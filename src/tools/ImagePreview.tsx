@@ -455,7 +455,7 @@ const ImagePreview: React.FC = () => {
             <Button onClick={handleUrlSubmit} disabled={!inputUrl.trim()}>
               加载
             </Button>
-            <label className='px-4 py-2 bg-slate-200 dark:bg-gray-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-500 cursor-pointer transition-colors'>
+            <label className='px-4 py-2 bg-slate-200 dark:bg-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-500 cursor-pointer transition-colors'>
               上传文件
               <input
                 type='file'
@@ -537,17 +537,17 @@ const ImagePreview: React.FC = () => {
                 <div className='absolute top-4 right-4 flex space-x-2'>
                   <button
                     onClick={resetView}
-                    className='px-3 py-1 bg-white dark:bg-slate-700 shadow rounded-lg text-sm text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-gray-600 transition-colors'>
+                    className='px-3 py-1 bg-white dark:bg-slate-700 shadow rounded-lg text-sm text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors'>
                     重置
                   </button>
                   <button
                     onClick={() => setIsFullscreen(true)}
-                    className='px-3 py-1 bg-white dark:bg-slate-700 shadow rounded-lg text-sm text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-gray-600 transition-colors'>
+                    className='px-3 py-1 bg-white dark:bg-slate-700 shadow rounded-lg text-sm text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors'>
                     全屏
                   </button>
                   <button
                     onClick={() => imageSrc && copyToClipboard(imageSrc)}
-                    className='px-3 py-1 bg-white dark:bg-slate-700 shadow rounded-lg text-sm text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-gray-600 transition-colors'>
+                    className='px-3 py-1 bg-white dark:bg-slate-700 shadow rounded-lg text-sm text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors'>
                     复制 URL
                   </button>
                 </div>
@@ -629,7 +629,7 @@ const ImagePreview: React.FC = () => {
                           scale: Math.min(5, viewState.scale + 0.2),
                         })
                       }
-                      className='w-full px-3 py-2 bg-white dark:bg-slate-700 shadow rounded text-sm text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-gray-600 transition-colors'>
+                      className='w-full px-3 py-2 bg-white dark:bg-slate-700 shadow rounded text-sm text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors'>
                       放大
                     </button>
                     <button
@@ -639,12 +639,12 @@ const ImagePreview: React.FC = () => {
                           scale: Math.max(0.5, viewState.scale - 0.2),
                         })
                       }
-                      className='w-full px-3 py-2 bg-white dark:bg-slate-700 shadow rounded text-sm text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-gray-600 transition-colors'>
+                      className='w-full px-3 py-2 bg-white dark:bg-slate-700 shadow rounded text-sm text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors'>
                       缩小
                     </button>
                     <button
                       onClick={resetView}
-                      className='w-full px-3 py-2 bg-white dark:bg-slate-700 shadow rounded text-sm text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-gray-600 transition-colors'>
+                      className='w-full px-3 py-2 bg-white dark:bg-slate-700 shadow rounded text-sm text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors'>
                       100%
                     </button>
                   </div>
@@ -728,8 +728,8 @@ const ImagePreview: React.FC = () => {
                   )}
                   {isSaving && (
                     <div className='flex items-center justify-center mt-2'>
-                      <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500'></div>
-                      <span className='ml-2 text-xs text-blue-500 dark:text-blue-400'>
+                      <div className='animate-spin rounded-full h-4 w-4 border-b-2 border-primary-500'></div>
+                      <span className='ml-2 text-xs text-primary-500 dark:text-primary-400'>
                         即将弹出保存对话框...
                       </span>
                     </div>

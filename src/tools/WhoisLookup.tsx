@@ -351,7 +351,7 @@ const WhoisLookup: React.FC = () => {
               <button
                 onClick={runBatch}
                 disabled={running || domains.length === 0}
-                className='px-3 py-2 rounded bg-blue-600 text-white text-sm disabled:opacity-50'>
+                className='px-3 py-2 rounded bg-primary-600 text-white text-sm disabled:opacity-50'>
                 {running ? '查询中...' : `开始查询 (${domains.length})`}
               </button>
               <button
@@ -368,7 +368,7 @@ const WhoisLookup: React.FC = () => {
               </button>
               <button
                 onClick={clearHistory}
-                className='px-3 py-2 rounded bg-slate-300 dark:bg-gray-600 text-sm'>
+                className='px-3 py-2 rounded bg-slate-300 dark:bg-slate-600 text-sm'>
                 清空历史
               </button>
             </div>
@@ -414,7 +414,7 @@ const WhoisLookup: React.FC = () => {
               {Object.values(results).map((r) => (
                 <tr
                   key={r.domain}
-                  className='border-b border-gray-100 dark:border-slate-700'>
+                  className='border-b border-slate-100 dark:border-slate-700'>
                   <td className='p-2'>
                     <input
                       type='checkbox'
@@ -483,7 +483,7 @@ const WhoisLookup: React.FC = () => {
                   ].map((field) => (
                     <tr
                       key={field}
-                      className='border-b border-gray-100 dark:border-slate-700'>
+                      className='border-b border-slate-100 dark:border-slate-700'>
                       <td className='p-2 font-medium text-slate-900 dark:text-slate-100'>
                         {field}
                       </td>

@@ -229,7 +229,7 @@ export const RegexTester: React.FC = () => {
               {testResult.matches.map((match, index) => (
                 <div
                   key={index}
-                  className='p-3 border-b last:border-b-0 border-gray-100 dark:border-slate-700'>
+                  className='p-3 border-b last:border-b-0 border-slate-100 dark:border-slate-700'>
                   <div className='grid grid-cols-2 gap-2 text-sm'>
                     <div>
                       <span className='font-medium text-slate-600 dark:text-slate-400'>
@@ -463,7 +463,7 @@ export const RegexTester: React.FC = () => {
               </label>
               {/* 匹配计数显示 */}
               {mode === 'test' && testResult && testResult.is_valid && (
-                <span className='text-sm text-blue-600 dark:text-blue-400 font-medium'>
+                <span className='text-sm text-primary-600 dark:text-primary-400 font-medium'>
                   找到 {testResult.match_count} 个匹配
                 </span>
               )}
@@ -605,7 +605,7 @@ export const RegexTester: React.FC = () => {
             value={testText}
             onChange={(e) => setTestText(e.target.value)}
             placeholder='输入要测试的文本...'
-            className={`w-full h-full p-3 border rounded-lg font-mono text-sm border-slate-300 dark:border-slate-600 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none relative z-20 ${
+            className={`w-full h-full p-3 border rounded-lg font-mono text-sm border-slate-300 dark:border-slate-600 placeholder-slate-500 dark:placeholder-slate-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none relative z-20 ${
               highlightedText
                 ? 'bg-transparent text-slate-900 dark:text-slate-100'
                 : 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100'

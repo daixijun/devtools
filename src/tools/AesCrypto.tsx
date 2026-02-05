@@ -207,7 +207,7 @@ const AesCrypto: React.FC = () => {
         <button
           className={`px-4 py-2 font-medium text-sm ${
             activeTab === 'encrypt'
-              ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400'
+              ? 'border-b-2 border-primary-500 text-primary-600 dark:text-primary-400'
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
           }`}
           onClick={() => setActiveTab('encrypt')}>
@@ -216,7 +216,7 @@ const AesCrypto: React.FC = () => {
         <button
           className={`px-4 py-2 font-medium text-sm ${
             activeTab === 'decrypt'
-              ? 'border-b-2 border-blue-500 text-blue-600 dark:text-blue-400'
+              ? 'border-b-2 border-primary-500 text-primary-600 dark:text-primary-400'
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
           }`}
           onClick={() => setActiveTab('decrypt')}>
@@ -239,7 +239,7 @@ const AesCrypto: React.FC = () => {
               onChange={(e) =>
                 setAesConfig({ ...aesConfig, mode: e.target.value as AesMode })
               }
-              className='w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg shadow-sm focus:outline-none focus:ring-primary-500 focus:border-blue-500 dark:bg-slate-700 dark:text-white'>
+              className='w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-slate-700 dark:text-white'>
               <option value='CBC'>CBC</option>
               <option value='ECB'>ECB</option>
               <option value='CFB'>CFB</option>
@@ -259,7 +259,7 @@ const AesCrypto: React.FC = () => {
                   keySize: Number(e.target.value) as 128 | 192 | 256,
                 })
               }
-              className='w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg shadow-sm focus:outline-none focus:ring-primary-500 focus:border-blue-500 dark:bg-slate-700 dark:text-white'>
+              className='w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-slate-700 dark:text-white'>
               <option value={128}>128 位</option>
               <option value={192}>192 位</option>
               <option value={256}>256 位</option>
@@ -274,7 +274,7 @@ const AesCrypto: React.FC = () => {
               onChange={(e) =>
                 setAesConfig({ ...aesConfig, padding: e.target.value as any })
               }
-              className='w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg shadow-sm focus:outline-none focus:ring-primary-500 focus:border-blue-500 dark:bg-slate-700 dark:text-white'>
+              className='w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-slate-700 dark:text-white'>
               <option value='Pkcs7'>PKCS#7</option>
               <option value='Iso97971'>ISO/IEC 9797-1</option>
               <option value='AnsiX923'>ANSI X9.23</option>
@@ -299,7 +299,7 @@ const AesCrypto: React.FC = () => {
                   value={encryptText}
                   onChange={(e) => setEncryptText(e.target.value)}
                   placeholder='请输入要加密的文本'
-                  className='w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg shadow-sm focus:outline-none focus:ring-primary-500 focus:border-blue-500 dark:bg-slate-700 dark:text-white'
+                  className='w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-slate-700 dark:text-white'
                   rows={4}
                 />
               </div>
@@ -320,7 +320,7 @@ const AesCrypto: React.FC = () => {
                   {encryptedText && (
                     <button
                       onClick={copyEncryptedText}
-                      className='absolute top-2 right-2 px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none shadow-sm'>
+                      className='absolute top-2 right-2 px-2 py-1 text-xs bg-primary-500 text-white rounded hover:bg-primary-600 focus:outline-none shadow-sm'>
                       {copied ? '已复制' : '复制'}
                     </button>
                   )}
@@ -356,11 +356,11 @@ const AesCrypto: React.FC = () => {
                       value={encryptIv}
                       onChange={(e) => setEncryptIv(e.target.value)}
                       placeholder='请输入16字符的IV (128位)'
-                      className='flex-1 px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-l-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-blue-500 dark:bg-slate-700 dark:text-white'
+                      className='flex-1 px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-l-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-slate-700 dark:text-white'
                     />
                     <button
                       onClick={() => generateRandomIv(true)}
-                      className='px-3 py-2 bg-slate-200 dark:bg-gray-600 text-slate-700 dark:text-slate-200 rounded-r-md hover:bg-slate-300 dark:hover:bg-slate-500 focus:outline-none'>
+                      className='px-3 py-2 bg-slate-200 dark:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-r-md hover:bg-slate-300 dark:hover:bg-slate-500 focus:outline-none'>
                       随机生成
                     </button>
                   </div>
@@ -404,7 +404,7 @@ const AesCrypto: React.FC = () => {
                   value={decryptText}
                   onChange={(e) => setDecryptText(e.target.value)}
                   placeholder='请输入要解密的文本'
-                  className='w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg shadow-sm focus:outline-none focus:ring-primary-500 focus:border-blue-500 dark:bg-slate-700 dark:text-white'
+                  className='w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-slate-700 dark:text-white'
                   rows={4}
                 />
               </div>
@@ -425,7 +425,7 @@ const AesCrypto: React.FC = () => {
                   {decryptedText && (
                     <button
                       onClick={copyDecryptedText}
-                      className='absolute top-2 right-2 px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none shadow-sm'>
+                      className='absolute top-2 right-2 px-2 py-1 text-xs bg-primary-500 text-white rounded hover:bg-primary-600 focus:outline-none shadow-sm'>
                       {copied ? '已复制' : '复制'}
                     </button>
                   )}
@@ -461,11 +461,11 @@ const AesCrypto: React.FC = () => {
                       value={decryptIv}
                       onChange={(e) => setDecryptIv(e.target.value)}
                       placeholder='请输入16字符的IV (128位)'
-                      className='flex-1 px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-l-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-blue-500 dark:bg-slate-700 dark:text-white'
+                      className='flex-1 px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-l-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 dark:bg-slate-700 dark:text-white'
                     />
                     <button
                       onClick={() => generateRandomIv(false)}
-                      className='px-3 py-2 bg-slate-200 dark:bg-gray-600 text-slate-700 dark:text-slate-200 rounded-r-md hover:bg-slate-300 dark:hover:bg-slate-500 focus:outline-none'>
+                      className='px-3 py-2 bg-slate-200 dark:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-r-md hover:bg-slate-300 dark:hover:bg-slate-500 focus:outline-none'>
                       随机生成
                     </button>
                   </div>

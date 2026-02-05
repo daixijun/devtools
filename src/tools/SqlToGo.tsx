@@ -235,12 +235,12 @@ CREATE TABLE posts (
             <div className='flex items-center space-x-2'>
               <button
                 onClick={handleLoadExample}
-                className='px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-primary-500'>
+                className='px-3 py-1 text-sm bg-primary-500 text-white rounded hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500'>
                 示例
               </button>
               <button
                 onClick={handleClearInput}
-                className='px-3 py-1 text-sm bg-slate-500 text-white rounded hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500'>
+                className='px-3 py-1 text-sm bg-slate-500 text-white rounded hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-500'>
                 清空
               </button>
             </div>

@@ -153,7 +153,7 @@ const PasswordGenerator: React.FC = () => {
                     strength === '非常强'
                       ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
                       : strength === '强'
-                      ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                      ? 'bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200'
                       : strength === '中等'
                       ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
                       : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
@@ -237,7 +237,7 @@ const PasswordGenerator: React.FC = () => {
                         e.target.checked,
                       )
                     }
-                    className='w-4 h-4 text-blue-600 bg-slate-100 border-slate-300 rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-slate-700 dark:border-slate-600'
+                    className='w-4 h-4 text-primary-600 bg-slate-100 border-slate-300 rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-slate-800 focus:ring-2 dark:bg-slate-700 dark:border-slate-600'
                   />
                   <label
                     htmlFor={typeKey}
@@ -268,7 +268,7 @@ const PasswordGenerator: React.FC = () => {
                     key={index}
                     type='button'
                     onClick={() => updateOption('customSymbols', group.value)}
-                    className='px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-gray-600 rounded border border-slate-300 dark:border-gray-500 transition-colors text-slate-900 dark:text-slate-100'>
+                    className='px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 rounded border border-slate-300 dark:border-slate-500 transition-colors text-slate-900 dark:text-slate-100'>
                     {group.name}
                   </button>
                 ))}
@@ -311,11 +311,11 @@ const PasswordGenerator: React.FC = () => {
         </div>
 
         {/* 密码强度说明 */}
-        <div className='bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 p-4'>
-          <h4 className='text-sm font-medium text-blue-800 dark:text-blue-200 mb-2'>
+        <div className='bg-primary-50 dark:bg-primary-900/20 rounded-lg border border-primary-200 dark:border-primary-800 p-4'>
+          <h4 className='text-sm font-medium text-primary-800 dark:text-primary-200 mb-2'>
             密码强度说明
           </h4>
-          <ul className='text-xs text-blue-700 dark:text-blue-300 space-y-1'>
+          <ul className='text-xs text-primary-700 dark:text-primary-300 space-y-1'>
             <li>• 长度 ≥ 12 且包含 4 种字符类型：非常强</li>
             <li>• 长度 ≥ 8 且包含 3-4 种字符类型：强</li>
             <li>• 长度 ≥ 8 且包含 2 种字符类型：中等</li>

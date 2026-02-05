@@ -354,14 +354,14 @@ const PemToPfxConverter: React.FC = () => {
       <div className='flex flex-col h-full space-y-6 overflow-y-auto'>
         {/* OpenSSL命令提示 */}
         {showOpensslInfo && (
-          <div className='mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg'>
+          <div className='mb-6 p-4 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-lg'>
             <div className='flex items-center justify-between mb-3'>
-              <h3 className='text-sm font-semibold text-blue-800 dark:text-blue-200'>
+              <h3 className='text-sm font-semibold text-primary-800 dark:text-primary-200'>
                 📋 OpenSSL命令参考
               </h3>
               <button
                 onClick={() => setShowOpensslInfo(false)}
-                className='text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300'>
+                className='text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-300'>
                 <svg
                   className='w-4 h-4'
                   fill='none'
@@ -378,44 +378,44 @@ const PemToPfxConverter: React.FC = () => {
             </div>
             <div className='space-y-3 text-xs'>
               <div>
-                <p className='font-medium text-blue-800 dark:text-blue-200 mb-1'>
+                <p className='font-medium text-primary-800 dark:text-primary-200 mb-1'>
                   基本转换：
                 </p>
-                <code className='block p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded font-mono text-blue-700 dark:text-blue-300'>
+                <code className='block p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded font-mono text-primary-700 dark:text-primary-300'>
                   openssl pkcs12 -export -out certificate.pfx -inkey private.key
                   -in certificate.crt
                 </code>
               </div>
               <div>
-                <p className='font-medium text-blue-800 dark:text-blue-200 mb-1'>
+                <p className='font-medium text-primary-800 dark:text-primary-200 mb-1'>
                   带私钥密码：
                 </p>
-                <code className='block p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded font-mono text-blue-700 dark:text-blue-300'>
+                <code className='block p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded font-mono text-primary-700 dark:text-primary-300'>
                   openssl pkcs12 -export -out certificate.pfx -inkey private.key
                   -in certificate.crt -passin pass:私钥密码 -passout
                   pass:PFX密码
                 </code>
               </div>
               <div>
-                <p className='font-medium text-blue-800 dark:text-blue-200 mb-1'>
+                <p className='font-medium text-primary-800 dark:text-primary-200 mb-1'>
                   从PEM文件：
                 </p>
-                <code className='block p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded font-mono text-blue-700 dark:text-blue-300'>
+                <code className='block p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded font-mono text-primary-700 dark:text-primary-300'>
                   openssl pkcs12 -export -out certificate.pfx -inkey key.pem -in
                   cert.pem -certfile chain.pem
                 </code>
               </div>
               <div>
-                <p className='font-medium text-blue-800 dark:text-blue-200 mb-1'>
+                <p className='font-medium text-primary-800 dark:text-primary-200 mb-1'>
                   仅证书和私钥：
                 </p>
-                <code className='block p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded font-mono text-blue-700 dark:text-blue-300'>
+                <code className='block p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded font-mono text-primary-700 dark:text-primary-300'>
                   openssl pkcs12 -export -out certificate.pfx -inkey private.pem
                   -in cert.pem
                 </code>
               </div>
             </div>
-            <p className='mt-3 text-xs text-blue-700 dark:text-blue-300 italic'>
+            <p className='mt-3 text-xs text-primary-700 dark:text-primary-300 italic'>
               💡
               此工具为可视化版本，上述命令仅供参考。转换结果与命令行工具完全一致。
             </p>
@@ -442,7 +442,7 @@ const PemToPfxConverter: React.FC = () => {
                 证书格式有效
               </div>
               {certInfo.hasPrivateKey && (
-                <div className='p-2 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded text-sm'>
+                <div className='p-2 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300 rounded text-sm'>
                   证书已包含私钥，无需额外输入
                 </div>
               )}

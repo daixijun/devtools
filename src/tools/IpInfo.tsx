@@ -203,7 +203,7 @@ const IpInfo: React.FC = () => {
                           type='button'
                           title='复制 IP'
                           onClick={() => copyToClipboard(info.ip as string)}
-                          className='p-1 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-white rounded hover:bg-slate-200 dark:hover:bg-gray-600 flex items-center justify-center'>
+                          className='p-1 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-white rounded hover:bg-slate-200 dark:hover:bg-slate-600 flex items-center justify-center'>
                           <svg
                             xmlns='http://www.w3.org/2000/svg'
                             className='w-4 h-4'
@@ -281,7 +281,7 @@ const IpInfo: React.FC = () => {
                 <button
                   type='button'
                   onClick={copyRawJson}
-                  className='px-2 py-1 text-sm bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-white rounded-lg hover:bg-slate-200 dark:hover:bg-gray-600'>
+                  className='px-2 py-1 text-sm bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-white rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600'>
                   复制全部
                 </button>
               </div>

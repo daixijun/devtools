@@ -673,7 +673,7 @@ const VideoConverter: React.FC = () => {
                   type='checkbox'
                   checked={useCustomOutputDir}
                   onChange={(e) => setUseCustomOutputDir(e.target.checked)}
-                  className='w-4 h-4 text-blue-600 focus:ring-primary-500 border-slate-300 rounded'
+                  className='w-4 h-4 text-primary-600 focus:ring-primary-500 border-slate-300 rounded'
                   disabled={isConverting || ffmpegInstalled === false}
                 />
                 <span className='ml-2 text-sm font-medium text-slate-700 dark:text-slate-300'>
@@ -769,7 +769,7 @@ const VideoConverter: React.FC = () => {
           {videoFiles.length > 0 ? (
             <div className='border border-slate-200 dark:border-slate-700 rounded-lg p-4 bg-slate-50 dark:bg-slate-800 h-full overflow-hidden flex flex-col'>
               <div className='overflow-y-auto flex-1 min-h-0'>
-                <table className='min-w-full divide-y divide-gray-200 dark:divide-gray-700'>
+                <table className='min-w-full divide-y divide-slate-200 dark:divide-slate-700'>
                   <thead className='bg-slate-100 dark:bg-slate-700 sticky top-0'>
                     <tr>
                       <th className='px-4 py-2 text-left text-xs font-medium text-slate-500 dark:text-slate-300 uppercase tracking-wider'>
@@ -795,13 +795,13 @@ const VideoConverter: React.FC = () => {
                       </th>
                     </tr>
                   </thead>
-                  <tbody className='divide-y divide-gray-200 dark:divide-gray-700'>
+                  <tbody className='divide-y divide-slate-200 dark:divide-slate-700'>
                     {videoFiles.map((file, index) => (
                       <tr
                         key={index}
                         className={
                           currentConvertingIndex === index
-                            ? 'bg-blue-50 dark:bg-blue-900/20'
+                            ? 'bg-primary-50 dark:bg-primary-900/20'
                             : ''
                         }>
                         <td className='px-4 py-2 text-sm'>
@@ -813,7 +813,7 @@ const VideoConverter: React.FC = () => {
                               </span>
                               <div className='flex items-center space-x-1 flex-1 min-w-0'>
                                 <span
-                                  className='text-xs text-slate-700 dark:text-slate-300 truncate inline-block cursor-pointer hover:text-blue-600 dark:hover:text-blue-400'
+                                  className='text-xs text-slate-700 dark:text-slate-300 truncate inline-block cursor-pointer hover:text-primary-600 dark:hover:text-primary-400'
                                   title={file.path}
                                   onClick={() =>
                                     file.path && copyToClipboard(file.path)
@@ -852,7 +852,7 @@ const VideoConverter: React.FC = () => {
                                 file.outputPath ? (
                                   <>
                                     <span
-                                      className='text-xs text-blue-600 dark:text-blue-400 truncate inline-block cursor-pointer hover:text-blue-800 dark:hover:text-blue-300'
+                                      className='text-xs text-primary-600 dark:text-primary-400 truncate inline-block cursor-pointer hover:text-primary-800 dark:hover:text-primary-300'
                                       title={file.outputPath}
                                       onClick={() =>
                                         file.outputPath &&
@@ -865,7 +865,7 @@ const VideoConverter: React.FC = () => {
                                         file.outputPath &&
                                         copyToClipboard(file.outputPath)
                                       }
-                                      className='text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200 flex-shrink-0'
+                                      className='text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-200 flex-shrink-0'
                                       title='复制转换后路径'>
                                       <svg
                                         className='w-3 h-3'
@@ -906,7 +906,7 @@ const VideoConverter: React.FC = () => {
                             </span>
                           )}
                           {file.status === 'converting' && (
-                            <span className='text-blue-600 dark:text-blue-400'>
+                            <span className='text-primary-600 dark:text-primary-400'>
                               转换中
                             </span>
                           )}
@@ -1019,7 +1019,7 @@ const VideoConverter: React.FC = () => {
                   </div>
                   <div className='w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2'>
                     <div
-                      className='bg-blue-600 h-2 rounded-full transition-all duration-200'
+                      className='bg-primary-600 h-2 rounded-full transition-all duration-200'
                       style={{
                         width: `${
                           ((currentConvertingIndex +

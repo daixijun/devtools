@@ -246,7 +246,7 @@ const JwtEncode: React.FC = () => {
             </label>
             <input
               type='number'
-              className='flex-1 p-2 border border-slate-300 dark:border-slate-600 rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-blue-500 dark:bg-slate-800 dark:text-white'
+              className='flex-1 p-2 border border-slate-300 dark:border-slate-600 rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-slate-800 dark:text-white'
               placeholder='输入有效期'
               value={expiresIn}
               onChange={(e) => setExpiresIn(e.target.value)}
@@ -262,7 +262,7 @@ const JwtEncode: React.FC = () => {
                 </label>
                 <input
                   type='text'
-                  className='flex-1 p-2 border border-slate-300 dark:border-slate-600 rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-blue-500 dark:bg-slate-800 dark:text-white'
+                  className='flex-1 p-2 border border-slate-300 dark:border-slate-600 rounded-lg shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-slate-800 dark:text-white'
                   placeholder='输入 Secret Key'
                   value={secretKey}
                   onChange={(e) => setSecretKey(e.target.value)}

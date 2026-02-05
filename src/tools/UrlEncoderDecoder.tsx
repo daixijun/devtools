@@ -40,7 +40,7 @@ const UrlEncoderDecoder: React.FC = () => {
               onClick={() => setMode('encode')}
               className={`px-3 py-1 rounded ${
                 mode === 'encode'
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-primary-600 text-white'
                   : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
               }`}>
               编码
@@ -49,7 +49,7 @@ const UrlEncoderDecoder: React.FC = () => {
               onClick={() => setMode('decode')}
               className={`px-3 py-1 rounded ${
                 mode === 'decode'
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-primary-600 text-white'
                   : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
               }`}>
               解码
@@ -57,7 +57,7 @@ const UrlEncoderDecoder: React.FC = () => {
           </div>
           <button
             onClick={handleSwap}
-            className='px-3 py-1 rounded bg-slate-300 dark:bg-gray-600 text-slate-700 dark:text-slate-300'>
+            className='px-3 py-1 rounded bg-slate-300 dark:bg-slate-600 text-slate-700 dark:text-slate-300'>
             交换输入/输出
           </button>
         </div>
@@ -79,7 +79,7 @@ const UrlEncoderDecoder: React.FC = () => {
         <div className='flex justify-center'>
           <button
             onClick={handleProcess}
-            className='px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors'>
+            className='px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors'>
             {mode === 'encode' ? '编码' : '解码'}
           </button>
         </div>

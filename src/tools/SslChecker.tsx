@@ -295,7 +295,7 @@ const SslChecker: React.FC = () => {
         showResults && sslInfo ? (
           <button
             onClick={handleBackToInput}
-            className='flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-gray-500'>
+            className='flex items-center gap-2 px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-500'>
             <svg
               className='w-4 h-4'
               fill='none'
@@ -320,8 +320,8 @@ const SslChecker: React.FC = () => {
               <label className='text-lg font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap'>
                 域名:
               </label>
-              <div className='flex items-center flex-1 min-w-0 w-full max-w-md border border-slate-300 rounded-lg shadow-sm focus-within:ring-2 focus-within:ring-blue-500 dark:border-slate-600'>
-                <span className='px-3 py-2 bg-slate-50 dark:bg-gray-600 text-slate-500 dark:text-slate-400 text-sm border-r border-slate-300 dark:border-slate-600 rounded-l-md'>
+              <div className='flex items-center flex-1 min-w-0 w-full max-w-md border border-slate-300 rounded-lg shadow-sm focus-within:ring-2 focus-within:ring-primary-500 dark:border-slate-600'>
+                <span className='px-3 py-2 bg-slate-50 dark:bg-slate-600 text-slate-500 dark:text-slate-400 text-sm border-r border-slate-300 dark:border-slate-600 rounded-l-md'>
                   https://
                 </span>
                 <input
@@ -342,7 +342,7 @@ const SslChecker: React.FC = () => {
                 type='button'
                 onClick={() => handleCheck()}
                 disabled={loading}
-                className='px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 whitespace-nowrap'>
+                className='px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 whitespace-nowrap'>
                 {loading ? '检测中...' : '开始检测'}
               </button>
             </div>
@@ -397,13 +397,13 @@ const SslChecker: React.FC = () => {
                   {recentDomains.map((recentDomain, index) => (
                     <div
                       key={index}
-                      className='group relative flex items-center bg-slate-100 dark:bg-slate-700 rounded-lg overflow-hidden hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors'>
+                      className='group relative flex items-center bg-slate-100 dark:bg-slate-700 rounded-lg overflow-hidden hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors'>
                       <button
                         onClick={() => handleRecentDomainClick(recentDomain)}
-                        className='px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex items-center gap-2'
+                        className='px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:text-primary-600 dark:hover:text-primary-400 transition-colors flex items-center gap-2'
                         title={`检测 ${recentDomain}`}>
                         <svg
-                          className='w-4 h-4 text-slate-400 group-hover:text-blue-500'
+                          className='w-4 h-4 text-slate-400 group-hover:text-primary-500'
                           fill='none'
                           stroke='currentColor'
                           viewBox='0 0 24 24'>
@@ -456,9 +456,9 @@ const SslChecker: React.FC = () => {
 
           {loading && (
             <div className='mb-4 p-6 bg-slate-100 dark:bg-slate-800 rounded-lg animate-pulse'>
-              <div className='h-4 bg-slate-300 dark:bg-gray-600 rounded mb-2'></div>
-              <div className='h-4 bg-slate-300 dark:bg-gray-600 rounded w-3/4 mb-2'></div>
-              <div className='h-4 bg-slate-300 dark:bg-gray-600 rounded w-1/2'></div>
+              <div className='h-4 bg-slate-300 dark:bg-slate-600 rounded mb-2'></div>
+              <div className='h-4 bg-slate-300 dark:bg-slate-600 rounded w-3/4 mb-2'></div>
+              <div className='h-4 bg-slate-300 dark:bg-slate-600 rounded w-1/2'></div>
             </div>
           )}
         </div>
@@ -483,7 +483,7 @@ const SslChecker: React.FC = () => {
                       onClick={() => setActiveTab(key as any)}
                       className={`py-4 px-1 border-b-2 font-medium text-sm ${
                         activeTab === key
-                          ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                          ? 'border-primary-500 text-primary-600 dark:text-primary-400'
                           : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:text-slate-400 dark:hover:text-slate-300'
                       }`}>
                       {label}
@@ -684,7 +684,7 @@ const SslChecker: React.FC = () => {
                                       className={`px-2 py-1 text-xs rounded ${
                                         isDeprecated
                                           ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border border-red-300 dark:border-red-700'
-                                          : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                                          : 'bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200'
                                       }`}>
                                       {version}
                                       {isDeprecated && (
@@ -850,7 +850,7 @@ const SslChecker: React.FC = () => {
                         .map(({ label, value, copyable }) => (
                           <div
                             key={label}
-                            className='flex items-start justify-between py-2 border-b border-gray-100 dark:border-slate-700 last:border-0'>
+                            className='flex items-start justify-between py-2 border-b border-slate-100 dark:border-slate-700 last:border-0'>
                             <span className='text-sm text-slate-600 dark:text-slate-400 min-w-0 w-32 flex-shrink-0'>
                               {label}:
                             </span>
@@ -1041,7 +1041,7 @@ const SslChecker: React.FC = () => {
                                     <div key={index} className='relative'>
                                       {/* Connection Line to Next Certificate */}
                                       {!isLast && (
-                                        <div className='absolute left-1/2 transform -translate-x-1/2 top-full w-0.5 h-4 bg-gray-400 dark:bg-slate-500 z-0'></div>
+                                        <div className='absolute left-1/2 transform -translate-x-1/2 top-full w-0.5 h-4 bg-slate-400 dark:bg-slate-500 z-0'></div>
                                       )}
 
                                       {/* Arrow pointing down */}
@@ -1064,7 +1064,7 @@ const SslChecker: React.FC = () => {
                                       <div
                                         className={`relative z-10 p-4 rounded-lg border-2 ${
                                           node.is_leaf
-                                            ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700'
+                                            ? 'bg-primary-50 dark:bg-primary-900/20 border-primary-300 dark:border-primary-700'
                                             : node.is_root
                                             ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700'
                                             : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700'
@@ -1074,7 +1074,7 @@ const SslChecker: React.FC = () => {
                                           <span
                                             className={`px-2 py-1 text-xs font-medium rounded-full ${
                                               node.is_leaf
-                                                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                                                ? 'bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200'
                                                 : node.is_root
                                                 ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
                                                 : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
@@ -1090,7 +1090,7 @@ const SslChecker: React.FC = () => {
                                           <span
                                             className={`px-2 py-1 text-xs font-medium rounded-full ${
                                               node.trust_status === 'end-entity'
-                                                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                                                ? 'bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200'
                                                 : node.trust_status ===
                                                   'self-signed'
                                                 ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
@@ -1207,7 +1207,7 @@ const SslChecker: React.FC = () => {
                                                   node.certificate.subject,
                                                 )
                                               }
-                                              className='text-xs px-2 py-1 bg-slate-100 dark:bg-gray-600 text-slate-700 dark:text-slate-300 rounded hover:bg-slate-200 dark:hover:bg-slate-500 flex items-center gap-1'>
+                                              className='text-xs px-2 py-1 bg-slate-100 dark:bg-slate-600 text-slate-700 dark:text-slate-300 rounded hover:bg-slate-200 dark:hover:bg-slate-500 flex items-center gap-1'>
                                               <svg
                                                 className='w-3 h-3'
                                                 fill='none'
@@ -1228,7 +1228,7 @@ const SslChecker: React.FC = () => {
                                                   node.certificate.fingerprint,
                                                 )
                                               }
-                                              className='text-xs px-2 py-1 bg-slate-100 dark:bg-gray-600 text-slate-700 dark:text-slate-300 rounded hover:bg-slate-200 dark:hover:bg-slate-500 flex items-center gap-1'>
+                                              className='text-xs px-2 py-1 bg-slate-100 dark:bg-slate-600 text-slate-700 dark:text-slate-300 rounded hover:bg-slate-200 dark:hover:bg-slate-500 flex items-center gap-1'>
                                               <svg
                                                 className='w-3 h-3'
                                                 fill='none'
@@ -1256,7 +1256,7 @@ const SslChecker: React.FC = () => {
                             <div className='mt-6 pt-4 border-t border-slate-300 dark:border-slate-600'>
                               <div className='flex flex-wrap gap-4 text-xs'>
                                 <div className='flex items-center gap-2'>
-                                  <div className='w-3 h-3 rounded-full bg-blue-300 dark:bg-blue-700'></div>
+                                  <div className='w-3 h-3 rounded-full bg-primary-300 dark:bg-primary-700'></div>
                                   <span className='text-slate-600 dark:text-slate-400'>
                                     叶子证书 (服务器)
                                   </span>
@@ -1352,7 +1352,7 @@ const SslChecker: React.FC = () => {
 
                             <div className='flex items-center gap-2'>
                               <svg
-                                className='w-4 h-4 text-blue-500'
+                                className='w-4 h-4 text-primary-500'
                                 fill='none'
                                 stroke='currentColor'
                                 viewBox='0 0 24 24'>
@@ -1401,9 +1401,9 @@ const SslChecker: React.FC = () => {
                     {sslInfo.protocol_support ? (
                       <div className='space-y-6'>
                         {sslInfo.server_cipher_order !== undefined && (
-                          <div className='p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg'>
+                          <div className='p-4 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-lg'>
                             <div className='flex items-center justify-between'>
-                              <span className='font-medium text-blue-800 dark:text-blue-200'>
+                              <span className='font-medium text-primary-800 dark:text-primary-200'>
                                 服务器加密套件顺序偏好:
                               </span>
                               <span
@@ -1417,7 +1417,7 @@ const SslChecker: React.FC = () => {
                                   : '客户端优先'}
                               </span>
                             </div>
-                            <div className='text-sm text-blue-700 dark:text-blue-300 mt-2'>
+                            <div className='text-sm text-primary-700 dark:text-primary-300 mt-2'>
                               {sslInfo.server_cipher_order
                                 ? '服务器按照自己的配置选择加密套件，忽略客户端的偏好。'
                                 : '服务器会尊重客户端提供的加密套件顺序。'}
@@ -1444,7 +1444,7 @@ const SslChecker: React.FC = () => {
                                       protocol.version.includes('TLS 1.3')
                                         ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
                                         : protocol.version.includes('TLS 1.2')
-                                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                                        ? 'bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200'
                                         : protocol.version.includes(
                                             'TLS 1.1',
                                           ) ||
@@ -1563,7 +1563,7 @@ const SslChecker: React.FC = () => {
                                         onClick={() =>
                                           copyToClipboard(cipher.name)
                                         }
-                                        className='p-1 hover:bg-slate-200 dark:hover:bg-gray-600 rounded ml-2'>
+                                        className='p-1 hover:bg-slate-200 dark:hover:bg-slate-600 rounded ml-2'>
                                         <svg
                                           className='w-4 h-4'
                                           fill='none'
@@ -1655,9 +1655,9 @@ const SslChecker: React.FC = () => {
                                     : value === 'MEDIUM'
                                     ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
                                     : value === 'LOW'
-                                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                                    ? 'bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200'
                                     : 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-200'
-                                  : 'bg-slate-50 text-slate-600 hover:bg-slate-100 dark:bg-gray-600 dark:text-slate-300 dark:hover:bg-slate-500'
+                                  : 'bg-slate-50 text-slate-600 hover:bg-slate-100 dark:bg-slate-600 dark:text-slate-300 dark:hover:bg-slate-500'
                               }`}>
                               {label} ({count})
                             </button>
@@ -1689,7 +1689,7 @@ const SslChecker: React.FC = () => {
                                         ? 'bg-orange-50 dark:bg-orange-900/20 border-b border-orange-200 dark:border-orange-800'
                                         : vuln.severity === 'MEDIUM'
                                         ? 'bg-yellow-50 dark:bg-yellow-900/20 border-b border-yellow-200 dark:border-yellow-800'
-                                        : 'bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800'
+                                        : 'bg-primary-50 dark:bg-primary-900/20 border-b border-primary-200 dark:border-primary-800'
                                       : 'bg-green-50 dark:bg-green-900/20 border-b border-green-200 dark:border-green-800'
                                   }`}>
                                   <div className='flex items-center gap-3'>
@@ -1712,7 +1712,7 @@ const SslChecker: React.FC = () => {
                                           ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
                                           : vuln.severity === 'MEDIUM'
                                           ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                                          : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                                          : 'bg-primary-100 text-primary-800 dark:bg-primary-900 dark:text-primary-200'
                                       }`}>
                                       {vuln.severity}
                                     </span>
@@ -1773,7 +1773,7 @@ const SslChecker: React.FC = () => {
                                           href={ref}
                                           target='_blank'
                                           rel='noopener noreferrer'
-                                          className='text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 block truncate'>
+                                          className='text-sm text-primary-600 hover:text-primary-800 dark:text-primary-400 dark:hover:text-primary-300 block truncate'>
                                           {ref}
                                         </a>
                                       ))}
@@ -1811,7 +1811,7 @@ const SslChecker: React.FC = () => {
                               </span>
                             </div>
                             <div>
-                              <span className='text-blue-600 dark:text-blue-400 font-medium'>
+                              <span className='text-primary-600 dark:text-primary-400 font-medium'>
                                 当前显示:{' '}
                                 {
                                   sslInfo.cve_vulnerabilities.filter(
@@ -1905,7 +1905,7 @@ const SslChecker: React.FC = () => {
                     {sslInfo.recommendations &&
                       sslInfo.recommendations.length > 0 && (
                         <div>
-                          <h4 className='font-medium text-blue-600 dark:text-blue-400 mb-3 flex items-center'>
+                          <h4 className='font-medium text-primary-600 dark:text-primary-400 mb-3 flex items-center'>
                             <svg
                               className='w-5 h-5 mr-2'
                               fill='none'
@@ -1924,8 +1924,8 @@ const SslChecker: React.FC = () => {
                             {sslInfo.recommendations.map((rec, index) => (
                               <div
                                 key={index}
-                                className='p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded'>
-                                <div className='text-sm text-blue-800 dark:text-blue-200'>
+                                className='p-3 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded'>
+                                <div className='text-sm text-primary-800 dark:text-primary-200'>
                                   {rec}
                                 </div>
                               </div>

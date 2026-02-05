@@ -85,7 +85,7 @@ const RightSideFullScreenCertificateView: React.FC<{
               onClick={() => setCurrentTab(0)}
               className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
                 currentTab === 0
-                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  ? 'border-primary-500 text-primary-600 dark:text-primary-400'
                   : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600'
               }`}>
               证书链概览
@@ -98,7 +98,7 @@ const RightSideFullScreenCertificateView: React.FC<{
                   onClick={() => setCurrentTab(index + 1)}
                   className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
                     currentTab === index + 1
-                      ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                      ? 'border-primary-500 text-primary-600 dark:text-primary-400'
                       : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600'
                   }`}>
                   证书 {index + 1} - {certType}
@@ -317,9 +317,9 @@ const CertificateChainVisualization: React.FC<{
         )
       case 0:
         return (
-          <div className='w-8 h-8 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center'>
+          <div className='w-8 h-8 bg-primary-100 dark:bg-primary-900/20 rounded-full flex items-center justify-center'>
             <svg
-              className='w-5 h-5 text-blue-600 dark:text-blue-400'
+              className='w-5 h-5 text-primary-600 dark:text-primary-400'
               fill='none'
               stroke='currentColor'
               viewBox='0 0 24 24'>
@@ -359,7 +359,7 @@ const CertificateChainVisualization: React.FC<{
       case 1:
         return 'border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/10'
       case 0:
-        return 'border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/10'
+        return 'border-primary-200 dark:border-primary-800 bg-primary-50 dark:bg-primary-900/10'
       default:
         return 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800'
     }
@@ -632,8 +632,8 @@ const CertificateChainVisualization: React.FC<{
             <span className='text-slate-600 dark:text-slate-400'>中间CA证书</span>
           </div>
           <div className='flex items-center space-x-2'>
-            <div className='w-4 h-4 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center'>
-              <div className='w-2 h-2 bg-blue-600 dark:text-blue-400 rounded-full'></div>
+            <div className='w-4 h-4 bg-primary-100 dark:bg-primary-900/20 rounded-full flex items-center justify-center'>
+              <div className='w-2 h-2 bg-primary-600 dark:text-primary-400 rounded-full'></div>
             </div>
             <span className='text-slate-600 dark:text-slate-400'>终端证书</span>
           </div>
@@ -1257,11 +1257,11 @@ const PemCertificateViewer: React.FC = () => {
 
           {/* 显示已上传的文件信息 */}
           {uploadedFileName && (
-            <div className='p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg'>
+            <div className='p-3 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-lg'>
               <div className='flex items-center justify-between'>
                 <div className='flex items-center space-x-2'>
                   <svg
-                    className='w-5 h-5 text-blue-600 dark:text-blue-400'
+                    className='w-5 h-5 text-primary-600 dark:text-primary-400'
                     fill='none'
                     stroke='currentColor'
                     viewBox='0 0 24 24'>
@@ -1272,10 +1272,10 @@ const PemCertificateViewer: React.FC = () => {
                       d='M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'
                     />
                   </svg>
-                  <span className='text-blue-800 dark:text-blue-200 font-medium'>
+                  <span className='text-primary-800 dark:text-primary-200 font-medium'>
                     已上传文件: {uploadedFileName}
                   </span>
-                  <span className='text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded'>
+                  <span className='text-xs px-2 py-1 bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 rounded'>
                     {fileType}
                   </span>
                 </div>
@@ -1319,7 +1319,7 @@ const PemCertificateViewer: React.FC = () => {
 
           {/* Base64解码选项（仅在文本输入时显示） */}
           {!uploadedData && (
-            <div className='p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg'>
+            <div className='p-4 bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-lg'>
               <div className='flex items-start space-x-3'>
                 <div className='flex items-center h-5'>
                   <input
@@ -1328,16 +1328,16 @@ const PemCertificateViewer: React.FC = () => {
                     type='checkbox'
                     checked={isBase64Decode}
                     onChange={(e) => setIsBase64Decode(e.target.checked)}
-                    className='w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-primary-500'
+                    className='w-4 h-4 text-primary-600 border-slate-300 rounded focus:ring-primary-500'
                   />
                 </div>
                 <div className='flex-1'>
                   <label
                     htmlFor='base64-decode'
-                    className='text-blue-800 dark:text-blue-200 font-medium'>
+                    className='text-primary-800 dark:text-primary-200 font-medium'>
                     Base64解码
                   </label>
-                  <p className='text-blue-700 dark:text-blue-300 text-sm mt-1'>
+                  <p className='text-primary-700 dark:text-primary-300 text-sm mt-1'>
                     如果输入的证书内容是Base64编码的，请勾选此选项进行解码后再解析
                   </p>
                 </div>
@@ -1366,9 +1366,9 @@ const PemCertificateViewer: React.FC = () => {
             (!output || output.length === 0) && (
               <div className='bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-8'>
                 <div className='flex flex-col items-center justify-center space-y-4'>
-                  <div className='w-16 h-16 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center'>
+                  <div className='w-16 h-16 bg-primary-100 dark:bg-primary-900/20 rounded-full flex items-center justify-center'>
                     <svg
-                      className='w-8 h-8 text-blue-600 dark:text-blue-400'
+                      className='w-8 h-8 text-primary-600 dark:text-primary-400'
                       fill='none'
                       stroke='currentColor'
                       viewBox='0 0 24 24'>
@@ -1435,7 +1435,7 @@ const PemCertificateViewer: React.FC = () => {
           {isLoading && (
             <div className='bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-8'>
               <div className='flex flex-col items-center justify-center space-y-4'>
-                <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500'></div>
+                <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500'></div>
                 <div className='text-center'>
                   <p className='text-slate-600 dark:text-slate-400 font-medium'>
                     正在解析证书...
@@ -1496,7 +1496,7 @@ const PemCertificateViewer: React.FC = () => {
                           onClick={() => setActiveTab(0)}
                           className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
                             activeTab === 0
-                              ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                              ? 'border-primary-500 text-primary-600 dark:text-primary-400'
                               : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600'
                           }`}>
                           证书链概览
@@ -1509,7 +1509,7 @@ const PemCertificateViewer: React.FC = () => {
                               onClick={() => setActiveTab(index + 1)}
                               className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
                                 activeTab === index + 1
-                                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                                  ? 'border-primary-500 text-primary-600 dark:text-primary-400'
                                   : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600'
                               }`}>
                               证书 {index + 1} - {certType}

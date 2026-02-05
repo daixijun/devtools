@@ -130,13 +130,13 @@ const TimestampConverter: React.FC = () => {
                     <div className='flex'>
                       <input
                         type='text'
-                        className='w-full p-1 border border-slate-300 rounded-l-md shadow-sm focus:ring-primary-500 focus:border-blue-500 dark:bg-slate-700 dark:border-slate-600 dark:text-white'
+                        className='w-full p-1 border border-slate-300 rounded-l-md shadow-sm focus:ring-primary-500 focus:border-primary-500 dark:bg-slate-700 dark:border-slate-600 dark:text-white'
                         placeholder='输入时间戳或日期时间'
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
                       />
                       <button
-                        className='min-w-[80px] px-1 py-1 bg-blue-500 text-white rounded-r-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2'
+                        className='min-w-[80px] px-1 py-1 bg-primary-500 text-white rounded-r-md hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2'
                         onClick={useCurrentTime}>
                         当前时间
                       </button>
@@ -151,7 +151,7 @@ const TimestampConverter: React.FC = () => {
                     </label>
                     <div className='flex-1'>
                       <select
-                        className='w-full p-4 border border-slate-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-blue-500 dark:bg-slate-700 dark:border-slate-600 dark:text-white'
+                        className='w-full p-4 border border-slate-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500 dark:bg-slate-700 dark:border-slate-600 dark:text-white'
                         value={conversionType}
                         onChange={(e) =>
                           setConversionType(
@@ -180,7 +180,7 @@ const TimestampConverter: React.FC = () => {
                 </label>
                 <div className='flex-1'>
                   <select
-                    className='w-full p-4 border border-slate-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-blue-500 dark:bg-slate-700 dark:border-slate-600 dark:text-white'
+                    className='w-full p-4 border border-slate-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500 dark:bg-slate-700 dark:border-slate-600 dark:text-white'
                     value={timeZone}
                     onChange={(e) => setTimeZone(e.target.value)}>
                     {allTimeZones.map(
@@ -219,7 +219,7 @@ const TimestampConverter: React.FC = () => {
             )}
 
             <button
-              className='px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2'
+              className='px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2'
               onClick={handleConvert}>
               转换
             </button>
@@ -231,7 +231,7 @@ const TimestampConverter: React.FC = () => {
                 </label>
                 <div className='flex-1'>
                   <input
-                    className='w-full p-1 border border-slate-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-blue-500 dark:bg-slate-700 dark:border-slate-600 dark:text-white'
+                    className='w-full p-1 border border-slate-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500 dark:bg-slate-700 dark:border-slate-600 dark:text-white'
                     placeholder='转换结果'
                     value={convertedValue}
                     readOnly
