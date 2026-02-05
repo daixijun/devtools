@@ -173,11 +173,10 @@ const JsonFormatter: React.FC = () => {
                     输出长度: {output.length}
                   </div>
                   <Button
-                    variant={copied ? 'ghost' : 'primary'}
+                    variant={copied ? 'success' : 'primary'}
                     size='sm'
                     onClick={handleCopyOutput}
-                    disabled={!output || !!error}
-                    className={copied ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900 dark:text-green-200 border-green-300 dark:border-green-700' : ''}>
+                    disabled={!output || !!error}>
                     {copied ? '已复制 ✓' : '复制结果'}
                   </Button>
                 </div>

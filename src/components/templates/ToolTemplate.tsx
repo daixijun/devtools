@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { ToolLayout } from '../layouts'
 import { Button, InputField } from '../common'
 import { useCopyToClipboard } from '../../hooks'

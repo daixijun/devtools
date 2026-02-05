@@ -1349,7 +1349,7 @@ const PemCertificateViewer: React.FC = () => {
         {/* 操作按钮区域 */}
         <div>
           <Button
-            variant={copied ? 'ghost' : 'primary'}
+            variant='primary'
             size='md'
             onClick={handleParseCertificate}
             disabled={isLoading || (!input.trim() && !uploadedData)}
@@ -1518,7 +1518,7 @@ const PemCertificateViewer: React.FC = () => {
                         })}
                       </nav>
                       <Button
-                        variant={copied ? 'ghost' : 'primary'}
+                        variant='primary'
                         size='sm'
                         onClick={() => setIsRightSideFullScreen(true)}
                         className='flex items-center space-x-2'>

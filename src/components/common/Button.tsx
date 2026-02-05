@@ -5,7 +5,7 @@ interface ButtonProps {
   children: React.ReactNode
   loading?: boolean
   disabled?: boolean
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger'
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'success'
   size?: 'sm' | 'md' | 'lg'
   className?: string
   type?: 'button' | 'submit'
@@ -100,6 +100,12 @@ const Button: React.FC<ButtonProps> = ({
       'bg-red-500 text-white hover:bg-red-600 ' +
       'disabled:bg-red-500 disabled:hover:bg-red-500 ' +
       'shadow-md',
+    success:
+      'bg-green-100 text-green-700 hover:bg-green-200 ' +
+      'dark:bg-green-900 dark:text-green-200 dark:hover:bg-green-800 ' +
+      'border border-green-300 dark:border-green-700 ' +
+      'disabled:bg-green-100 disabled:hover:bg-green-100 ' +
+      'dark:disabled:bg-green-900 dark:disabled:hover:bg-green-900',
   }
 
   // 渲染内容 (loading 或 children + icon)

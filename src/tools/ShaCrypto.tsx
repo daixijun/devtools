@@ -409,11 +409,10 @@ const ShaCrypto: React.FC = () => {
                   {getAlgorithmName(algorithm)} 哈希值
                 </h3>
                 <Button
-                  variant={copied ? 'ghost' : 'primary'}
+                  variant={copied ? 'success' : 'primary'}
                   size='sm'
                   onClick={copyTextSha}
-                  disabled={!textShaHash || !!textError}
-                  className={copied ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900 dark:text-green-200 border-green-300 dark:border-green-700' : ''}>
+                  disabled={!textShaHash || !!textError}>
                   {copied ? '已复制 ✓' : '复制结果'}
                 </Button>
               </div>
@@ -451,7 +450,7 @@ const ShaCrypto: React.FC = () => {
                   disabled // 使用disabled替代readOnly
                   className='flex-1'
                 />
-                <Button variant={copied ? 'ghost' : 'primary'} onClick={selectFile}>
+                <Button variant='secondary' onClick={selectFile}>
                   选择文件
                 </Button>
               </div>
@@ -471,11 +470,10 @@ const ShaCrypto: React.FC = () => {
                   {getAlgorithmName(algorithm)} 哈希值
                 </h3>
                 <Button
-                  variant={copied ? 'ghost' : 'primary'}
+                  variant={copied ? 'success' : 'primary'}
                   size='sm'
                   onClick={copyFileSha}
-                  disabled={!fileShaHash || !!fileError || isProcessingFile}
-                  className={copied ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900 dark:text-green-200 border-green-300 dark:border-green-700' : ''}>
+                  disabled={!fileShaHash || !!fileError || isProcessingFile}>
                   {copied ? '已复制 ✓' : '复制结果'}
                 </Button>
               </div>
@@ -511,7 +509,7 @@ const ShaCrypto: React.FC = () => {
                     disabled={batchFiles.length === 0}>
                     清空
                   </Button>
-                  <Button variant={copied ? 'ghost' : 'primary'} onClick={selectBatchFiles}>
+                  <Button variant='secondary' onClick={selectBatchFiles}>
                     选择文件
                   </Button>
                 </div>
@@ -526,14 +524,11 @@ const ShaCrypto: React.FC = () => {
                   </h3>
                   <div className='flex items-center space-x-2'>
                     <Button
-                      variant='secondary'
+                      variant={copied ? 'success' : 'secondary'}
                       size='sm'
                       onClick={copyAllShaResults}
                       disabled={
                         !batchFiles.some((f) => f.status === 'completed')
-                      }
-                      className={
-                        copied ? 'bg-green-600 hover:bg-green-700' : ''
                       }>
                       {copied ? '已复制 ✓' : '复制结果'}
                     </Button>

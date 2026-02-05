@@ -5,6 +5,7 @@ import React, { useState } from 'react'
 import { Button } from '../components/common'
 import FileUpload from '../components/common/FileUpload'
 import { ToolLayout } from '../components/layouts'
+import { useCopyToClipboard } from '../hooks'
 
 interface PfxConversionResult {
   certificates: string[]
@@ -23,6 +24,7 @@ const PfxToPemConverter: React.FC = () => {
   const [result, setResult] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [showOpensslInfo, setShowOpensslInfo] = useState(false)
+  const { copy, copied } = useCopyToClipboard()
 
   // 处理二进制文件数据
   const handleBinaryFileData = (fileName: string, data: Uint8Array) => {
@@ -112,16 +114,10 @@ const PfxToPemConverter: React.FC = () => {
   }
 
   // 复制结果到剪贴板
-  const copyToClipboard = () => {
-    navigator.clipboard
-      .writeText(result)
-      .then(() => {
-        setError('已复制到剪贴板')
-        setTimeout(() => setError(''), 2000)
-      })
-      .catch(() => {
-        setError('复制失败')
-      })
+  const copyToClipboard = async () => {
+    if (result) {
+      await copy(result)
+    }
   }
 
   // 下载PEM文件
@@ -337,7 +333,7 @@ const PfxToPemConverter: React.FC = () => {
         {/* 操作按钮区域 */}
         <div className='mb-6'>
           <Button
-            variant={copied ? 'ghost' : 'primary'}
+            variant='primary'
             size='lg'
             onClick={performConversion}
             disabled={isLoading || !fileBuffer}
@@ -354,10 +350,10 @@ const PfxToPemConverter: React.FC = () => {
                 转换结果:
               </label>
               <div className='space-x-2'>
-                <Button variant={copied ? 'ghost' : 'primary'} size='sm' onClick={copyToClipboard}>
+                <Button variant={copied ? 'success' : 'primary'} size='sm' onClick={copyToClipboard}>
                   复制结果
                 </Button>
-                <Button variant={copied ? 'ghost' : 'primary'} size='sm' onClick={downloadPem}>
+                <Button variant='secondary' size='sm' onClick={downloadPem}>
                   下载PEM
                 </Button>
               </div>

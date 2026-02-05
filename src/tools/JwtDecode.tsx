@@ -363,7 +363,7 @@ const JwtDecode: React.FC = () => {
                 {/* 验证按钮 */}
                 <div className='flex justify-center'>
                   <Button
-                    variant={copied ? 'ghost' : 'primary'}
+                    variant={copied ? 'success' : 'primary'}
                     size='md'
                     onClick={handleVerifyJWT}
                     disabled={
@@ -467,12 +467,9 @@ const JwtDecode: React.FC = () => {
                   </h3>
                   {header && (
                     <Button
-                      variant='secondary'
+                      variant={copied ? 'success' : 'secondary'}
                       size='sm'
-                      onClick={handleCopyHeader}
-                      className={
-                        copied ? 'bg-green-600 hover:bg-green-700' : ''
-                      }>
+                      onClick={handleCopyHeader}>
                       {copied ? '已复制 ✓' : '复制'}
                     </Button>
                   )}
@@ -504,12 +501,9 @@ const JwtDecode: React.FC = () => {
                   </h3>
                   {payload && (
                     <Button
-                      variant='secondary'
+                      variant={copied ? 'success' : 'secondary'}
                       size='sm'
-                      onClick={handleCopyPayload}
-                      className={
-                        copied ? 'bg-green-600 hover:bg-green-700' : ''
-                      }>
+                      onClick={handleCopyPayload}>
                       {copied ? '已复制 ✓' : '复制'}
                     </Button>
                   )}
@@ -542,10 +536,9 @@ const JwtDecode: React.FC = () => {
                 </h3>
                 {signature && (
                   <Button
-                    variant='secondary'
+                    variant={copied ? 'success' : 'secondary'}
                     size='sm'
-                    onClick={handleCopySignature}
-                    className={copied ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900 dark:text-green-200 border-green-300 dark:border-green-700' : ''}>
+                    onClick={handleCopySignature}>
                     {copied ? '已复制 ✓' : '复制'}
                   </Button>
                 )}

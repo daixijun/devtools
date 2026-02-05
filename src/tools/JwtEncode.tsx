@@ -301,7 +301,7 @@ const JwtEncode: React.FC = () => {
         {/* 生成JWT按钮 */}
         <div className='w-full flex-shrink-0'>
           <Button
-            variant={copied ? 'ghost' : 'primary'}
+            variant='primary'
             size='lg'
             onClick={handleGenerate}
             disabled={
@@ -324,10 +324,9 @@ const JwtEncode: React.FC = () => {
               </h3>
               {!output.startsWith('生成出错') && (
                 <Button
-                  variant={copied ? 'ghost' : 'primary'}
+                  variant={copied ? 'success' : 'primary'}
                   size='sm'
-                  onClick={handleCopyOutput}
-                  className={copied ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900 dark:text-green-200 border-green-300 dark:border-green-700' : ''}>
+                  onClick={handleCopyOutput}>
                   {copied ? '已复制 ✓' : '复制JWT'}
                 </Button>
               )}

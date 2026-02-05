@@ -29,7 +29,7 @@ import { errorUtils } from '../utils'
  * @param options - 配置选项
  * @returns 工具状态和处理函数
  */
-export interface UseToolProcessorOptions<T> {
+export interface UseToolProcessorOptions {
   /** 防抖延迟(毫秒),默认 200 */
   debounceMs?: number
   /** 验证函数,返回错误消息或 null */
@@ -51,7 +51,7 @@ export interface UseToolProcessorReturn<T> {
 
 export function useToolProcessor<T>(
   processor: (input: string) => T,
-  options: UseToolProcessorOptions<T> = {}
+  options: UseToolProcessorOptions = {}
 ): UseToolProcessorReturn<T> {
   const { debounceMs = 200, validate } = options
 

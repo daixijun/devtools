@@ -640,7 +640,7 @@ const PemToPfxConverter: React.FC = () => {
         {/* 操作按钮区域 */}
         <div>
           <Button
-            variant={copied ? 'ghost' : 'primary'}
+            variant='primary'
             size='lg'
             onClick={convertPEMtoPFX}
             disabled={
@@ -684,7 +684,7 @@ const PemToPfxConverter: React.FC = () => {
                 转换成功！文件大小：{(pfxData.length / 1024).toFixed(2)} KB
               </div>
               <Button
-                variant={copied ? 'ghost' : 'primary'}
+                variant='secondary'
                 size='sm'
                 onClick={downloadPFX}
                 className='w-full'>
