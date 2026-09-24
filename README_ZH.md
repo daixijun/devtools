@@ -1,89 +1,103 @@
 # 开发者工具箱
 
-一个基于 Tauri 2 + React 的桌面开发者工具箱应用
+基于 **Tauri 2 + React 18 + TypeScript** 的 Spotlight 风格桌面开发者工具箱。7 大分类共 31 个开发工具，通过系统级全局快捷键随时呼出，支持 macOS、Windows 和 Linux。
+
+> 📖 English: [README.md](README.md) · 详细工具使用指南：[docs/tools.md](docs/tools.md)
 
 ## ✨ 功能特性
 
 ### 编码/解码工具
 
-- **Base64 编解码** - 集成Base64编码和解码功能的工具，支持模式切换
-- **URL 编解码** - URL编码和解码工具
-- **AES 加密/解密** - AES加密和解密工具
-- **MD5 加密** - MD5哈希生成工具
-- **SHA 哈希加密** - SHA哈希生成工具
-- **JWT 生成** - JWT令牌生成工具
-- **JWT 解码** - JWT令牌解码和验证
-- **密码生成器** - 生成可自定义的安全密码
-- **密码加密验证** - 密码加密和验证工具
+- **Base64 编解码** - 支持文本和文件的 Base64 编解码，实时转换并校验格式
+- **URL 编解码** - URL 百分号编码转换
+- **AES 加密/解密** - 支持 CBC/ECB/CFB/OFB/CTR 模式、128/192/256 位密钥、多种填充方式，可随机生成 IV
+- **MD5 加密** - 文本、单文件、批量文件哈希计算，支持一键复制和导出 `.txt`
+- **SHA 哈希加密** - 支持 SHA-1/224/256/384/512 和 SHA-3，覆盖文本和文件
+- **JWT 生成** - 自定义 Header/Payload，支持 HS*/RS* 签名，自动写入 `iat`/`exp` 有效期
+- **JWT 解码** - 解析 Header/Payload/签名并支持签名验证（共享密钥或 RSA 公钥）
+- **密码生成器** - 4–64 位密码，可选字符类型、特殊符号预设分组，带强度评级
+- **密码加密验证** - 支持 bcrypt、PBKDF2、SHA-256/512、MD5 的加密与比对（可调轮数/迭代次数）
+- **RSA 密钥对生成** - 2048/3072/4096 位密钥；私钥支持 PKCS#8/PKCS#1，公钥支持 PEM (SPKI)/PKCS#1/OpenSSH 格式
 
 ### 证书工具
 
-- **证书查看器** - PEM 证书分析和信息显示
-- **PEM 转 PFX 转换器** - 将 PEM 证书转换为 PFX 格式
-- **PFX 转 PEM 转换器** - 将 PFX 证书转换为 PEM 格式
-- **SSL 证书检查器** - 从 URL 检查 SSL 证书信息
+- **证书查看器** - 解析 PEM/PFX 证书及完整证书链（终端/中间 CA/根 CA），有效期检查、链完整性与**证书顺序检测**，支持一键复制正确顺序的证书
+- **CSR 查看** - 解析 PKCS#10 证书签名请求：主题、公钥、签名算法、请求扩展；可选私钥匹配校验
+- **CSR 生成** - 生成 PKCS#10 CSR，支持 RSA（2048–4096）/ECC（P-256/384/521）密钥与 SAN 扩展，CSR/私钥/公钥均可下载
+- **PEM 转 PFX** - 将 PEM 证书（支持加密私钥）转换为 PFX/PKCS#12 格式
+- **PFX 转 PEM** - 从 PFX/PKCS#12 文件提取证书和私钥
+- **在线 SSL 检测** - 在线检测：安全评分、SSL Labs 等级、证书链、加密套件、CVE 漏洞列表与加固建议
 
 ### 网络工具
 
-- **子网掩码计算器** - 子网计算和IP地址操作
-- **IP 地址信息查询** - IP地址详细信息和地理位置查询
-- **域名 Whois 查询** - 域名Whois信息查询
+- **子网掩码计算器** - IPv4/IPv6 CIDR 计算：网络地址、广播地址、可用 IP 范围、前缀详情
+- **IP 地址信息查询** - 查询本机或任意 IPv4/IPv6 的地理位置与运营商信息，多数据源结果汇总
+- **DNS 解析工具** - 并发查询多台 DNS 服务器的 A/AAAA/CNAME/MX/TXT/NS/SOA 记录；支持单个和批量反向解析（PTR）
+- **域名 Whois 查询** - 批量查询，RDAP 优先多数据源自动切换，24 小时结果缓存、查询历史，支持导出 CSV/JSON
 
-### 数据格式工具
+### 数据格式转换
 
-- **JSON 格式化** - JSON 格式化、验证和美化打印
-- **格式转换器** - JSON、YAML、TOML 之间的多格式转换
-- **JSON 转 Go 结构体** - 从 JSON 生成 Go 结构体定义
-
-### 数据库工具
-
-- **SQL 转 Go 结构体** - 从 SQL 架构生成 Go 结构体定义，支持多表
-- **SQL 转 Go Ent ORM** - 从 SQL 架构生成 Go Ent ORM 架构，支持多表
+- **JSON 格式化** - JSON 美化、压缩、去除转义，带语法高亮
+- **格式转换器** - JSON、YAML、TOML 三者互转
+- **JSON 转 Go 结构体** - 可选标签（json/yaml/gorm/db/sql/toml/env/ini），支持 Go 1.18 `any` 与 Go 1.24 `omitzero`
+- **SQL 转 Go 结构体** - 多表 `CREATE TABLE` 解析，无符号类型映射、表名单数化、反引号处理
+- **SQL 转 Go Ent ORM** - 生成 Ent Schema，支持边缘关系、Mixin、Hooks、Policy、软删除、UUID 主键等选项
 
 ### 媒体格式转换
 
-- **图片格式转换** - 在不同图片格式之间转换
-- **视频格式转换** - 在不同视频格式之间转换
+- **图片格式转换** - PNG/JPEG/WebP/BMP/GIF/TIFF/ICO/HEIC 互转，支持尺寸调整、移除 EXIF、批量处理
+- **图片预览器** - 支持缩放/平移的图片查看器，可输入 URL、粘贴图片或打开本地文件；支持重新编码另存为其他格式
+- **视频格式转换** - 基于系统 FFmpeg 在 MP4/WebM/AVI/MKV 等格式间转换，带环境检测、批量模式和逐文件进度
+- **图片压缩工具** - 无损优化（oxipng/zopfli）或质量压缩（TinyPNG 式调色板量化），支持等比缩放、移除 EXIF、批量处理和压缩前后滑块对比
 
 ### 开发工具
 
-- **正则表达式测试器** - 测试和调试正则表达式，支持实时匹配
+- **正则表达式测试器** - 实时匹配，5 种引擎（rust/re2/pcre/golang/javascript）可选，常用标志、捕获组/命名组详情、替换模式
 
 ### 时间工具
 
-- **时间戳转换器** - Unix时间戳转换为人类可读日期
+- **时间戳转换器** - Unix 时间戳双向转换（秒/毫秒），支持全部 IANA 时区，内置实时时钟
 
 ### 其他工具
 
-- **设置** - 应用配置和偏好设置
+- **设置** - 主题（浅色/深色/跟随系统）、系统托盘、开机自启、启动最小化、关闭到托盘、自定义全局快捷键
+
+## 🧭 使用方式
+
+1. 按全局快捷键（macOS 默认 **Option+Space**，其他平台 **Alt+Space**）呼出/隐藏 Spotlight 搜索条
+2. 输入关键词按名称、描述或关键字过滤工具，↑/↓ + Enter 打开 —— 每个工具在独立的可缩放窗口中运行
+3. 按 Esc 隐藏窗口；随时可通过快捷键或系统托盘图标重新呼出
 
 ## 🛠️ 技术栈
 
 ### 前端
 
-- **React 18.3.1** - 现代化前端框架
-- **TypeScript** - 类型安全的 JavaScript
-- **Monaco Editor 4.7.0** - 代码编辑器（VS Code 同款）
-- **Tailwind CSS 4.1.11** - 实用优先的 CSS 框架
-- **React Split 2.0.14** - 可调整大小的分割面板
-- **Tauri API v2** - 前后端通信
+- **React 18.3** - 现代化前端框架
+- **TypeScript 5.6** - 类型安全的 JavaScript
+- **Monaco Editor 4.7** - 代码编辑器（VS Code 同款）
+- **Tailwind CSS 4** - 实用优先的 CSS 框架
+- **React Split 2.0** - 可调整大小的分割面板
+- **Tauri API v2** - 前后端通信，含 dialog/fs/global-shortcut/opener/autostart 插件
 
 ### 后端
 
-- **Tauri 2.x** - 跨平台桌面应用框架
+- **Tauri 2.x** - 跨平台桌面应用框架，支持系统托盘
 - **Rust** - 系统级编程语言
-- **sqlparser 0.58** - 专业 SQL 解析器
-- **reqwest 0.12** - HTTP 客户端
-- **openssl 0.10.73** - 加密库
-- **chrono 0.4** - 时间处理
+- **sqlparser 0.58** - 专业 SQL 解析器（基于 AST）
+- **reqwest 0.12 + rustls** - 在线工具的 HTTP 客户端
+- **openssl (vendored) + x509-parser + rustls** - 证书解析与加密
+- **image 0.25 + oxipng + imagequant + nom-exif + libheif** - 图片转换、压缩与 EXIF 解析
+- **dns-lookup + pcre2 + regex + chrono/chrono-tz** - 网络查询、正则引擎与时间处理
+- **FFmpeg**（外部可选依赖）- 仅视频转换需要
 
 ## 🚀 快速开始
 
 ### 环境要求
 
 - Node.js 18+
-- Rust 1.70+
+- Rust 1.77+（Tauri 2 最低要求）
 - pnpm 包管理器
+- FFmpeg（可选，仅视频转换工具需要）
 
 ### 安装依赖
 
@@ -95,146 +109,87 @@ pnpm install
 
 ```bash
 pnpm tauri dev
+# 或: make dev
 ```
 
 ### 构建应用
 
 ```bash
-# 构建前端
+# 构建前端（含类型检查）
 pnpm build
 
 # 构建桌面应用
 pnpm tauri build
 ```
 
+### 检查
+
+```bash
+make check          # tsc + 样式检查 + cargo check
+make check-tsc      # 仅 TypeScript
+make check-styles   # 设计系统检查（slate 色系、rounded-lg、duration-200）
+make cargo-clippy   # Rust 静态检查
+```
+
 ## 📁 项目结构
 
 ```bash
-devtools/                    # 项目根目录
-├── .gitignore              # Git 忽略规则
-├── LICENSE                 # MIT 许可证文件
-├── README.md               # 英文文档
-├── README_ZH.md           # 中文文档
-├── index.html             # HTML 入口点
-├── package.json           # Node.js 依赖和脚本
-├── pnpm-lock.yaml         # pnpm 锁文件
-├── public/                # 静态公共资源
-│   ├── tauri.svg          # Tauri 徽标
-│   └── vite.svg           # Vite 徽标
-├── src-tauri/             # Tauri 后端 Rust 代码
-│   ├── .gitignore         # Rust Git 忽略
-│   ├── Cargo.lock         # Rust 依赖锁
-│   ├── Cargo.toml         # Rust 项目配置
-│   ├── build.rs           # Rust 构建脚本
-│   ├── capabilities/      # Tauri 能力定义
-│   │   └── default.json   # 默认能力
-│   ├── icons/             # 应用图标（多种尺寸）
-│   │   ├── 128x128.png
-│   │   ├── 128x128@2x.png
-│   │   ├── 32x32.png
-│   │   ├── Square107x107Logo.png
-│   │   ├── Square142x142Logo.png
-│   │   ├── Square150x150Logo.png
-│   │   ├── Square284x284Logo.png
-│   │   ├── Square30x30Logo.png
-│   │   ├── Square310x310Logo.png
-│   │   ├── Square44x44Logo.png
-│   │   ├── Square71x71Logo.png
-│   │   ├── Square89x89Logo.png
-│   │   ├── StoreLogo.png
-│   │   ├── icon.icns
-│   │   ├── icon.ico
-│   │   └── icon.png
-│   ├── src/               # Rust 源代码
-│   │   ├── lib.rs         # 主库入口点
-│   │   ├── main.rs        # 应用入口点
-│   │   ├── tools/         # 后端工具实现
-│   │   └── utils/         # 工具模块
-│   └── tauri.conf.json    # Tauri 应用配置
-├── src/                   # 前端 React/TypeScript 代码
-│   ├── App.css            # 主应用样式
-│   ├── App.tsx            # 主应用组件
-│   ├── Toolbox.tsx        # 主导航和工具切换
-│   ├── assets/            # 静态资源
-│   │   └── react.svg      # React 徽标
-│   ├── components/        # 共享 UI 组件
-│   │   ├── common/        # 通用可重用组件
-│   │   └── layouts/       # 布局组件
-│   ├── hooks/             # 自定义 React hooks
-│   │   ├── index.ts       # Hooks 统一导出
-│   │   ├── useAsyncState.ts
-│   │   ├── useCopyToClipboard.ts
-│   │   ├── useDebounce.ts
-│   │   ├── useTheme.ts
-│   │   └── useToast.ts
-│   ├── main.tsx           # React 应用入口点
-│   ├── tools/             # 各个工具组件（25个工具）
-│   │   ├── AesCrypto.tsx
-│   │   ├── Base64Converter.tsx
-│   │   ├── CertificateViewer.tsx
-│   │   ├── FormatConverter.tsx
-│   │   ├── ImageConverter.tsx
-│   │   ├── IpInfo.tsx
-│   │   ├── JsonFormatter.tsx
-│   │   ├── JsonToGo.tsx
-│   │   ├── JwtDecode.tsx
-│   │   ├── JwtEncode.tsx
-│   │   ├── Md5Crypto.tsx
-│   │   ├── PasswordGenerator.tsx
-│   │   ├── PasswordHasher.tsx
-│   │   ├── PemToPfxConverter.tsx
-│   │   ├── PfxToPemConverter.tsx
-│   │   ├── RegexTester.tsx
-│   │   ├── Settings.tsx
-│   │   ├── ShaCrypto.tsx
-│   │   ├── SqlToEnt.tsx
-│   │   ├── SqlToGo.tsx
-│   │   ├── SslChecker.tsx
-│   │   ├── SubnetCalculator.tsx
-│   │   ├── TimestampConverter.tsx
-│   │   ├── UrlEncoderDecoder.tsx
-│   │   ├── VideoConverter.tsx
-│   │   └── WhoisLookup.tsx
-│   ├── utils/             # 工具函数
-│   │   ├── api.ts         # Tauri API 包装器
-│   │   ├── globalShortcut.ts # 全局快捷键工具
-│   │   └── index.ts       # 工具函数导出
-│   └── vite-env.d.ts      # Vite 环境类型
-├── tailwind.config.js     # Tailwind CSS 配置
-├── tsconfig.json         # TypeScript 配置
-├── tsconfig.node.json    # TypeScript node 配置
-└── vite.config.ts        # Vite 构建配置
+devtools/                        # 项目根目录
+├── Makefile                     # 开发/构建/检查工作流快捷入口
+├── docs/                        # 文档（工具使用指南、UI 说明、规划）
+├── scripts/
+│   └── check-styles.cjs         # Tailwind/设计系统一致性检查
+├── public/                      # 静态资源（应用 Logo）
+├── src-tauri/                   # Tauri (Rust) 后端
+│   ├── capabilities/            # Tauri 能力定义
+│   ├── icons/                   # 应用图标
+│   ├── src/
+│   │   ├── lib.rs               # 插件初始化 + invoke_handler 命令注册
+│   │   ├── main.rs              # 应用入口点
+│   │   ├── tools/               # 每个后端工具一个 Rust 模块
+│   │   └── utils/               # crypto、error、validation、格式化等辅助模块
+│   └── tauri.conf.json          # 窗口/托盘/构建配置
+├── src/                         # 前端 React/TypeScript 代码
+│   ├── App.tsx                  # 哈希路由：Spotlight 搜索条 ↔ #/tool/<id> 工具窗口
+│   ├── components/
+│   │   ├── SpotlightSearch.tsx  # 主启动器（搜索 + 键盘导航）
+│   │   ├── ToolWindow.tsx       # 工具窗口容器（懒加载 + 主题）
+│   │   ├── common/              # 通用组件（文件上传、复制按钮等）
+│   │   ├── icons/               # 工具图标
+│   │   ├── layouts/             # 布局组件
+│   │   └── templates/           # 工具页面模板
+│   ├── hooks/                   # useTheme、useToast、useCopyToClipboard、useToolWindow 等
+│   ├── tools/
+│   │   ├── registry.ts          # 唯一事实来源：工具元数据 + 窗口尺寸
+│   │   └── *.tsx                # 32 个工具组件（懒加载）
+│   ├── utils/
+│   │   ├── api.ts               # Tauri invoke() 命令的类型化封装
+│   │   └── globalShortcut.ts    # 全局快捷键注册辅助
+│   └── main.tsx                 # React 入口点
+├── tailwind.config.js
+└── vite.config.ts               # 开发服务器固定端口 1453
 ```
 
-## 🎯 核心特性
+## 🎯 核心设计
 
 ### 前端架构
 
-- **侧边栏导航模式** - 每个工具都是独立的 React 组件，布局一致
-- **Monaco Editor 集成** - 大多数工具使用 Monaco Editor 进行文本输入/输出，支持语法高亮
-- **多标签支持** - SQL 工具支持多表生成的标签界面
-- **主题支持** - 深色/浅色模式，支持系统主题检测
-- **分割面板布局** - 大多数工具使用 react-split 实现可调整大小的输入/输出面板
+- **Spotlight 启动器** - 无边框搜索条即主窗口；各工具按 `registry.ts` 中定义的尺寸在独立窗口打开
+- **工具注册表** - 每个工具在 `src/tools/registry.ts` 中声明一次（id、分类、图标、关键字、窗口尺寸）并按需懒加载
+- **哈希路由** - `#/tool/<id>` 渲染工具窗口；根路由渲染 Spotlight 搜索条
+- **Monaco Editor 集成** - 文本类工具使用 Monaco 编辑器，支持语法高亮和分栏布局
+- **主题支持** - 深色/浅色/跟随系统主题，跨窗口实时同步
 
 ### 后端架构
 
-- **Tauri 命令系统** - 前端通过 Tauri 命令与 Rust 后端通信
-- **模块化工具结构** - 每个工具都有独立的 Rust 模块，具有标准化的错误处理
-- **专业 SQL 解析** - 使用 sqlparser-rs (v0.58) 进行稳健的 SQL 解析，而非正则表达式
-- **多方言 SQL 支持** - 支持 Generic、MySQL、PostgreSQL 和 SQLite 方言
-- **集中式错误处理** - 所有工具使用统一的 DevToolError 和本地化消息
-
-### SQL 工具增强
-
-- **多表支持** - SQL 转 Go 和 SQL 转 Ent 工具都能解析多个 CREATE TABLE 语句
-- **高级类型映射** - 正确处理无符号整数（uint8、uint16、uint32、uint64）
-- **复数化逻辑** - 智能表名单数化，支持复杂复数形式
-- **反引号处理** - 正确处理 MySQL 风格的反引号表名/列名
-- **基于 AST 的解析** - 使用抽象语法树解析进行准确的 SQL 分析
+- **Tauri 命令系统** - 前端通过 `src/utils/api.ts` 中类型化的 `invoke()` 封装调用 Rust
+- **模块化工具结构** - 每个后端工具独立成模块，统一使用 `DevToolError` 错误处理与本地化消息
+- **专业 SQL 解析** - sqlparser-rs 构建抽象语法树而非正则匹配；支持 Generic/MySQL/PostgreSQL/SQLite 方言
+- **原生图片处理管线** - 图片转换、EXIF 解析和压缩均在 Rust 中完成（image/oxipng/imagequant），不依赖浏览器
 
 ## 📋 支持的 SQL 格式
 
-工具支持各种 SQL 格式，包括：
+SQL 工具支持以下格式：
 
 - MySQL 反引号格式：`CREATE TABLE \`users\` (\`id\` int unsigned...)`
 - 不同方言的多表语句
