@@ -67,6 +67,9 @@ const ImagePreview: React.FC = () => {
 
   const { copyToClipboard } = useCopyToClipboard()
 
+  const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.userAgent)
+  const modKey = isMac ? '⌘' : 'Ctrl+'
+
   // 解析 data: URL 获取基本信息
   const parseDataUrl = (
     dataUrl: string,
@@ -468,7 +471,7 @@ const ImagePreview: React.FC = () => {
 
           {/* 快捷提示 */}
           <div className='text-sm text-slate-500 dark:text-slate-400'>
-            💡 提示：直接粘贴图片（Ctrl+V）可快速预览，或使用 Ctrl+滚轮 缩放
+            💡 提示：直接粘贴图片（{modKey}V）可快速预览，或使用 {modKey}滚轮 缩放
           </div>
 
           {/* 错误信息 */}
@@ -555,8 +558,18 @@ const ImagePreview: React.FC = () => {
 
               {/* 缩放指示器 */}
               {imageSrc && (
-                <div className='absolute bottom-4 left-4 px-3 py-1 bg-black/50 text-white rounded-lg text-sm'>
-                  {getScalePercentage()}
+                <div className='absolute bottom-4 left-4 flex items-center space-x-1 bg-black/50 text-white rounded-lg text-sm'>
+                  <button
+                    onClick={() => setViewState({ ...viewState, scale: Math.max(0.1, viewState.scale - 0.1) })}
+                    className='px-2 py-1 hover:bg-white/20 rounded-l-lg transition-colors'>
+                    −
+                  </button>
+                  <span className='px-1'>{getScalePercentage()}</span>
+                  <button
+                    onClick={() => setViewState({ ...viewState, scale: Math.min(10, viewState.scale + 0.1) })}
+                    className='px-2 py-1 hover:bg-white/20 rounded-r-lg transition-colors'>
+                    +
+                  </button>
                 </div>
               )}
             </div>
@@ -605,50 +618,6 @@ const ImagePreview: React.FC = () => {
                     暂无图片信息
                   </p>
                 )}
-              </div>
-
-              {/* 视图控制 */}
-              <div>
-                <h3 className='text-lg font-medium text-slate-900 dark:text-white mb-3'>
-                  视图控制
-                </h3>
-                <div className='space-y-2'>
-                  <div className='flex items-center justify-between text-sm'>
-                    <span className='text-slate-600 dark:text-slate-400'>
-                      缩放:
-                    </span>
-                    <span className='text-slate-900 dark:text-white font-medium'>
-                      {getScalePercentage()}
-                    </span>
-                  </div>
-                  <div className='space-y-2'>
-                    <button
-                      onClick={() =>
-                        setViewState({
-                          ...viewState,
-                          scale: Math.min(5, viewState.scale + 0.2),
-                        })
-                      }
-                      className='w-full px-3 py-2 bg-white dark:bg-slate-700 shadow rounded text-sm text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors'>
-                      放大
-                    </button>
-                    <button
-                      onClick={() =>
-                        setViewState({
-                          ...viewState,
-                          scale: Math.max(0.5, viewState.scale - 0.2),
-                        })
-                      }
-                      className='w-full px-3 py-2 bg-white dark:bg-slate-700 shadow rounded text-sm text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors'>
-                      缩小
-                    </button>
-                    <button
-                      onClick={resetView}
-                      className='w-full px-3 py-2 bg-white dark:bg-slate-700 shadow rounded text-sm text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors'>
-                      100%
-                    </button>
-                  </div>
-                </div>
               </div>
 
               {/* 保存设置 */}
@@ -742,17 +711,24 @@ const ImagePreview: React.FC = () => {
 
         {/* 全屏模式 */}
         {isFullscreen && (
-          <div className='fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center'>
+          <div
+            className='fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center'
+            onWheel={handleWheel}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}>
             <button
               onClick={() => setIsFullscreen(false)}
-              className='absolute top-4 right-4 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-white transition-colors'>
+              className='absolute top-4 right-4 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-white transition-colors z-10'>
               退出全屏 (ESC)
             </button>
             {imageSrc && (
               <img
                 src={imageSrc}
                 alt='全屏预览'
-                className='max-w-full max-h-full object-contain'
+                className={`max-w-none transition-transform duration-100 ${
+                  viewState.isDragging ? 'cursor-grabbing' : 'cursor-grab'
+                }`}
                 style={{
                   transform: `translate(${viewState.positionX}px, ${viewState.positionY}px) scale(${viewState.scale})`,
                 }}
@@ -761,8 +737,18 @@ const ImagePreview: React.FC = () => {
                 draggable={false}
               />
             )}
-            <div className='absolute bottom-4 left-4 px-3 py-1 bg-black/50 text-white rounded-lg text-sm'>
-              {getScalePercentage()}
+            <div className='absolute bottom-4 left-4 flex items-center space-x-1 bg-black/50 text-white rounded-lg text-sm'>
+              <button
+                onClick={() => setViewState({ ...viewState, scale: Math.max(0.1, viewState.scale - 0.1) })}
+                className='px-2 py-1 hover:bg-white/20 rounded-l-lg transition-colors'>
+                −
+              </button>
+              <span className='px-1'>{getScalePercentage()}</span>
+              <button
+                onClick={() => setViewState({ ...viewState, scale: Math.min(10, viewState.scale + 0.1) })}
+                className='px-2 py-1 hover:bg-white/20 rounded-r-lg transition-colors'>
+                +
+              </button>
             </div>
           </div>
         )}

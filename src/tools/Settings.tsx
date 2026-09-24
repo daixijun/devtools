@@ -1,8 +1,14 @@
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import { getCurrentWindow } from '@tauri-apps/api/window'
+import { emit } from '@tauri-apps/api/event'
 import React, { useEffect, useState } from 'react'
 import { Card } from '../components/common'
 import { ToolLayout } from '../components/layouts'
+import {
+  THEME_CHANGED_EVENT,
+  getStoredThemeMode,
+  resolveIsDark,
+} from '../hooks/useTheme'
 
 interface HotKeyConfig {
   modifier: 'option' | 'alt' | 'ctrl' | 'cmd'
@@ -40,9 +46,8 @@ const Settings: React.FC = () => {
   useEffect(() => {
     loadSettings()
     if (isTauri()) {
-      getCurrentWindow()
-        .theme()
-        .then((theme) => setCurrentTheme(theme === 'dark' ? 'dark' : 'light'))
+      // 以持久化设置(而非原生窗口主题)作为权威来源
+      setCurrentTheme(resolveIsDark(getStoredThemeMode()) ? 'dark' : 'light')
       // 获取系统状态
       loadSystemSettings()
     }
@@ -120,20 +125,22 @@ const Settings: React.FC = () => {
     const newSettings = { ...settings, theme }
     saveSettings(newSettings)
 
+    // 解析出实际明/暗
+    const resolvedIsDark = resolveIsDark(theme)
+    const resolved: 'light' | 'dark' = resolvedIsDark ? 'dark' : 'light'
+    setCurrentTheme(resolved)
+
     if (isTauri()) {
       const tauriWindow = getCurrentWindow()
-      if (theme === 'system') {
-        // 获取系统主题
-        tauriWindow.theme().then((systemTheme) => {
-          return tauriWindow.setTheme(systemTheme).then(() => {
-            setCurrentTheme(systemTheme === 'dark' ? 'dark' : 'light')
-          })
+      tauriWindow
+        .setTheme(resolved)
+        .then(() => {
+          // 广播跨窗口事件,让所有已开窗口(含工具窗口)实时跟随
+          return emit(THEME_CHANGED_EVENT, { mode: theme })
         })
-      } else {
-        tauriWindow.setTheme(theme).then(() => {
-          setCurrentTheme(theme)
+        .catch((error) => {
+          console.error('Failed to apply theme:', error)
         })
-      }
     }
   }
 

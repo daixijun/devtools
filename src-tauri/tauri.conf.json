@@ -5,7 +5,7 @@
   "identifier": "devtools.linuxyunwei.com",
   "build": {
     "beforeDevCommand": "pnpm dev",
-    "devUrl": "http://localhost:1420",
+    "devUrl": "http://localhost:1453",
     "beforeBuildCommand": "pnpm build",
     "frontendDist": "../dist",
     "removeUnusedCommands": true
@@ -14,12 +14,16 @@
     "windows": [
       {
         "title": "开发者工具箱",
-        "width": 1280,
-        "height": 900,
-        "dragDropEnabled": true,
-        "devtools": true
+        "width": 680,
+        "height": 68,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "center": true,
+        "dragDropEnabled": true
       }
     ],
+    "macOSPrivateApi": true,
     "security": {
       "csp": null
     }

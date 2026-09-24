@@ -35,11 +35,23 @@ export interface IpGeolocationInfo {
   source: string
 }
 
+export interface DnsServerLookupResult {
+  dnsServer: string
+  records: DnsRecord[]
+  latencyMs?: number
+  error?: string
+}
+
 export interface DnsLookupResponse {
   domain: string
-  records: DnsRecord[]
+  results: DnsServerLookupResult[]
   ipInfo?: IpGeolocationInfo
   error?: string
+}
+
+export interface DnsServerEntry {
+  name: string
+  server: string
 }
 
 export interface ReverseDnsResponse {
@@ -55,12 +67,12 @@ export interface BatchReverseDnsResponse {
 
 export async function lookupDns(
   domain: string,
-  dnsServer: string | undefined,
+  dnsServers: string[],
   recordType: string,
 ): Promise<DnsLookupResponse> {
   return await invoke<DnsLookupResponse>('lookup_dns', {
     domain,
-    dnsServer,
+    dnsServers,
     recordType,
   })
 }
@@ -79,6 +91,6 @@ export async function batchReverseDnsLookup(
   })
 }
 
-export async function getDnsServers(): Promise<Record<string, string>> {
-  return await invoke<Record<string, string>>('get_dns_servers')
+export async function getDnsServers(): Promise<DnsServerEntry[]> {
+  return await invoke<DnsServerEntry[]>('get_dns_servers')
 }

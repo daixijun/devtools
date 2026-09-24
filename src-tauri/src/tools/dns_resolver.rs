@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::HashSet;
 use std::net::IpAddr;
 use std::time::Duration;
 
@@ -14,11 +14,27 @@ pub struct DnsRecord {
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct DnsServerLookupResult {
+    pub dns_server: String,
+    pub records: Vec<DnsRecord>,
+    pub latency_ms: Option<u64>,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DnsLookupResponse {
     pub domain: String,
-    pub records: Vec<DnsRecord>,
+    pub results: Vec<DnsServerLookupResult>,
     pub ip_info: Option<IpGeolocationInfo>,
     pub error: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct DnsServerEntry {
+    pub name: String,
+    pub server: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -246,106 +262,118 @@ async fn run_single_dig_query(
     parse_dig_output(&stdout, record_type)
 }
 
-async fn lookup_dns_record(
-    domain: &str,
-    dns_server: &str,
-    record_type: DnsRecordType,
-) -> Result<Vec<DnsRecord>, String> {
-    match record_type {
-        DnsRecordType::A => {
-            match dns_lookup::lookup_host(domain) {
-                Ok(ips) => Ok(ips
-                    .filter(|ip| matches!(ip, IpAddr::V4(_)))
-                    .map(|ip| DnsRecord {
-                        record_type: "A".to_string(),
-                        name: domain.to_string(),
-                        value: ip.to_string(),
-                        ttl: None,
-                    })
-                    .collect()),
-                Err(_) => {
-                    // 如果 dns_lookup 失败，使用 dig
-                    run_dig_query(domain, dns_server, record_type).await
-                }
-            }
-        }
-        DnsRecordType::AAAA => match dns_lookup::lookup_host(domain) {
-            Ok(ips) => Ok(ips
-                .filter(|ip| matches!(ip, IpAddr::V6(_)))
-                .map(|ip| DnsRecord {
-                    record_type: "AAAA".to_string(),
-                    name: domain.to_string(),
-                    value: ip.to_string(),
-                    ttl: None,
-                })
-                .collect()),
-            Err(_) => run_dig_query(domain, dns_server, record_type).await,
+fn default_dns_servers() -> Vec<DnsServerEntry> {
+    vec![
+        DnsServerEntry {
+            name: "阿里云公共DNS".to_string(),
+            server: "223.5.5.5".to_string(),
         },
-        _ => {
-            // 其他记录类型使用 dig 查询
-            run_dig_query(domain, dns_server, record_type).await
-        }
-    }
+        DnsServerEntry {
+            name: "114DNS".to_string(),
+            server: "114.114.114.114".to_string(),
+        },
+        DnsServerEntry {
+            name: "谷歌公共DNS".to_string(),
+            server: "8.8.8.8".to_string(),
+        },
+        DnsServerEntry {
+            name: "Cloudflare公共DNS".to_string(),
+            server: "1.1.1.1".to_string(),
+        },
+    ]
 }
 
-fn default_dns_servers() -> HashMap<String, String> {
-    let mut servers = HashMap::new();
-    servers.insert("阿里云公共DNS".to_string(), "223.5.5.5".to_string());
-    servers.insert("114DNS".to_string(), "114.114.114.114".to_string());
-    servers.insert("谷歌公共DNS".to_string(), "8.8.8.8".to_string());
-    servers.insert("Cloudflare公共DNS".to_string(), "1.1.1.1".to_string());
-    servers
-}
+const MAX_DNS_SERVERS: usize = 8;
+const FALLBACK_DNS_SERVER: &str = "223.5.5.5";
 
 #[tauri::command]
 pub async fn lookup_dns(
     domain: String,
-    dns_server: Option<String>,
+    dns_servers: Option<Vec<String>>,
     record_type: String,
 ) -> Result<DnsLookupResponse, String> {
     if domain.trim().is_empty() {
         return Ok(DnsLookupResponse {
             domain: "".to_string(),
-            records: vec![],
+            results: vec![],
             ip_info: None,
             error: Some("域名不能为空".to_string()),
         });
     }
 
+    let mut servers = dns_servers.unwrap_or_default();
+    servers.retain(|s| !s.trim().is_empty());
+    let mut seen = HashSet::new();
+    servers.retain(|s| seen.insert(s.clone()));
+
+    if servers.len() > MAX_DNS_SERVERS {
+        return Ok(DnsLookupResponse {
+            domain,
+            results: vec![],
+            ip_info: None,
+            error: Some(format!(
+                "DNS 服务器数量不能超过 {} 个",
+                MAX_DNS_SERVERS
+            )),
+        });
+    }
+
+    if servers.is_empty() {
+        servers.push(FALLBACK_DNS_SERVER.to_string());
+    }
+
+    // 并发查询所有选中的服务器；指定了服务器时统一走 dig，保证所选服务器真实生效
     let record_type_enum = DnsRecordType::from(record_type.as_str());
-    let dns_server = dns_server.unwrap_or_else(|| "223.5.5.5".to_string());
+    let server_count = servers.len();
+    let mut join_set = tokio::task::JoinSet::new();
 
-    let records = match lookup_dns_record(&domain, &dns_server, record_type_enum.clone()).await {
-        Ok(records) => records,
-        Err(e) => {
-            return Ok(DnsLookupResponse {
-                domain,
-                records: vec![],
-                ip_info: None,
-                error: Some(e),
+    for (idx, server) in servers.into_iter().enumerate() {
+        let domain = domain.clone();
+        let record_type = record_type_enum.clone();
+        join_set.spawn(async move {
+            let start = tokio::time::Instant::now();
+            let result = run_dig_query(&domain, &server, record_type).await;
+            let latency_ms = start.elapsed().as_millis() as u64;
+            (idx, server, result, latency_ms)
+        });
+    }
+
+    let mut slots: Vec<Option<DnsServerLookupResult>> =
+        (0..server_count).map(|_| None).collect();
+    while let Some(joined) = join_set.join_next().await {
+        if let Ok((idx, server, result, latency_ms)) = joined {
+            let (records, error) = match result {
+                Ok(records) => (records, None),
+                Err(e) => (vec![], Some(e)),
+            };
+            slots[idx] = Some(DnsServerLookupResult {
+                dns_server: server,
+                records,
+                latency_ms: Some(latency_ms),
+                error,
             });
-        }
-    };
-
-    let mut ip_info = None;
-    let mut ips_to_check = vec![];
-
-    for record in &records {
-        if record.record_type == "A" || record.record_type == "AAAA" {
-            ips_to_check.push(record.value.clone());
         }
     }
 
-    if let Some(ip) = ips_to_check.first() {
-        match query_ip_geolocation(ip).await {
-            Ok(info) => ip_info = Some(info),
-            Err(_) => {}
+    let results: Vec<DnsServerLookupResult> = slots.into_iter().flatten().collect();
+
+    // 取第一个成功服务器的首个 A/AAAA 记录查询 IP 地理位置
+    let mut ip_info = None;
+    if let Some(ip) = results
+        .iter()
+        .filter(|r| r.error.is_none())
+        .flat_map(|r| r.records.iter())
+        .find(|rec| rec.record_type == "A" || rec.record_type == "AAAA")
+        .map(|rec| rec.value.clone())
+    {
+        if let Ok(info) = query_ip_geolocation(&ip).await {
+            ip_info = Some(info);
         }
     }
 
     Ok(DnsLookupResponse {
         domain,
-        records,
+        results,
         ip_info,
         error: None,
     })
@@ -417,6 +445,68 @@ pub async fn batch_reverse_dns_lookup(ips: Vec<String>) -> Result<BatchReverseDn
 }
 
 #[tauri::command]
-pub async fn get_dns_servers() -> Result<HashMap<String, String>, String> {
+pub async fn get_dns_servers() -> Result<Vec<DnsServerEntry>, String> {
     Ok(default_dns_servers())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn multi_server_lookup_returns_grouped_results_in_order() {
+        let response = lookup_dns(
+            "example.com".to_string(),
+            Some(vec![
+                "223.5.5.5".to_string(),
+                "8.8.8.8".to_string(),
+                "223.5.5.5".to_string(), // 重复项应被去重
+            ]),
+            "A".to_string(),
+        )
+        .await
+        .expect("lookup_dns 不应返回 Err");
+
+        assert!(response.error.is_none());
+        assert_eq!(response.results.len(), 2, "重复服务器应被去重");
+        assert_eq!(response.results[0].dns_server, "223.5.5.5");
+        assert_eq!(response.results[1].dns_server, "8.8.8.8");
+
+        for result in &response.results {
+            assert!(result.error.is_none(), "查询失败: {:?}", result.error);
+            assert!(result.latency_ms.is_some());
+            assert!(!result.records.is_empty());
+            assert!(result
+                .records
+                .iter()
+                .all(|r| r.record_type == "A" && r.ttl.is_some()));
+        }
+
+        // ip_info 应基于第一个成功服务器的 A 记录
+        let ip = response.results[0].records[0].value.clone();
+        assert_eq!(response.ip_info.expect("应有 ip_info").ip, ip);
+    }
+
+    #[tokio::test]
+    async fn empty_server_list_falls_back_to_default() {
+        let response = lookup_dns(
+            "example.com".to_string(),
+            Some(vec![]),
+            "A".to_string(),
+        )
+        .await
+        .expect("lookup_dns 不应返回 Err");
+
+        assert!(response.error.is_none());
+        assert_eq!(response.results.len(), 1);
+        assert_eq!(response.results[0].dns_server, FALLBACK_DNS_SERVER);
+    }
+
+    #[test]
+    fn default_dns_servers_are_ordered() {
+        let servers = default_dns_servers();
+        assert_eq!(servers.len(), 4);
+        assert_eq!(servers[0].server, "223.5.5.5");
+        assert_eq!(servers[3].server, "1.1.1.1");
+    }
 }

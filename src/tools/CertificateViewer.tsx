@@ -3,8 +3,102 @@ import React, { useEffect, useState } from 'react'
 import { Button } from '../components/common'
 import FileUpload from '../components/common/FileUpload'
 import { ToolLayout } from '../components/layouts'
+import { useCopyToClipboard } from '../hooks'
 
-// 右侧全屏证书展示组件
+// 证书顺序芯片配色（当前顺序=红 / 正确顺序=绿）
+const ORDER_CHIP_CLASSES = {
+  danger:
+    'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/40 dark:text-red-300 dark:border-red-800',
+  ok: 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/40 dark:text-green-300 dark:border-green-800',
+} as const
+
+// 单行顺序序列展示（当前顺序/正确顺序）
+const OrderSequenceRow: React.FC<{
+  label: string
+  entries: ChainOrderEntry[]
+  tone: keyof typeof ORDER_CHIP_CLASSES
+}> = ({ label, entries, tone }) => (
+  <div className='flex items-start flex-wrap gap-1.5'>
+    <span className='text-xs font-medium text-slate-500 dark:text-slate-400 leading-5 flex-shrink-0'>
+      {label}
+    </span>
+    {entries.map((entry, index) => (
+      <React.Fragment key={`${entry.serial_number}-${index}`}>
+        {index > 0 && (
+          <span className='text-xs text-slate-400 dark:text-slate-500 leading-5'>→</span>
+        )}
+        <span
+          className={`px-2 py-0.5 rounded text-xs font-medium border ${ORDER_CHIP_CLASSES[tone]}`}>
+          {index + 1}. {entry.role}
+          {entry.subject_cn ? `（${entry.subject_cn}）` : ''}
+        </span>
+      </React.Fragment>
+    ))}
+  </div>
+)
+
+// 复制按正确顺序重排后的证书内容
+const CopyCorrectedButton: React.FC<{ pem: string }> = ({ pem }) => {
+  const { copy, copied } = useCopyToClipboard()
+  return (
+    <Button variant={copied ? 'success' : 'secondary'} size='sm' onClick={() => copy(pem)}>
+      {copied ? '已复制 ✓' : '复制正确顺序的证书'}
+    </Button>
+  )
+}
+
+// 证书链顺序检测结果提示：顺序错误时展示警告条、正确顺序对比及一键修正
+const ChainOrderWarning: React.FC<{ orderCheck: ChainOrderCheck }> = ({ orderCheck }) => {
+  if (orderCheck.is_correct) {
+    return (
+      <div className='flex items-center space-x-2 text-sm text-green-600 dark:text-green-400'>
+        <svg className='w-4 h-4 flex-shrink-0' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+          <path
+            strokeLinecap='round'
+            strokeLinejoin='round'
+            strokeWidth={2}
+            d='M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'
+          />
+        </svg>
+        <span>{orderCheck.message}</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className='p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg'>
+      <div className='flex items-start space-x-3'>
+        <svg
+          className='w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0'
+          fill='none'
+          stroke='currentColor'
+          viewBox='0 0 24 24'>
+          <path
+            strokeLinecap='round'
+            strokeLinejoin='round'
+            strokeWidth={2}
+            d='M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z'
+          />
+        </svg>
+        <div className='flex-1 min-w-0'>
+          <p className='text-yellow-800 dark:text-yellow-200 font-medium'>证书链顺序错误</p>
+          <p className='text-yellow-700 dark:text-yellow-300 text-sm mt-1'>{orderCheck.message}</p>
+          <div className='mt-3 space-y-2'>
+            <OrderSequenceRow label='当前顺序' entries={orderCheck.actual_order} tone='danger' />
+            <OrderSequenceRow label='正确顺序' entries={orderCheck.expected_order} tone='ok' />
+          </div>
+          {orderCheck.corrected_pem && (
+            <div className='mt-3'>
+              <CopyCorrectedButton pem={orderCheck.corrected_pem} />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// 全屏证书展示组件
 const RightSideFullScreenCertificateView: React.FC<{
   chainInfo: CertificateChainInfo
   output: Array<{
@@ -43,9 +137,9 @@ const RightSideFullScreenCertificateView: React.FC<{
   }
 
   return (
-    <div className='absolute inset-y-0 right-0 left-80 bg-white dark:bg-slate-900 z-50 flex flex-col'>
+    <div className='fixed inset-0 bg-white dark:bg-slate-900 z-50 flex flex-col'>
       {/* 顶部导航栏 */}
-      <div className='flex-shrink-0 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 border-l px-6 py-4'>
+      <div className='flex-shrink-0 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-6 py-4'>
         <div className='flex items-center justify-between'>
           <div className='flex items-center space-x-4'>
             <Button
@@ -72,13 +166,13 @@ const RightSideFullScreenCertificateView: React.FC<{
             </h1>
           </div>
           <div className='text-sm text-slate-500 dark:text-slate-400'>
-            右侧全屏模式
+            全屏模式
           </div>
         </div>
       </div>
 
       {/* 标签页导航 */}
-      <div className='flex-shrink-0 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 border-l '>
+      <div className='flex-shrink-0 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700'>
         <div className='px-6'>
           <nav className='flex space-x-8' aria-label='证书标签页'>
             <button
@@ -143,6 +237,13 @@ const RightSideFullScreenCertificateView: React.FC<{
               </div>
             </div>
           </div>
+
+          {/* 证书链顺序检测 */}
+          {chainInfo.order_check && (
+            <div className='mb-6'>
+              <ChainOrderWarning orderCheck={chainInfo.order_check} />
+            </div>
+          )}
 
           {/* 当前标签页的内容 */}
           <div className='bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden'>
@@ -684,6 +785,23 @@ interface CertificateChainInfo {
   chain_status: string
   ca_download_urls: string[]
   missing_ca_info?: string
+  order_check?: ChainOrderCheck | null
+}
+
+// 证书链顺序检测中的单个证书条目
+interface ChainOrderEntry {
+  role: string
+  subject_cn: string
+  serial_number: string
+}
+
+// 用户输入的证书段落顺序检测结果（部署规范：终端证书在前、根CA在最后）
+interface ChainOrderCheck {
+  is_correct: boolean
+  actual_order: ChainOrderEntry[]
+  expected_order: ChainOrderEntry[]
+  message: string
+  corrected_pem?: string | null
 }
 
 interface MissingCertificateInfo {
@@ -805,7 +923,7 @@ const PemCertificateViewer: React.FC = () => {
           setCertificateInfo(typedResult.certificates[0] || null)
           setActiveTab(0) // 重置到第一个标签页
 
-          // 自动进入右侧全屏模式
+          // 自动进入全屏模式
           setIsRightSideFullScreen(true)
 
           // 转换格式用于显示 - 按证书分组
@@ -836,7 +954,7 @@ const PemCertificateViewer: React.FC = () => {
           setCertificateInfo(typedResult.certificates[0] || null)
           setActiveTab(0) // 重置到第一个标签页
 
-          // 自动进入右侧全屏模式
+          // 自动进入全屏模式
           setIsRightSideFullScreen(true)
 
           // 转换格式用于显示 - 按证书分组
@@ -865,7 +983,7 @@ const PemCertificateViewer: React.FC = () => {
           setCertificateInfo(typedResult.certificates[0] || null)
           setActiveTab(0) // 重置到第一个标签页
 
-          // 自动进入右侧全屏模式
+          // 自动进入全屏模式
           setIsRightSideFullScreen(true)
 
           // 转换格式用于显示 - 按证书分组
@@ -1219,7 +1337,7 @@ const PemCertificateViewer: React.FC = () => {
     setIsBase64Decode(false) // 重置base64解码选项
   }
 
-  // 如果处于右侧全屏模式，显示右侧全屏组件
+  // 如果处于全屏模式，显示全屏组件
   if (isRightSideFullScreen && chainInfo) {
     return (
       <RightSideFullScreenCertificateView
@@ -1486,6 +1604,11 @@ const PemCertificateViewer: React.FC = () => {
                 </div>
               )}
 
+              {/* 证书链顺序检测 */}
+              {chainInfo?.order_check && (
+                <ChainOrderWarning orderCheck={chainInfo.order_check} />
+              )}
+
               {/* 标签页导航 */}
               {chainInfo && (
                 <div className='bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden'>
@@ -1534,7 +1657,7 @@ const PemCertificateViewer: React.FC = () => {
                             d='M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4'
                           />
                         </svg>
-                        <span>右侧全屏</span>
+                        <span>全屏</span>
                       </Button>
                     </div>
                   </div>

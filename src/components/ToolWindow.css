@@ -1,0 +1,76 @@
+.tool-window-container {
+  width: 100vw;
+  height: 100vh;
+  overflow: auto;
+  background-color: #ffffff;
+}
+
+.dark .tool-window-container {
+  background-color: #0f172a;
+}
+
+.tool-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  gap: 16px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+  background-color: #ffffff;
+  color: #475569;
+}
+
+.dark .tool-loading {
+  background-color: #0f172a;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top-color: rgba(59, 130, 246, 0.8);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.tool-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  gap: 12px;
+  background-color: #ffffff;
+  color: #475569;
+}
+
+.dark .tool-error {
+  background-color: #0f172a;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.tool-error h2 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.tool-error p {
+  font-size: 14px;
+  margin: 0;
+  opacity: 0.7;
+}
+
+.tool-error-icon {
+  margin-bottom: 8px;
+  opacity: 0.5;
+}

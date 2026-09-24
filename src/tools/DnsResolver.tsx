@@ -8,13 +8,16 @@ import {
   reverseDnsLookup,
   type BatchReverseDnsResponse,
   type DnsLookupResponse,
+  type DnsRecord,
+  type DnsServerEntry,
+  type DnsServerLookupResult,
   type ReverseDnsResponse,
 } from '../utils/api'
 
 const DnsResolver: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'forward' | 'reverse'>('forward')
-  const [dnsServers, setDnsServers] = useState<Record<string, string>>({})
-  const [selectedDnsServer, setSelectedDnsServer] = useState<string>('')
+  const [dnsServers, setDnsServers] = useState<DnsServerEntry[]>([])
+  const [selectedDnsServers, setSelectedDnsServers] = useState<string[]>([])
   const [customDnsServer, setCustomDnsServer] = useState<string>('')
   const [recordType, setRecordType] = useState<
     'A' | 'AAAA' | 'MX' | 'TXT' | 'CNAME' | 'NS' | 'SOA' | 'ALL'
@@ -31,21 +34,48 @@ const DnsResolver: React.FC = () => {
     useState<BatchReverseDnsResponse | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
-  // 加载 DNS 服务器列表
+  // 加载 DNS 服务器列表，默认全选预设服务器
   useEffect(() => {
     const loadDnsServers = async () => {
       try {
         const servers = await getDnsServers()
         setDnsServers(servers)
-        // 默认选择第一个
-        const firstServer = Object.values(servers)[0]
-        setSelectedDnsServer(firstServer || '')
+        setSelectedDnsServers(servers.map((s) => s.server))
       } catch (err) {
         console.error('加载 DNS 服务器失败:', err)
       }
     }
     loadDnsServers()
   }, [])
+
+  const toggleDnsServer = (server: string) => {
+    setSelectedDnsServers((prev) =>
+      prev.includes(server)
+        ? prev.filter((s) => s !== server)
+        : [...prev, server],
+    )
+  }
+
+  const addCustomDnsServer = () => {
+    const server = customDnsServer.trim()
+    if (!server) return
+    setDnsServers((prev) =>
+      prev.some((entry) => entry.server === server)
+        ? prev
+        : [...prev, { name: server, server }],
+    )
+    setSelectedDnsServers((prev) =>
+      prev.includes(server) ? prev : [...prev, server],
+    )
+    setCustomDnsServer('')
+  }
+
+  const getServerLabel = (server: string) => {
+    const entry = dnsServers.find((s) => s.server === server)
+    return entry && entry.name !== entry.server
+      ? `${entry.name} (${entry.server})`
+      : server
+  }
 
   // 处理正向 DNS 解析
   const handleDnsLookup = useCallback(async () => {
@@ -55,16 +85,17 @@ const DnsResolver: React.FC = () => {
       return
     }
 
+    if (selectedDnsServers.length === 0) {
+      setDnsResponse(null)
+      setDnsError('请至少选择一个 DNS 服务器')
+      return
+    }
+
     setIsLoading(true)
     setDnsError('')
 
     try {
-      const activeDnsServer = selectedDnsServer || customDnsServer
-      const response = await lookupDns(
-        domain,
-        activeDnsServer || undefined,
-        recordType,
-      )
+      const response = await lookupDns(domain, selectedDnsServers, recordType)
       setDnsResponse(response)
     } catch (err) {
       setDnsError('查询失败: ' + (err as Error).message)
@@ -72,7 +103,7 @@ const DnsResolver: React.FC = () => {
     } finally {
       setIsLoading(false)
     }
-  }, [domain, selectedDnsServer, customDnsServer, recordType])
+  }, [domain, selectedDnsServers, recordType])
 
   // 处理反向 DNS 解析
   const handleReverseDns = useCallback(async () => {
@@ -177,32 +208,60 @@ const DnsResolver: React.FC = () => {
                   <div className='space-y-4'>
                     <div>
                       <label className='block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2'>
-                        DNS 服务器
+                        DNS 服务器（可多选，同时对比查询）
                       </label>
-                      <select
-                        className='w-full p-2 border border-slate-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500 dark:bg-slate-700 dark:border-slate-600 dark:text-white'
-                        value={selectedDnsServer}
-                        onChange={(e) => setSelectedDnsServer(e.target.value)}>
-                        <option value=''>选择预设 DNS 服务器</option>
-                        {Object.entries(dnsServers).map(([name, server]) => (
-                          <option key={server} value={server}>
-                            {name} ({server})
-                          </option>
-                        ))}
-                      </select>
+                      {dnsServers.length > 0 ? (
+                        <div className='space-y-2'>
+                          {dnsServers.map((entry) => (
+                            <label
+                              key={entry.server}
+                              className='flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 cursor-pointer'>
+                              <input
+                                type='checkbox'
+                                className='accent-primary-600'
+                                checked={selectedDnsServers.includes(
+                                  entry.server,
+                                )}
+                                onChange={() => toggleDnsServer(entry.server)}
+                              />
+                              {entry.name !== entry.server
+                                ? `${entry.name} (${entry.server})`
+                                : entry.server}
+                            </label>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className='text-sm text-slate-500 dark:text-slate-400'>
+                          加载预设服务器中...
+                        </p>
+                      )}
                     </div>
 
                     <div>
                       <label className='block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2'>
-                        或自定义 DNS 服务器
+                        添加自定义 DNS 服务器
                       </label>
-                      <input
-                        type='text'
-                        className='w-full p-2 border border-slate-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500 dark:bg-slate-700 dark:border-slate-600 dark:text-white'
-                        placeholder='例如: 8.8.8.8'
-                        value={customDnsServer}
-                        onChange={(e) => setCustomDnsServer(e.target.value)}
-                      />
+                      <div className='flex gap-2'>
+                        <input
+                          type='text'
+                          className='flex-1 p-2 border border-slate-300 rounded-lg shadow-sm focus:ring-primary-500 focus:border-primary-500 dark:bg-slate-700 dark:border-slate-600 dark:text-white'
+                          placeholder='例如: 9.9.9.9'
+                          value={customDnsServer}
+                          onChange={(e) => setCustomDnsServer(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault()
+                              addCustomDnsServer()
+                            }
+                          }}
+                        />
+                        <Button
+                          variant='secondary'
+                          onClick={addCustomDnsServer}
+                          disabled={!customDnsServer.trim()}>
+                          添加
+                        </Button>
+                      </div>
                     </div>
 
                     <div>
@@ -283,39 +342,79 @@ const DnsResolver: React.FC = () => {
                             域名: {dnsResponse.domain}
                           </p>
 
-                          {dnsResponse.records.length > 0 ? (
-                            <div className='space-y-2'>
+                          {dnsResponse.error ? (
+                            <p className='text-sm text-red-700 dark:text-red-400'>
+                              {dnsResponse.error}
+                            </p>
+                          ) : dnsResponse.results.length > 0 ? (
+                            <div className='space-y-3'>
                               <h4 className='font-medium text-slate-700 dark:text-slate-300'>
                                 DNS 记录:
                               </h4>
-                              <div className='overflow-x-auto'>
-                                <table className='min-w-full divide-y divide-slate-200 dark:divide-slate-700'>
-                                  <thead className='bg-slate-100 dark:bg-slate-800'>
-                                    <tr>
-                                      <th className='px-4 py-2 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider'>
-                                        类型
-                                      </th>
-                                      <th className='px-4 py-2 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider'>
-                                        值
-                                      </th>
-                                    </tr>
-                                  </thead>
-                                  <tbody className='bg-white dark:bg-slate-700 divide-y divide-slate-200 dark:divide-slate-600'>
-                                    {dnsResponse.records.map(
-                                      (record: any, idx: number) => (
-                                        <tr key={idx}>
-                                          <td className='px-4 py-2 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-slate-100'>
-                                            {record.recordType}
-                                          </td>
-                                          <td className='px-4 py-2 text-sm text-slate-500 dark:text-slate-400 font-mono'>
-                                            {record.value}
-                                          </td>
-                                        </tr>
-                                      ),
+                              {dnsResponse.results.map(
+                                (result: DnsServerLookupResult) => (
+                                  <div
+                                    key={result.dnsServer}
+                                    className='border border-slate-200 dark:border-slate-700 rounded-lg p-3 bg-white dark:bg-slate-700/50'>
+                                    <div className='flex items-center justify-between mb-2'>
+                                      <h5 className='font-medium text-slate-700 dark:text-slate-300'>
+                                        {getServerLabel(result.dnsServer)}
+                                      </h5>
+                                      {result.latencyMs != null && (
+                                        <span className='text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-600 text-slate-500 dark:text-slate-300'>
+                                          {result.latencyMs} ms
+                                        </span>
+                                      )}
+                                    </div>
+                                    {result.error ? (
+                                      <p className='text-sm text-red-700 dark:text-red-400'>
+                                        {result.error}
+                                      </p>
+                                    ) : result.records.length > 0 ? (
+                                      <div className='overflow-x-auto'>
+                                        <table className='min-w-full divide-y divide-slate-200 dark:divide-slate-700'>
+                                          <thead className='bg-slate-100 dark:bg-slate-800'>
+                                            <tr>
+                                              <th className='px-4 py-2 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider'>
+                                                类型
+                                              </th>
+                                              <th className='px-4 py-2 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider'>
+                                                值
+                                              </th>
+                                              <th className='px-4 py-2 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider'>
+                                                TTL
+                                              </th>
+                                            </tr>
+                                          </thead>
+                                          <tbody className='bg-white dark:bg-slate-700 divide-y divide-slate-200 dark:divide-slate-600'>
+                                            {result.records.map(
+                                              (record: DnsRecord, idx: number) => (
+                                                <tr key={idx}>
+                                                  <td className='px-4 py-2 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-slate-100'>
+                                                    {record.recordType}
+                                                  </td>
+                                                  <td className='px-4 py-2 text-sm text-slate-500 dark:text-slate-400 font-mono break-all'>
+                                                    {record.value}
+                                                  </td>
+                                                  <td className='px-4 py-2 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400'>
+                                                    {record.ttl != null
+                                                      ? record.ttl
+                                                      : '-'}
+                                                  </td>
+                                                </tr>
+                                              ),
+                                            )}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    ) : (
+                                      <p className='text-sm text-slate-500 dark:text-slate-400'>
+                                        未找到记录
+                                      </p>
                                     )}
-                                  </tbody>
-                                </table>
-                              </div>
+                                  </div>
+                                ),
+                              )}
                             </div>
                           ) : (
                             <p className='text-slate-500 dark:text-slate-400'>

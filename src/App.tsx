@@ -1,24 +1,42 @@
-import { memo, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import './App.css'
-import Toolbox from './Toolbox'
+import SpotlightSearch from './components/SpotlightSearch'
+import ToolWindow from './components/ToolWindow'
 import { globalShortcutManager } from './utils/globalShortcut'
-import { useTheme } from './hooks/useTheme'
 
-const App = memo(() => {
-  // 确保主题 Hook 在应用级别初始化，从而切换全局暗黑/亮色类
-  useTheme()
+const App = () => {
+  const [route, setRoute] = useState(() => {
+    const hash = window.location.hash
+    if (hash.startsWith('#/tool/')) {
+      return { type: 'tool' as const, toolId: hash.replace('#/tool/', '') }
+    }
+    return { type: 'spotlight' as const }
+  })
+
   useEffect(() => {
-    let isMounted = true
+    const handleHashChange = () => {
+      const hash = window.location.hash
+      if (hash.startsWith('#/tool/')) {
+        setRoute({ type: 'tool', toolId: hash.replace('#/tool/', '') })
+      } else {
+        setRoute({ type: 'spotlight' })
+      }
+    }
+    window.addEventListener('hashchange', handleHashChange)
+    return () => window.removeEventListener('hashchange', handleHashChange)
+  }, [])
 
+  useEffect(() => {
+    if (route.type !== 'spotlight') return
+
+    let isMounted = true
     const initializeShortcuts = async () => {
       if (isMounted) {
         try {
-          // 添加延迟以确保 Tauri API 完全初始化
           await new Promise((resolve) => setTimeout(resolve, 2000))
           await globalShortcutManager.initialize()
         } catch (error) {
           console.error('Failed to initialize global shortcuts:', error)
-          // 如果初始化失败，尝试在稍后重试
           if (isMounted) {
             setTimeout(() => {
               initializeShortcuts()
@@ -27,20 +45,22 @@ const App = memo(() => {
         }
       }
     }
-
     initializeShortcuts()
-
     return () => {
       isMounted = false
       globalShortcutManager.cleanup().catch(console.error)
     }
-  }, [])
+  }, [route.type])
+
+  if (route.type === 'tool') {
+    return <ToolWindow toolId={route.toolId} />
+  }
 
   return (
-    <main className='w-screen h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-200'>
-      <Toolbox />
+    <main className="spotlight-main">
+      <SpotlightSearch />
     </main>
   )
-})
+}
 
 export default App

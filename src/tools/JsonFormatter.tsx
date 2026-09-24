@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from 'react'
-import Split from 'react-split'
+import React, { useState } from 'react'
 import { Button, CodeEditor } from '../components/common'
 import { ToolLayout } from '../components/layouts'
-import { useCopyToClipboard, useDebounce } from '../hooks'
+import { useCopyToClipboard } from '../hooks'
 import { errorUtils, validators } from '../utils'
 
 /**
@@ -11,66 +10,69 @@ import { errorUtils, validators } from '../utils'
  */
 const JsonFormatter: React.FC = () => {
   const [input, setInput] = useState('')
-  const [output, setOutput] = useState('')
   const [error, setError] = useState('')
   const { copy, copied } = useCopyToClipboard()
 
-  // 使用防抖处理，避免频繁的JSON解析
-  const debouncedInput = useDebounce(input, 300)
-
-  useEffect(() => {
-    if (!debouncedInput.trim()) {
-      setOutput('')
-      setError('')
-      return
-    }
+  const handleFormat = () => {
+    if (!input.trim()) return
 
     try {
-      // 验证JSON格式
-      if (!validators.isValidJson(debouncedInput)) {
+      if (!validators.isValidJson(input)) {
         throw new Error('输入的不是有效的JSON格式')
       }
 
-      // 解析并格式化JSON
-      const parsed = JSON.parse(debouncedInput)
-      const formatted = JSON.stringify(parsed, null, 2)
-      setOutput(formatted)
+      const parsed = JSON.parse(input)
+      setInput(JSON.stringify(parsed, null, 2))
       setError('')
     } catch (err) {
-      setOutput('')
       setError(errorUtils.formatError(err, 'JSON格式化失败'))
-    }
-  }, [debouncedInput])
-
-  const handleCopyOutput = async () => {
-    if (output) {
-      await copy(output)
     }
   }
 
-  const handleClearInput = () => {
+  const handleMinify = () => {
+    if (!input.trim()) return
+
+    try {
+      if (!validators.isValidJson(input)) {
+        throw new Error('输入的不是有效的JSON格式')
+      }
+
+      const parsed = JSON.parse(input)
+      setInput(JSON.stringify(parsed))
+      setError('')
+    } catch (err) {
+      setError(errorUtils.formatError(err, 'JSON压缩失败'))
+    }
+  }
+
+  const handleCopy = async () => {
+    if (input) {
+      await copy(input)
+    }
+  }
+
+  const handleClear = () => {
     setInput('')
+    setError('')
   }
 
   const handleUnescape = () => {
     if (!input.trim()) return
 
     try {
-      // 尝试解析为JSON字符串，去除转义
       const parsed = JSON.parse(input)
       if (typeof parsed === 'string') {
-        // 如果是字符串，再解析一次去除转义
         const unescaped = JSON.parse(parsed)
         setInput(JSON.stringify(unescaped))
       } else {
-        // 如果不是字符串，直接格式化
         setInput(JSON.stringify(parsed, null, 2))
       }
+      setError('')
     } catch (err) {
-      // 如果第一次解析失败，尝试直接去除转义字符
       try {
         const unescaped = input.replace(/\\"/g, '"').replace(/\\\\/g, '\\')
         setInput(unescaped)
+        setError('')
       } catch (innerErr) {
         setError(errorUtils.formatError(innerErr, '去除转义失败'))
       }
@@ -90,6 +92,7 @@ const JsonFormatter: React.FC = () => {
       active: true,
     }
     setInput(JSON.stringify(exampleJson))
+    setError('')
   }
 
   return (
@@ -97,103 +100,74 @@ const JsonFormatter: React.FC = () => {
       title='JSON 格式化器'
       subtitle='格式化和美化JSON数据，提供语法验证和错误检测'>
       <div className='flex flex-col h-full'>
-        {/* 错误提示 */}
         {error && (
           <div className='flex-shrink-0 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg mb-4'>
             <p className='text-red-700 dark:text-red-400 text-sm'>{error}</p>
           </div>
         )}
 
-        {/* 分屏编辑区域 */}
-        <div className='flex-1 min-h-0'>
-          <Split
-            sizes={[50, 50]}
-            minSize={200}
-            expandToMin={true}
-            gutterSize={10}
-            gutterAlign='center'
-            snapOffset={30}
-            dragInterval={1}
-            direction='horizontal'
-            cursor='col-resize'
-            className='flex flex-row gap-4 h-full'>
-            {/* 左侧输入区域 */}
-            <div className='flex flex-col h-full'>
-              <div className='p-2 bg-slate-100 dark:bg-slate-700 border-b dark:border-slate-600 flex items-center justify-between flex-shrink-0'>
-                <h2 className='font-semibold text-slate-800 dark:text-slate-200'>
-                  JSON 输入
-                </h2>
-                <div className='flex items-center space-x-2'>
-                  <div className='text-sm text-slate-600 dark:text-slate-400'>
-                    输入长度: {input.length}
-                  </div>
-                  <Button
-                    variant='secondary'
-                    size='sm'
-                    onClick={handleLoadExample}>
-                    示例
-                  </Button>
-                  <Button
-                    variant='secondary'
-                    size='sm'
-                    onClick={handleUnescape}
-                    disabled={!input}>
-                    去除转义
-                  </Button>
-                  <Button
-                    variant='secondary'
-                    size='sm'
-                    onClick={handleClearInput}
-                    disabled={!input}>
-                    清空
-                  </Button>
-                </div>
-              </div>
-              <div className='flex-1 min-h-0 h-full'>
-                <CodeEditor
-                  language='json'
-                  value={input}
-                  onChange={setInput}
-                  options={{
-                    minimap: { enabled: false },
-                    wordWrap: 'off',
-                  }}
-                />
-              </div>
+        <div className='p-2 bg-slate-100 dark:bg-slate-700 border-b dark:border-slate-600 flex items-center justify-between flex-shrink-0'>
+          <div className='flex items-center space-x-2'>
+            <Button
+              variant='secondary'
+              size='sm'
+              onClick={handleFormat}
+              disabled={!input}>
+              格式化
+            </Button>
+            <Button
+              variant='secondary'
+              size='sm'
+              onClick={handleMinify}
+              disabled={!input}>
+              压缩
+            </Button>
+            <div className='w-px h-5 bg-slate-300 dark:bg-slate-500 mx-1' />
+            <Button
+              variant='secondary'
+              size='sm'
+              onClick={handleLoadExample}>
+              示例
+            </Button>
+            <Button
+              variant='secondary'
+              size='sm'
+              onClick={handleUnescape}
+              disabled={!input}>
+              去除转义
+            </Button>
+            <Button
+              variant='secondary'
+              size='sm'
+              onClick={handleClear}
+              disabled={!input}>
+              清空
+            </Button>
+          </div>
+          <div className='flex items-center space-x-2'>
+            <div className='text-sm text-slate-600 dark:text-slate-400'>
+              长度: {input.length}
             </div>
+            <Button
+              variant={copied ? 'success' : 'secondary'}
+              size='sm'
+              onClick={handleCopy}
+              disabled={!input}>
+              {copied ? '已复制 ✓' : '复制'}
+            </Button>
+          </div>
+        </div>
 
-            {/* 右侧输出区域 */}
-            <div className='flex flex-col h-full'>
-              <div className='p-2 bg-slate-100 dark:bg-slate-700 border-b dark:border-slate-600 flex items-center justify-between flex-shrink-0'>
-                <h2 className='font-semibold text-slate-800 dark:text-slate-200'>
-                  格式化输出
-                </h2>
-                <div className='flex items-center space-x-2'>
-                  <div className='text-sm text-slate-600 dark:text-slate-400'>
-                    输出长度: {output.length}
-                  </div>
-                  <Button
-                    variant={copied ? 'success' : 'primary'}
-                    size='sm'
-                    onClick={handleCopyOutput}
-                    disabled={!output || !!error}>
-                    {copied ? '已复制 ✓' : '复制结果'}
-                  </Button>
-                </div>
-              </div>
-              <div className='flex-1 min-h-0 h-full'>
-                <CodeEditor
-                  language='json'
-                  value={output}
-                  readOnly={true}
-                  options={{
-                    minimap: { enabled: false },
-                    wordWrap: 'off',
-                  }}
-                />
-              </div>
-            </div>
-          </Split>
+        <div className='flex-1 min-h-0'>
+          <CodeEditor
+            language='json'
+            value={input}
+            onChange={setInput}
+            options={{
+              minimap: { enabled: false },
+              wordWrap: 'off',
+            }}
+          />
         </div>
       </div>
     </ToolLayout>

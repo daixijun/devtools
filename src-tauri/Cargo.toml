@@ -30,7 +30,7 @@ strip = true      # 确保移除调试符号。
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["tray-icon"] }
+tauri = { version = "2", features = ["tray-icon", "macos-private-api"] }
 tauri-runtime-wry = "2"
 tauri-plugin-autostart = "2"
 tauri-plugin-dialog = "2"
@@ -56,6 +56,12 @@ chrono-tz = "0.10"
 hex = "0.4"
 ## https://github.com/image-rs/image?tab=readme-ov-file#feature-flags
 image = { version = "0.25", features = ["default-formats"] }
+## 纯 Rust PNG 无损优化器
+oxipng = { version = "10", default-features = false, features = ["zopfli", "parallel"] }
+## 纯 Rust 色彩量化 (pngquant 算法), 用于 PNG 有损但视觉无损压缩
+imagequant = "4"
+## 写 8-bit 索引 PNG (已是 image 的传递依赖, 零额外编译成本)
+png = "0.18"
 nom-exif = { version = "2.5", features = ["async"] }
 libheif-sys = { version = "5.0.0", features = ["v1_20"] }
 nom = "7.1"

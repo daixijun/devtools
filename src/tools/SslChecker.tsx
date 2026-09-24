@@ -4,20 +4,27 @@ import { ToolLayout } from '../components/layouts'
 
 interface CipherSuite {
   name: string
-  version: string
+  /** 接受该套件的协议版本（真实探测结果） */
+  versions: string[]
   strength: string
   server_order: boolean
 }
 
 interface SecurityVulnerability {
-  cve_id: string
+  id: string
   name: string
   description: string
   severity: string
+  /** "protocol" / "cipher" / "certificate" / "key-exchange" */
+  category: string
+  /** 实际观测到的证据 */
+  evidence: string
+  cve_ids: string[]
   affected_components: string[]
   remediation: string
   references: string[]
-  affected: boolean
+  /** 等级封顶（"F"/"C"/"B"/"A-"），空字符串表示不封顶 */
+  grade_cap: string
 }
 
 interface ProtocolSupport {
@@ -45,6 +52,8 @@ interface CertificateChainNode {
   }
   is_root: boolean
   is_leaf: boolean
+  /** 链级别：0 = 终端证书，1 = 中间 CA，2 = 根 CA */
+  chain_level: number
   trust_status: string
   validation_errors: string[]
 }
@@ -53,6 +62,10 @@ interface CertificateChain {
   certificates: CertificateChainNode[]
   chain_length: number
   is_complete: boolean
+  /** 服务器是否发送了根（或交叉签名根）证书 */
+  root_in_chain: boolean
+  /** 链最终锚定到的受信任根 CA 名称 */
+  trust_anchor_info?: string
   root_ca_info?: string
   chain_validation_status: string
   chain_errors: string[]
@@ -89,6 +102,8 @@ interface SslInfo {
     protocol_score: number
     key_exchange_score: number
     cipher_strength_score: number
+    /** 生效的等级封顶说明 */
+    applied_caps: { finding: string; cap: string; reason: string }[]
     details: string
   }
   vulnerabilities?: string[]
@@ -619,42 +634,27 @@ const SslChecker: React.FC = () => {
                           </div>
                         )}
 
-                        {/* CVE Vulnerabilities Indicator */}
+                        {/* Security Findings Indicator */}
                         {sslInfo.cve_vulnerabilities &&
                           sslInfo.cve_vulnerabilities.length > 0 && (
                             <div className='flex items-center justify-between'>
                               <span className='text-sm text-slate-600 dark:text-slate-400'>
-                                CVE 漏洞:
+                                安全发现:
                               </span>
                               <div className='flex items-center gap-2'>
                                 <span
                                   className={`px-2 py-1 text-xs rounded-full ${
                                     sslInfo.cve_vulnerabilities.some(
-                                      (v) =>
-                                        v.affected && v.severity === 'CRITICAL',
+                                      (v) => v.severity === 'CRITICAL',
                                     )
                                       ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
                                       : sslInfo.cve_vulnerabilities.some(
-                                          (v) =>
-                                            v.affected && v.severity === 'HIGH',
+                                          (v) => v.severity === 'HIGH',
                                         )
                                       ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
-                                      : sslInfo.cve_vulnerabilities.some(
-                                          (v) => v.affected,
-                                        )
-                                      ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                                      : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                      : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
                                   }`}>
-                                  {
-                                    sslInfo.cve_vulnerabilities.filter(
-                                      (v) => v.affected,
-                                    ).length
-                                  }{' '}
-                                  个受影响
-                                </span>
-                                <span className='text-xs text-slate-500 dark:text-slate-400'>
-                                  / {sslInfo.cve_vulnerabilities.length}{' '}
-                                  个已检测
+                                  {sslInfo.cve_vulnerabilities.length} 项待处理
                                 </span>
                               </div>
                             </div>
@@ -957,7 +957,7 @@ const SslChecker: React.FC = () => {
                             </div>
                             <div>
                               <span className='text-slate-600 dark:text-slate-400'>
-                                链完整性:
+                                链锚定:
                               </span>
                               <span
                                 className={`ml-2 font-medium ${
@@ -1079,11 +1079,13 @@ const SslChecker: React.FC = () => {
                                                 ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
                                                 : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
                                             }`}>
-                                            {node.is_leaf
+                                            {node.chain_level === 0
                                               ? '叶子证书 (服务器)'
-                                              : node.is_root
-                                              ? '根证书'
-                                              : '中间证书'}
+                                              : node.chain_level === 2
+                                              ? node.trust_status === 'root-ca'
+                                                ? '根证书（交叉签名形式）'
+                                                : '根证书'
+                                              : '中间CA证书'}
                                           </span>
 
                                           {/* Trust Status Badge */}
@@ -1126,7 +1128,7 @@ const SslChecker: React.FC = () => {
                                             </div>
                                           </div>
 
-                                          {!node.is_root && (
+                                          {node.trust_status !== 'self-signed' && (
                                             <div>
                                               <span className='text-slate-600 dark:text-slate-400'>
                                                 颁发者:
@@ -1308,12 +1310,39 @@ const SslChecker: React.FC = () => {
                               <span className='text-slate-700 dark:text-slate-300'>
                                 证书链
                                 {sslInfo.certificate_chain.is_complete
-                                  ? '完整'
-                                  : '不完整'}
+                                  ? '可验证至受信任的根 CA'
+                                  : '无法验证到受信任的根 CA'}
                                 ，共包含{' '}
                                 {sslInfo.certificate_chain.chain_length} 个证书
                               </span>
                             </div>
+
+                            {sslInfo.certificate_chain.trust_anchor_info && (
+                              <div className='flex items-center gap-2'>
+                                <svg
+                                  className='w-4 h-4 text-green-500'
+                                  fill='none'
+                                  stroke='currentColor'
+                                  viewBox='0 0 24 24'>
+                                  <path
+                                    strokeLinecap='round'
+                                    strokeLinejoin='round'
+                                    strokeWidth={2}
+                                    d='M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'
+                                  />
+                                </svg>
+                                <span className='text-slate-700 dark:text-slate-300'>
+                                  受信任根 CA：{
+                                    sslInfo.certificate_chain.trust_anchor_info
+                                  }
+                                  （
+                                  {sslInfo.certificate_chain.root_in_chain
+                                    ? '服务器已发送'
+                                    : '由客户端信任库提供，属标准配置'}
+                                  ）
+                                </span>
+                              </div>
+                            )}
 
                             <div className='flex items-center gap-2'>
                               <svg
@@ -1592,21 +1621,22 @@ const SslChecker: React.FC = () => {
                   </div>
                 )}
 
-                {/* CVE Vulnerabilities Tab */}
+                {/* Security Findings (CVE) Tab */}
                 {activeTab === 'cve' && (
                   <div className='space-y-6'>
                     {sslInfo.cve_vulnerabilities &&
                     sslInfo.cve_vulnerabilities.length > 0 ? (
                       <div className='space-y-4'>
                         <div className='text-sm text-slate-600 dark:text-slate-400'>
-                          已检测 {sslInfo.cve_vulnerabilities.length} 个安全漏洞
-                          (包括受影响和未受影响的)
+                          基于真实握手探测确认的安全发现共{' '}
+                          {sslInfo.cve_vulnerabilities.length}{' '}
+                          项，每项均附观测证据
                         </div>
 
                         {/* Severity Filter */}
                         <div className='flex flex-wrap gap-2 p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg'>
                           <span className='text-sm font-medium text-slate-700 dark:text-slate-300 mr-2'>
-                            漏洞等级过滤:
+                            严重等级过滤:
                           </span>
                           {[
                             {
@@ -1674,35 +1704,19 @@ const SslChecker: React.FC = () => {
                             .map((vuln, index) => (
                               <div
                                 key={index}
-                                className={`border rounded-lg overflow-hidden ${
-                                  vuln.affected
-                                    ? 'border-red-200 dark:border-red-800 bg-red-50/30 dark:bg-red-900/10'
-                                    : 'border-green-200 dark:border-green-800 bg-green-50/30 dark:bg-green-900/10'
-                                }`}>
+                                className='border border-red-200 dark:border-red-800 rounded-lg overflow-hidden bg-red-50/30 dark:bg-red-900/10'>
                                 {/* Header */}
                                 <div
-                                  className={`px-4 py-3 flex items-center justify-between ${
-                                    vuln.affected
-                                      ? vuln.severity === 'CRITICAL'
-                                        ? 'bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800'
-                                        : vuln.severity === 'HIGH'
-                                        ? 'bg-orange-50 dark:bg-orange-900/20 border-b border-orange-200 dark:border-orange-800'
-                                        : vuln.severity === 'MEDIUM'
-                                        ? 'bg-yellow-50 dark:bg-yellow-900/20 border-b border-yellow-200 dark:border-yellow-800'
-                                        : 'bg-primary-50 dark:bg-primary-900/20 border-b border-primary-200 dark:border-primary-800'
-                                      : 'bg-green-50 dark:bg-green-900/20 border-b border-green-200 dark:border-green-800'
+                                  className={`px-4 py-3 flex items-center justify-between border-b ${
+                                    vuln.severity === 'CRITICAL'
+                                      ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+                                      : vuln.severity === 'HIGH'
+                                      ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800'
+                                      : vuln.severity === 'MEDIUM'
+                                      ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
+                                      : 'bg-primary-50 dark:bg-primary-900/20 border-primary-200 dark:border-primary-800'
                                   }`}>
-                                  <div className='flex items-center gap-3'>
-                                    {/* Status Badge */}
-                                    <span
-                                      className={`px-2 py-1 text-xs font-medium rounded-full ${
-                                        vuln.affected
-                                          ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                                          : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                                      }`}>
-                                      {vuln.affected ? '受影响' : '未受影响'}
-                                    </span>
-
+                                  <div className='flex items-center gap-3 flex-wrap'>
                                     {/* Severity Badge */}
                                     <span
                                       className={`px-2 py-1 text-xs font-medium rounded-full ${
@@ -1717,11 +1731,36 @@ const SslChecker: React.FC = () => {
                                       {vuln.severity}
                                     </span>
 
+                                    {/* Category Badge */}
+                                    <span className='px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'>
+                                      {vuln.category === 'protocol'
+                                        ? '协议'
+                                        : vuln.category === 'cipher'
+                                        ? '加密套件'
+                                        : vuln.category === 'certificate'
+                                        ? '证书'
+                                        : vuln.category === 'key-exchange'
+                                        ? '密钥交换'
+                                        : vuln.category}
+                                    </span>
+
+                                    {/* Grade Cap Badge */}
+                                    {vuln.grade_cap && (
+                                      <span className='px-2 py-1 text-xs font-medium rounded-full bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900'>
+                                        等级封顶 {vuln.grade_cap}
+                                      </span>
+                                    )}
+
                                     <div>
                                       <h4 className='font-medium text-slate-900 dark:text-white'>
-                                        {vuln.name} ({vuln.cve_id})
+                                        {vuln.name}
                                       </h4>
                                       <div className='text-xs text-slate-600 dark:text-slate-400 mt-1'>
+                                        {vuln.cve_ids.length > 0 && (
+                                          <span className='font-mono mr-2'>
+                                            {vuln.cve_ids.join(', ')}
+                                          </span>
+                                        )}
                                         影响组件:{' '}
                                         {vuln.affected_components.join(', ')}
                                       </div>
@@ -1736,17 +1775,15 @@ const SslChecker: React.FC = () => {
                                   </p>
                                 </div>
 
-                                {/* Status Message */}
-                                <div
-                                  className={`px-4 py-2 ${
-                                    vuln.affected
-                                      ? 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200'
-                                      : 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200'
-                                  }`}>
-                                  <div className='text-sm font-medium'>
-                                    {vuln.affected
-                                      ? '⚠️ 当前配置存在此漏洞风险'
-                                      : '✅ 当前配置不受此漏洞影响'}
+                                {/* Evidence */}
+                                <div className='px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border-t border-amber-100 dark:border-amber-800'>
+                                  <div className='text-sm'>
+                                    <span className='font-medium text-amber-800 dark:text-amber-200'>
+                                      🔍 观测证据:{' '}
+                                    </span>
+                                    <span className='text-amber-800 dark:text-amber-200'>
+                                      {vuln.evidence}
+                                    </span>
                                   </div>
                                 </div>
 
@@ -1785,50 +1822,89 @@ const SslChecker: React.FC = () => {
                         </div>
 
                         {/* Summary */}
-                        <div className='mt-6 p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg'>
-                          <h5 className='text-sm font-medium text-slate-900 dark:text-white mb-2'>
-                            检测总结:
-                          </h5>
-                          <div className='grid grid-cols-1 md:grid-cols-3 gap-4 text-sm'>
-                            <div>
-                              <span className='text-red-600 dark:text-red-400 font-medium'>
-                                受影响的漏洞:{' '}
-                                {
-                                  sslInfo.cve_vulnerabilities.filter(
-                                    (v) => v.affected,
-                                  ).length
-                                }
-                              </span>
-                            </div>
-                            <div>
-                              <span className='text-green-600 dark:text-green-400 font-medium'>
-                                未受影响的漏洞:{' '}
-                                {
-                                  sslInfo.cve_vulnerabilities.filter(
-                                    (v) => !v.affected,
-                                  ).length
-                                }
-                              </span>
-                            </div>
-                            <div>
-                              <span className='text-primary-600 dark:text-primary-400 font-medium'>
-                                当前显示:{' '}
-                                {
-                                  sslInfo.cve_vulnerabilities.filter(
-                                    (v) =>
-                                      severityFilter === 'ALL' ||
-                                      v.severity === severityFilter,
-                                  ).length
-                                }
-                              </span>
+                        <div className='mt-6 p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg space-y-3'>
+                          <div>
+                            <h5 className='text-sm font-medium text-slate-900 dark:text-white mb-2'>
+                              检测总结:
+                            </h5>
+                            <div className='grid grid-cols-2 md:grid-cols-4 gap-4 text-sm'>
+                              <div>
+                                <span className='text-red-600 dark:text-red-400 font-medium'>
+                                  严重:{' '}
+                                  {
+                                    sslInfo.cve_vulnerabilities.filter(
+                                      (v) => v.severity === 'CRITICAL',
+                                    ).length
+                                  }
+                                </span>
+                              </div>
+                              <div>
+                                <span className='text-orange-600 dark:text-orange-400 font-medium'>
+                                  高危:{' '}
+                                  {
+                                    sslInfo.cve_vulnerabilities.filter(
+                                      (v) => v.severity === 'HIGH',
+                                    ).length
+                                  }
+                                </span>
+                              </div>
+                              <div>
+                                <span className='text-yellow-600 dark:text-yellow-400 font-medium'>
+                                  中危:{' '}
+                                  {
+                                    sslInfo.cve_vulnerabilities.filter(
+                                      (v) => v.severity === 'MEDIUM',
+                                    ).length
+                                  }
+                                </span>
+                              </div>
+                              <div>
+                                <span className='text-primary-600 dark:text-primary-400 font-medium'>
+                                  当前显示:{' '}
+                                  {
+                                    sslInfo.cve_vulnerabilities.filter(
+                                      (v) =>
+                                        severityFilter === 'ALL' ||
+                                        v.severity === severityFilter,
+                                    ).length
+                                  }
+                                </span>
+                              </div>
                             </div>
                           </div>
+                          <div className='text-xs text-slate-500 dark:text-slate-400 border-t border-slate-200 dark:border-slate-700 pt-3'>
+                            ℹ️
+                            本列表仅包含可通过远程握手证据确认的安全发现。依赖服务器软件版本的漏洞（如
+                            Heartbleed/CVE-2014-0160
+                            ）无法远程可靠判定，不在列表中，请以服务器软件补丁状态为准。
+                          </div>
+                        </div>
+                      </div>
+                    ) : sslInfo.cve_vulnerabilities ? (
+                      <div className='text-center py-8'>
+                        <svg
+                          className='w-12 h-12 mx-auto mb-4 text-green-500'
+                          fill='none'
+                          stroke='currentColor'
+                          viewBox='0 0 24 24'>
+                          <path
+                            strokeLinecap='round'
+                            strokeLinejoin='round'
+                            strokeWidth={2}
+                            d='M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'
+                          />
+                        </svg>
+                        <div className='text-lg font-medium text-slate-900 dark:text-white mb-2'>
+                          未发现可确认的安全问题
+                        </div>
+                        <div className='text-sm text-slate-500 dark:text-slate-400'>
+                          基于真实握手探测，未发现协议、加密套件或证书层面的安全问题
                         </div>
                       </div>
                     ) : (
                       <div className='text-center py-8 text-slate-500 dark:text-slate-400'>
                         <svg
-                          className='w-12 h-12 mx-auto mb-4 text-green-500'
+                          className='w-12 h-12 mx-auto mb-4 text-slate-400'
                           fill='none'
                           stroke='currentColor'
                           viewBox='0 0 24 24'>
@@ -1843,7 +1919,7 @@ const SslChecker: React.FC = () => {
                           未进行漏洞检测
                         </div>
                         <div className='text-sm'>
-                          请先运行 SSL 检测以获取完整的漏洞检测报告
+                          请先运行 SSL 检测以获取完整的安全检测报告
                         </div>
                       </div>
                     )}
@@ -1865,10 +1941,94 @@ const SslChecker: React.FC = () => {
                           className={`text-lg ${getSecurityColor(
                             sslInfo.security_score,
                           )}`}>
-                          {getSecurityLabel(sslInfo.security_score)}
+                          {sslInfo.ssl_labs_rating
+                            ? `等级 ${sslInfo.ssl_labs_rating.grade} · ${getSecurityLabel(sslInfo.security_score)}`
+                            : getSecurityLabel(sslInfo.security_score)}
                         </div>
+                        {sslInfo.ssl_labs_rating && (
+                          <div className='grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 max-w-xl mx-auto text-sm'>
+                            {[
+                              {
+                                label: '证书',
+                                value: sslInfo.ssl_labs_rating
+                                  .certificate_score,
+                              },
+                              {
+                                label: '协议',
+                                value: sslInfo.ssl_labs_rating.protocol_score,
+                              },
+                              {
+                                label: '密钥交换',
+                                value: sslInfo.ssl_labs_rating
+                                  .key_exchange_score,
+                              },
+                              {
+                                label: '套件强度',
+                                value: sslInfo.ssl_labs_rating
+                                  .cipher_strength_score,
+                              },
+                            ].map(({ label, value }) => (
+                              <div
+                                key={label}
+                                className='p-2 bg-slate-50 dark:bg-slate-700/50 rounded'>
+                                <div className='text-xs text-slate-500 dark:text-slate-400'>
+                                  {label}
+                                </div>
+                                <div
+                                  className={`font-medium ${getSecurityColor(value)}`}>
+                                  {value}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )}
+
+                    {/* Grade Cap Explanations */}
+                    {sslInfo.ssl_labs_rating &&
+                      sslInfo.ssl_labs_rating.applied_caps.length > 0 && (
+                        <div>
+                          <h4 className='font-medium text-orange-600 dark:text-orange-400 mb-3 flex items-center'>
+                            <svg
+                              className='w-5 h-5 mr-2'
+                              fill='none'
+                              stroke='currentColor'
+                              viewBox='0 0 24 24'>
+                              <path
+                                strokeLinecap='round'
+                                strokeLinejoin='round'
+                                strokeWidth={2}
+                                d='M3 21v-4m0 0V5a2 2 0 012-2h6a2 2 0 012 2v12m0 0v4m0-4h6a2 2 0 002-2v-6a2 2 0 00-2-2h-6m-8 4h6'
+                              />
+                            </svg>
+                            等级封顶原因 ({' '}
+                            {sslInfo.ssl_labs_rating.applied_caps.length} )
+                          </h4>
+                          <div className='space-y-2'>
+                            {sslInfo.ssl_labs_rating.applied_caps.map(
+                              (cap, index) => (
+                                <div
+                                  key={index}
+                                  className='p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded'>
+                                  <div className='text-sm text-orange-800 dark:text-orange-200'>
+                                    {cap.finding} → 等级上限{' '}
+                                    <span className='font-bold'>
+                                      {cap.cap}
+                                    </span>
+                                  </div>
+                                  <div className='text-xs text-orange-600 dark:text-orange-300 mt-1'>
+                                    证据：{cap.reason}
+                                  </div>
+                                </div>
+                              ),
+                            )}
+                          </div>
+                          <div className='mt-2 text-xs text-slate-500 dark:text-slate-400'>
+                            总分取各类别加权分与封顶上限中的较小值，每个问题只封顶一次。
+                          </div>
+                        </div>
+                      )}
 
                     {sslInfo.vulnerabilities &&
                       sslInfo.vulnerabilities.length > 0 && (

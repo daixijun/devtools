@@ -173,7 +173,7 @@ const Toolbox: React.FC = () => {
   }
 
   return (
-    <div className='toolbox flex flex-col md:flex-row w-full h-full relative'>
+    <div className='toolbox flex flex-col md:flex-row w-full h-full p-4 gap-4 overflow-hidden'>
       {/* Mobile menu button */}
       <button
         onClick={toggleMobileMenu}
@@ -196,11 +196,9 @@ const Toolbox: React.FC = () => {
           p-4
           rounded-lg
           shadow-lg
-          mr-0 md:mr-4
           h-full
           flex flex-col
-          max-h-[calc(100vh-2rem)]
-          my-4 mx-0 md:mx-4
+          flex-shrink-0
           transition-all duration-200
           fixed md:relative
           z-40
@@ -208,7 +206,6 @@ const Toolbox: React.FC = () => {
         `}>
         <div
           className='space-y-2 flex-1 overflow-y-auto'
-          style={{ maxHeight: 'calc(100vh - 8rem)' }}>
           {toolCategories.map((category) => {
             const IconComponent = category.icon
             return (

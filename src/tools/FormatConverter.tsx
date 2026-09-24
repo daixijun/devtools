@@ -227,9 +227,8 @@ const FormatConverter: React.FC = () => {
     <ToolLayout
       title='格式转换器'
       description='支持 JSON、YAML、TOML 之间的双向转换'>
-      {/* 格式选择器 */}
-      <div className='flex-shrink-0 p-4 bg-slate-50 dark:bg-slate-800 border-b dark:border-slate-700 mb-6'>
-        <div className='flex items-center space-x-4'>
+      <div className='flex flex-col h-full'>
+        <div className='flex-shrink-0 p-3 bg-slate-100 dark:bg-slate-700 border-b dark:border-slate-600 flex items-center space-x-4'>
           <div className='flex items-center space-x-2'>
             <span className='text-sm font-medium text-slate-700 dark:text-slate-300'>
               输入格式:
@@ -243,58 +242,49 @@ const FormatConverter: React.FC = () => {
               <option value='toml'>TOML</option>
             </select>
           </div>
-
           <div className='flex items-center space-x-2'>
             <span className='text-sm font-medium text-slate-700 dark:text-slate-300'>
               输出格式:
             </span>
             <select
               value={outputFormat}
-              onChange={(e) => {
-                setOutputFormat(e.target.value as any)
-                // 转换逻辑现在由useEffect处理
-              }}
+              onChange={(e) => setOutputFormat(e.target.value as any)}
               className='px-3 py-1 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 text-sm'>
               <option value='json'>JSON</option>
               <option value='yaml'>YAML</option>
               <option value='toml'>TOML</option>
             </select>
           </div>
-        </div>
-      </div>
-
-      {/* 错误提示 */}
-      {error && (
-        <div className='p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg mb-4'>
-          <p className='text-red-700 dark:text-red-400 text-sm'>{error}</p>
-        </div>
-      )}
-
-      <div className='grid grid-cols-1 md:grid-cols-2 gap-6 flex-1'>
-        {/* 左侧输入区域 */}
-        <div className='flex flex-col'>
-          <div className='p-2 bg-slate-100 dark:bg-slate-700 border-b dark:border-slate-600 flex items-center justify-between'>
-            <h2 className='font-semibold text-slate-800 dark:text-slate-200'>
-              输入内容
-            </h2>
-            <div className='flex items-center space-x-2'>
-              <span className='text-sm text-slate-600 dark:text-slate-400'>
-                长度: {input.length}
-              </span>
-              <button
-                onClick={handleLoadExample}
-                className='px-3 py-1 text-sm bg-primary-500 text-white rounded-lg hover:bg-primary-600'>
-                示例
-              </button>
-              <button
-                onClick={handleClearInput}
-                disabled={!input}
-                className='px-3 py-1 text-sm bg-slate-500 text-white rounded-lg hover:bg-slate-600 disabled:opacity-50'>
-                清空
-              </button>
-            </div>
+          <div className='flex-1' />
+          <div className='flex items-center space-x-2'>
+            <button
+              onClick={handleLoadExample}
+              className='px-3 py-1 text-sm bg-slate-200 dark:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-500'>
+              示例
+            </button>
+            <button
+              onClick={handleClearInput}
+              disabled={!input}
+              className='px-3 py-1 text-sm bg-slate-200 dark:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-500 disabled:opacity-50'>
+              清空
+            </button>
+            <button
+              onClick={handleCopyOutput}
+              disabled={!output || !!error}
+              className='px-3 py-1 text-sm bg-slate-200 dark:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-500 disabled:opacity-50'>
+              复制结果
+            </button>
           </div>
-          <div className='flex-1 min-h-0 h-full'>
+        </div>
+
+        {error && (
+          <div className='flex-shrink-0 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg m-2'>
+            <p className='text-red-700 dark:text-red-400 text-sm'>{error}</p>
+          </div>
+        )}
+
+        <div className='grid grid-cols-2 gap-2 flex-1 min-h-0 p-2'>
+          <div className='flex flex-col min-h-0'>
             <CodeEditor
               value={input}
               onChange={setInput}
@@ -306,27 +296,8 @@ const FormatConverter: React.FC = () => {
               }}
             />
           </div>
-        </div>
 
-        {/* 右侧输出区域 */}
-        <div className='flex flex-col'>
-          <div className='p-2 bg-slate-100 dark:bg-slate-700 border-b dark:border-slate-600 flex items-center justify-between'>
-            <h2 className='font-semibold text-slate-800 dark:text-slate-200'>
-              转换结果
-            </h2>
-            <div className='flex items-center space-x-2'>
-              <span className='text-sm text-slate-600 dark:text-slate-400'>
-                长度: {output.length}
-              </span>
-              <button
-                onClick={handleCopyOutput}
-                disabled={!output || !!error}
-                className='px-3 py-1 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50'>
-                复制结果
-              </button>
-            </div>
-          </div>
-          <div className='flex-1 min-h-0 h-full'>
+          <div className='flex flex-col min-h-0'>
             <CodeEditor
               value={output}
               readOnly={true}
