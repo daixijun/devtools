@@ -33,7 +33,7 @@
     "react-dom": "^18.3.1",
     "react-split": "^2.0.14",
     "smol-toml": "^1.4.2",
-    "toml": "^4.2.0",
+    "toml": "^5.0.1",
     "tomlify-j0.4": "^3.0.0"
   },
   "devDependencies": {
