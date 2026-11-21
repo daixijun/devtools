@@ -1,0 +1,29 @@
+[workspace]
+resolver = "2"
+members = ["crates/core", "crates/app"]
+
+[workspace.package]
+edition = "2021"
+version = "0.1.0"
+license = "MIT"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+# preserve_order：键序保持插入序（与历史版本 JSON.stringify 行为一致，JWT 签名输入、TOML 序列化依赖此语义）
+serde_json = { version = "1", features = ["preserve_order"] }
+dirs = "6"
+
+# GPUI 依赖统一在此锁定版本（精确 pin，升级需单独评估 breaking change）
+# gpui-pre 是 gpui 官方快照包；版本必须与 gpui-component 0.10.0 的 `=0.3.12` 锁定完全一致
+gpui = { package = "gpui-pre", version = "=0.3.12" }
+gpui-platform = { package = "gpui-pre-platform", version = "=0.3.12", features = ["font-kit"] }
+gpui-component = "0.10"
+# gpui-base 与 gpui-component 0.10 同源锁定（SelectableText 等文本选择基建）
+gpui-base = "0.10"
+
+devtools-core = { path = "crates/core" }
+
+[profile.release]
+lto = true
+opt-level = "s"
+strip = "symbols"

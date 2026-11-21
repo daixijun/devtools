@@ -1,6 +1,6 @@
 # Developer Toolbox
 
-A spotlight-style desktop developer toolbox built with **Tauri 2 + React 18 + TypeScript**. 31 developer tools across 7 categories, launched from a system-wide hotkey — works on macOS, Windows, and Linux.
+A desktop developer toolbox built with **pure Rust + GPUI** (native GPU-rendered UI): a main window with a category sidebar + tool content area, plus a tray and native app menu. 32 developer tools across 8 categories — macOS only.
 
 > 📖 中文说明：[README_ZH.md](README_ZH.md) · 详细工具使用指南（中文）：[docs/tools.md](docs/tools.md)
 
@@ -60,28 +60,33 @@ A spotlight-style desktop developer toolbox built with **Tauri 2 + React 18 + Ty
 
 ### Other Tools
 
-- **Settings** - Theme (light/dark/system), tray icon, autostart, start-minimized, close-to-tray, and customizable global hotkey
+- **Settings** - Theme (light/dark/system), tray icon, autostart, start-minimized, close-to-tray
 
 ## 🧭 How It Works
 
-1. Press the global hotkey (default **Option+Space** on macOS, **Alt+Space** elsewhere) to toggle the spotlight search bar
+1. Launch the app (or open it from the tray icon)
 2. Type to filter tools by name, description, or keyword; use ↑/↓ + Enter to launch — each tool opens in its own resizable window
-3. Press Esc to hide the window; reopen it anytime with the hotkey or from the tray icon
+3. Closing the window hides it to the tray (when tray is enabled); reopen it anytime from the tray icon
 
 ## 🛠️ Tech Stack
 
-### Frontend
+### UI (GPUI)
 
-- **React 18.3** - Modern frontend framework
-- **TypeScript 5.6** - Type-safe JavaScript
-- **Monaco Editor 4.7** - Code editor (VS Code engine)
-- **Tailwind CSS 4** - Utility-first CSS framework
-- **React Split 2.0** - Resizable split panes
-- **Tauri API v2** - Frontend-backend communication, plus dialog/fs/global-shortcut/opener/autostart plugins
+- **gpui (gpui-pre snapshot)** - Zed's native GPU-rendered UI framework (Metal on macOS)
+- **gpui-component 0.10** - longbridge component library (inputs, editor, select, buttons, notifications, resizable panes)
+- **tray-icon + muda** - system tray menu; **rfd** - native file dialogs
+- **rfd** - native file dialogs
 
-### Backend
+### Core (devtools-core)
 
-- **Tauri 2.x** - Cross-platform desktop framework with tray icon support
+- **Rust 2021** - All business logic, zero framework coupling
+- **sqlparser 0.58** - Professional SQL parsing (AST-based)
+- **reqwest 0.12 + rustls** - HTTP client for online tools
+- **openssl (vendored) + x509-parser + rustls** - Certificate parsing and crypto
+- **image 0.25 + oxipng + imagequant + nom-exif + libheif** - Image conversion, compression, and EXIF
+- **aes/cbc/ctr/cfb/ecb + sha1/sha2/sha3/md-5/hmac/pbkdf2/bcrypt** - Crypto (byte-compatible with the historical JS implementation)
+- **dns-lookup + pcre2 + regex + chrono/chrono-tz** - Networking, regex engines, and time handling
+- **FFmpeg** (external, optional) - Required only for video conversion
 - **Rust** - Systems programming language
 - **sqlparser 0.58** - Professional SQL parsing (AST-based)
 - **reqwest 0.12 + rustls** - HTTP client for online tools
@@ -94,98 +99,70 @@ A spotlight-style desktop developer toolbox built with **Tauri 2 + React 18 + Ty
 
 ### Prerequisites
 
-- Node.js 18+
-- Rust 1.77+ (Tauri 2 minimum)
-- pnpm package manager
+- Rust 1.85+ (workspace, edition 2021)
+- Apple Metal Toolchain (`xcodebuild -downloadComponent MetalToolchain`) — required by gpui shaders
 - FFmpeg (optional, only for the video converter)
-
-### Install Dependencies
-
-```bash
-pnpm install
-```
 
 ### Development Mode
 
 ```bash
-pnpm tauri dev
-# or: make dev
+make run            # run (auto watch + restart if cargo-watch is installed)
 ```
 
 ### Build Application
 
 ```bash
-# Build frontend (includes typecheck)
-pnpm build
-
-# Build desktop application
-pnpm tauri build
+make app            # package target/DevTools.app (debug)
+make app-release    # package target/DevTools.app (release)
 ```
 
 ### Checks
 
 ```bash
-make check          # tsc + style lint + cargo check
-make check-tsc      # TypeScript only
-make check-styles   # design-system lint (slate palette, rounded-lg, duration-200)
-make cargo-clippy   # Rust lints
+make check          # cargo check + clippy (zero-warning) + core tests
+make test           # unit tests incl. crypto golden vectors
+make fmt            # cargo fmt
 ```
 
 ## 📁 Project Structure
 
 ```bash
 devtools/                        # Project root
-├── Makefile                     # Dev/build/check workflow shortcuts
-├── docs/                        # Documentation (tool usage guide, UI notes, plans)
+├── Cargo.toml                   # Workspace (pins gpui / gpui-platform / gpui-component)
+├── Makefile                     # run/check/app workflow shortcuts
 ├── scripts/
-│   └── check-styles.cjs         # Tailwind/design-system consistency checks
-├── public/                      # Static assets (app logo)
-├── src-tauri/                   # Tauri (Rust) backend
-│   ├── capabilities/            # Tauri capability definitions
-│   ├── icons/                   # Application icons
-│   ├── src/
-│   │   ├── lib.rs               # Plugin setup + invoke_handler command registry
-│   │   ├── main.rs              # Application entry point
-│   │   ├── tools/               # One Rust module per backend tool
-│   │   └── utils/               # crypto, error, validation, formatting helpers
-│   └── tauri.conf.json          # Window/tray/build configuration
-├── src/                         # Frontend React/TypeScript code
-│   ├── App.tsx                  # Hash router: spotlight bar ↔ #/tool/<id> windows
-│   ├── components/
-│   │   ├── SpotlightSearch.tsx  # Main launcher (search + keyboard navigation)
-│   │   ├── ToolWindow.tsx       # Tool window container (lazy loading + theme)
-│   │   ├── common/              # Shared widgets (file upload, copy button, …)
-│   │   ├── icons/               # Tool icons
-│   │   ├── layouts/             # Layout components
-│   │   └── templates/           # Tool page templates
-│   ├── hooks/                   # useTheme, useToast, useCopyToClipboard, useToolWindow, …
-│   ├── tools/
-│   │   ├── registry.ts          # Single source of truth: tool metadata + window sizes
-│   │   └── *.tsx                # 32 tool components (lazy-loaded)
-│   ├── utils/
-│   │   ├── api.ts               # Typed wrappers around Tauri invoke() commands
-│   │   └── globalShortcut.ts    # Global hotkey registration helpers
-│   └── main.tsx                 # React entry point
-├── tailwind.config.js
-└── vite.config.ts               # Dev server on fixed port 1453
+│   └── build-app.sh             # DevTools.app packaging (Info.plist + icns)
+├── crates/
+│   ├── core/                    # devtools-core: pure business library (no UI)
+│   │   ├── src/registry.rs      # 32-tool metadata registry (single source of truth)
+│   │   ├── src/config.rs        # Shared config JSON (backward compatible)
+│   │   ├── src/crypto.rs        # Byte-compatible port of the former cipher.ts/jwt.ts
+│   │   ├── src/text_tools/      # base64 / url / password / timestamp / subnet / format
+│   │   ├── src/tools/           # 16 tool logic modules (ssl, certs, dns, whois, media, sql…)
+│   │   └── src/utils/           # shared helpers + DevToolError
+│   └── app/                     # devtools-app: GPUI shell (bin: devtools-gpui)
+│       ├── src/main.rs          # Startup flow (config → theme → core_rt → app menu → main window → tray)
+│       ├── src/windows.rs       # WindowManager global (main window + about window)
+│       ├── src/main_window.rs   # Main window: sidebar nav (search + categories) + tool content area
+│       ├── src/app_menu.rs      # macOS app menu (About/Settings/Edit/Window/Help)
+│       ├── src/tool_window.rs   # Tool window host (header + page view)
+│       ├── src/tray.rs          # Tray icon + menu pump
+│       ├── src/macos_window_ctl.rs  # unsafe objc: per-window show/hide (only unsafe file)
+│       ├── src/core_rt.rs       # tokio runtime bridge for async core logic
+│       ├── src/components/      # UI component layer (ui/notify/select)
+│       └── src/tools/           # 32 tool pages, one file per tool
+└── docs/plans/                  # Migration design + tool UI contracts
 ```
 
 ## 🎯 Core Design
 
-### Frontend Architecture
-
-- **Spotlight Launcher** - A frameless search bar is the main window; tools open in separate windows sized per `registry.ts`
-- **Tool Registry** - Every tool is declared once in `src/tools/registry.ts` (id, category, icon, keywords, window size) and lazy-loaded
-- **Hash Routing** - `#/tool/<id>` renders a tool window; the root route renders the spotlight bar
-- **Monaco Editor Integration** - Text-heavy tools use Monaco with syntax highlighting and split panes
-- **Theme Support** - Dark/light/system themes, synced across windows in real time
-
-### Backend Architecture
-
-- **Tauri Command System** - Frontend calls Rust via typed `invoke()` wrappers in `src/utils/api.ts`
-- **Modular Tool Structure** - Each backend tool is its own module with standardized error handling (`DevToolError` with localized messages)
-- **Professional SQL Parsing** - sqlparser-rs builds an AST instead of using regex; supports Generic/MySQL/PostgreSQL/SQLite dialects
-- **Native Image Pipeline** - Conversion, EXIF parsing, and compression run in Rust (image/oxipng/imagequant), not the browser
+- **Main Window** - Category sidebar (search + grouped tools) on the left, tool content on the right
+- **Tool Registry** - Every tool is declared once in `crates/core/src/registry.rs` (id, category, keywords, window size)
+- **Layered Architecture** - `devtools-core` holds all logic (pure functions + async), the GPUI shell only renders and forwards state; async core calls run on a background tokio Runtime bridged into the UI executor
+- **Component Layer** - Shared widgets (cards, fields, banners, toasts, selects) wrap gpui-component so all 32 tool pages stay consistent
+- **Theme Support** - Dark/light/system themes with live system-appearance following; theme is persisted to the shared config JSON
+- **Config Compatibility** - `devtools-config.json` fields are add-only with serde defaults for backward compatibility
+- **Crypto Compatibility** - `devtools-core/src/crypto.rs` reproduces the historical semantics byte-for-byte (AES 5 modes × 6 paddings, Keccak-512 as "SHA3", PBKDF2-HMAC-SHA256, JWT HS/RS, bcrypt), verified against golden vectors
 
 ## 📋 Supported SQL Formats
 
@@ -224,6 +201,6 @@ This tool is intended for development and testing purposes only. Always review a
 
 ## 🔗 Related Links
 
-- [Tauri Official Documentation](https://tauri.app/)
-- [React Official Documentation](https://react.dev/)
+- [gpui-component Documentation](https://longbridge.github.io/gpui-component/)
+- [Rust Official Documentation](https://www.rust-lang.org/)
 - [TypeScript Official Documentation](https://www.typescriptlang.org/)

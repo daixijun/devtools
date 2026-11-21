@@ -1,6 +1,6 @@
 # 开发者工具箱
 
-基于 **Tauri 2 + React 18 + TypeScript** 的 Spotlight 风格桌面开发者工具箱。7 大分类共 31 个开发工具，通过系统级全局快捷键随时呼出，支持 macOS、Windows 和 Linux。
+基于 **纯 Rust + GPUI**（原生 GPU 渲染）的桌面开发者工具箱：主窗口形态（左侧分类导航 + 右侧工具内容区），配系统托盘与原生应用菜单。8 大分类共 32 个开发工具，仅支持 macOS。
 
 > 📖 English: [README.md](README.md) · 详细工具使用指南：[docs/tools.md](docs/tools.md)
 
@@ -60,132 +60,113 @@
 
 ### 其他工具
 
-- **设置** - 主题（浅色/深色/跟随系统）、系统托盘、开机自启、启动最小化、关闭到托盘、自定义全局快捷键
+- **设置** - 主题（浅色/深色/跟随系统）、系统托盘、开机自启、启动最小化、关闭到托盘
 
 ## 🧭 使用方式
 
-1. 按全局快捷键（macOS 默认 **Option+Space**，其他平台 **Alt+Space**）呼出/隐藏 Spotlight 搜索条
+1. 启动应用（或从托盘图标打开）
 2. 输入关键词按名称、描述或关键字过滤工具，↑/↓ + Enter 打开 —— 每个工具在独立的可缩放窗口中运行
-3. 按 Esc 隐藏窗口；随时可通过快捷键或系统托盘图标重新呼出
+3. 关闭窗口即隐藏到托盘（启用托盘时）；随时可从托盘图标重新打开
 
 ## 🛠️ 技术栈
 
-### 前端
+### UI（GPUI）
 
-- **React 18.3** - 现代化前端框架
-- **TypeScript 5.6** - 类型安全的 JavaScript
-- **Monaco Editor 4.7** - 代码编辑器（VS Code 同款）
-- **Tailwind CSS 4** - 实用优先的 CSS 框架
-- **React Split 2.0** - 可调整大小的分割面板
-- **Tauri API v2** - 前后端通信，含 dialog/fs/global-shortcut/opener/autostart 插件
+- **gpui（gpui-pre 快照）** - Zed 的原生 GPU 渲染 UI 框架（macOS Metal）
+- **gpui-component 0.10** - longbridge 组件库（输入、编辑器、下拉、通知、分栏等）
+- **tray-icon + muda** - 系统托盘；**rfd** - 原生文件对话框
 
-### 后端
+### 核心（devtools-core）
 
-- **Tauri 2.x** - 跨平台桌面应用框架，支持系统托盘
-- **Rust** - 系统级编程语言
-- **sqlparser 0.58** - 专业 SQL 解析器（基于 AST）
-- **reqwest 0.12 + rustls** - 在线工具的 HTTP 客户端
-- **openssl (vendored) + x509-parser + rustls** - 证书解析与加密
-- **image 0.25 + oxipng + imagequant + nom-exif + libheif** - 图片转换、压缩与 EXIF 解析
-- **dns-lookup + pcre2 + regex + chrono/chrono-tz** - 网络查询、正则引擎与时间处理
-- **FFmpeg**（外部可选依赖）- 仅视频转换需要
+- **Rust 2021** - 全部业务逻辑，零框架耦合
+- **sqlparser 0.58 / reqwest + rustls / openssl + x509-parser** - SQL 解析、网络、证书
+- **image + oxipng + imagequant + nom-exif + libheif** - 图像转换/压缩/EXIF
+- **aes/sha/md-5/hmac/pbkdf2/bcrypt** - 加密（与历史 JS 实现逐字节兼容）
+- **dns-lookup + pcre2 + regex + chrono/chrono-tz** - 网络、正则、时间
+- **FFmpeg**（外部，可选）- 仅视频转换需要
 
 ## 🚀 快速开始
 
 ### 环境要求
 
-- Node.js 18+
-- Rust 1.77+（Tauri 2 最低要求）
-- pnpm 包管理器
+- Rust 1.77+
 - FFmpeg（可选，仅视频转换工具需要）
 
 ### 安装依赖
 
 ```bash
-pnpm install
+# 直接构建，无需安装额外依赖
 ```
 
 ### 开发模式
 
 ```bash
-pnpm tauri dev
-# 或: make dev
+make run
+# 装有 cargo-watch 时为 watch 模式（文件变化自动重编译并重启），
+# 未安装则普通运行；make run-direct 始终普通运行
 ```
 
 ### 构建应用
 
 ```bash
-# 构建前端（含类型检查）
-pnpm build
-
-# 构建桌面应用
-pnpm tauri build
+make app            # 打包 target/DevTools.app (debug)
+make app-release    # 打包 target/DevTools.app (release)
 ```
 
 ### 检查
 
 ```bash
-make check          # tsc + 样式检查 + cargo check
-make check-tsc      # 仅 TypeScript
-make check-styles   # 设计系统检查（slate 色系、rounded-lg、duration-200）
-make cargo-clippy   # Rust 静态检查
+make check          # cargo check + clippy（零警告标准）+ core 测试
+make test           # 单元测试（含 crypto 黄金向量）
+make fmt            # cargo fmt
 ```
 
 ## 📁 项目结构
 
 ```bash
 devtools/                        # 项目根目录
-├── Makefile                     # 开发/构建/检查工作流快捷入口
-├── docs/                        # 文档（工具使用指南、UI 说明、规划）
+├── Cargo.toml                   # workspace（pin gpui / gpui-platform / gpui-component）
+├── Makefile                     # run/check/app 工作流快捷入口
 ├── scripts/
-│   └── check-styles.cjs         # Tailwind/设计系统一致性检查
-├── public/                      # 静态资源（应用 Logo）
-├── src-tauri/                   # Tauri (Rust) 后端
-│   ├── capabilities/            # Tauri 能力定义
-│   ├── icons/                   # 应用图标
-│   ├── src/
-│   │   ├── lib.rs               # 插件初始化 + invoke_handler 命令注册
-│   │   ├── main.rs              # 应用入口点
-│   │   ├── tools/               # 每个后端工具一个 Rust 模块
-│   │   └── utils/               # crypto、error、validation、格式化等辅助模块
-│   └── tauri.conf.json          # 窗口/托盘/构建配置
-├── src/                         # 前端 React/TypeScript 代码
-│   ├── App.tsx                  # 哈希路由：Spotlight 搜索条 ↔ #/tool/<id> 工具窗口
-│   ├── components/
-│   │   ├── SpotlightSearch.tsx  # 主启动器（搜索 + 键盘导航）
-│   │   ├── ToolWindow.tsx       # 工具窗口容器（懒加载 + 主题）
-│   │   ├── common/              # 通用组件（文件上传、复制按钮等）
-│   │   ├── icons/               # 工具图标
-│   │   ├── layouts/             # 布局组件
-│   │   └── templates/           # 工具页面模板
-│   ├── hooks/                   # useTheme、useToast、useCopyToClipboard、useToolWindow 等
-│   ├── tools/
-│   │   ├── registry.ts          # 唯一事实来源：工具元数据 + 窗口尺寸
-│   │   └── *.tsx                # 32 个工具组件（懒加载）
-│   ├── utils/
-│   │   ├── api.ts               # Tauri invoke() 命令的类型化封装
-│   │   └── globalShortcut.ts    # 全局快捷键注册辅助
-│   └── main.tsx                 # React 入口点
-├── tailwind.config.js
-└── vite.config.ts               # 开发服务器固定端口 1453
+│   └── build-app.sh             # DevTools.app 打包（Info.plist + icns）
+├── crates/
+│   ├── core/                    # devtools-core：纯业务库（无 UI）
+│   │   ├── src/registry.rs      # 32 工具元数据注册表（权威源）
+│   │   ├── src/config.rs        # 共享配置 JSON（双向兼容）
+│   │   ├── src/crypto.rs        # AES/MD5/SHA/JWT/bcrypt（字节级兼容历史行为）
+│   │   ├── src/text_tools/      # base64 / url / password / timestamp / subnet / format
+│   │   ├── src/tools/           # 16 个工具逻辑模块（ssl、证书、dns、whois、媒体、sql…）
+│   │   └── src/utils/           # 共享辅助模块 + DevToolError
+│   └── app/                     # devtools-app：GPUI 壳（bin: devtools-gpui）
+│       ├── src/main.rs          # 启动流程（config → theme → core_rt → 应用菜单 → 主窗口 → 托盘）
+│       ├── src/windows.rs       # WindowManager 全局（主窗口 + 关于窗口）
+│       ├── src/main_window.rs   # 主窗口：左侧导航（搜索 + 分类分组）+ 右侧工具内容区
+│       ├── src/app_menu.rs      # macOS 应用菜单（关于/设置/编辑/窗口/帮助）
+│       ├── src/tool_window.rs   # 工具窗口宿主（页头 + 页面视图）
+│       ├── src/tray.rs          # 托盘图标 + 菜单事件泵
+│       ├── src/macos_window_ctl.rs  # unsafe objc：逐窗口显隐（唯一 unsafe 文件）
+│       ├── src/core_rt.rs       # tokio 运行时桥（core 异步逻辑）
+│       ├── src/components/      # UI 组件层（ui/notify/select）
+│       └── src/tools/           # 32 个工具页，每工具一个文件
+└── docs/plans/                  # 工具 UI 契约规格
 ```
 
 ## 🎯 核心设计
 
-### 前端架构
+### 应用架构
 
-- **Spotlight 启动器** - 无边框搜索条即主窗口；各工具按 `registry.ts` 中定义的尺寸在独立窗口打开
-- **工具注册表** - 每个工具在 `src/tools/registry.ts` 中声明一次（id、分类、图标、关键字、窗口尺寸）并按需懒加载
-- **哈希路由** - `#/tool/<id>` 渲染工具窗口；根路由渲染 Spotlight 搜索条
-- **Monaco Editor 集成** - 文本类工具使用 Monaco 编辑器，支持语法高亮和分栏布局
-- **主题支持** - 深色/浅色/跟随系统主题，跨窗口实时同步
+- **主窗口形态** - 左侧分类导航（搜索 + 分组工具列表），右侧工具内容区
+- **工具注册表** - 每个工具在 `crates/core/src/registry.rs` 中声明一次（id、中文名、描述、分类、关键字），单一事实来源
+- **代码编辑器** - gpui-component Editor（代码模式）+ syntect 语法高亮（SQL/Go/JSON 等，配色跟随主题）
+- **主题支持** - 深色/浅色/跟随系统主题，窗口实时跟随系统外观
+- **应用菜单栏** - 关于/设置/编辑（剪贴板）/窗口/帮助，菜单项走 gpui 全局 action 分发
 
-### 后端架构
+### 业务逻辑（devtools-core）
 
-- **Tauri 命令系统** - 前端通过 `src/utils/api.ts` 中类型化的 `invoke()` 封装调用 Rust
-- **模块化工具结构** - 每个后端工具独立成模块，统一使用 `DevToolError` 错误处理与本地化消息
+- **模块化工具结构** - 每个工具逻辑独立成模块，统一使用 `DevToolError` 错误处理与历史中文消息契约
 - **专业 SQL 解析** - sqlparser-rs 构建抽象语法树而非正则匹配；支持 Generic/MySQL/PostgreSQL/SQLite 方言
-- **原生图片处理管线** - 图片转换、EXIF 解析和压缩均在 Rust 中完成（image/oxipng/imagequant），不依赖浏览器
+- **原生图片处理管线** - 图片转换、EXIF 解析和压缩均在 Rust 中完成（image/oxipng/imagequant/libheif）
+- **字节级兼容密码学** - AES 5 模式 × 6 填充、MD5/SHA/Keccak、PBKDF2、JWT、bcrypt，与历史版本逐字节对齐
 
 ## 📋 支持的 SQL 格式
 
@@ -224,6 +205,6 @@ SQL 工具支持以下格式：
 
 ## 🔗 相关链接
 
-- [Tauri 官方文档](https://tauri.app/)
-- [React 官方文档](https://react.dev/)
+- [gpui-component 文档](https://longbridge.github.io/gpui-component/)
+- [gpui-component 文档](https://longbridge.github.io/gpui-component/)
 - [TypeScript 官方文档](https://www.typescriptlang.org/)

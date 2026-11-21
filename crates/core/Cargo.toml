@@ -1,0 +1,47 @@
+[package]
+name = "devtools-core"
+description = "开发者工具箱纯 Rust 业务逻辑库（无 UI 依赖）"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+dirs.workspace = true
+
+# 业务逻辑所需依赖
+tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
+tokio-rustls = "0.26"
+rustls = { version = "0.23", features = ["ring"] }
+webpki-roots = "0.26"
+dns-lookup = "2"
+openssl = { version = "0.10.73", features = ["vendored"] }
+x509-parser = "0.17"
+base64 = "0.21"
+time = "0.3"
+chrono = { version = "0.4", features = ["serde"] }
+chrono-tz = "0.10"
+hex = "0.4"
+image = { version = "0.25", features = ["default-formats"] }
+oxipng = { version = "10", default-features = false, features = ["zopfli", "parallel"] }
+imagequant = "4"
+png = "0.18"
+nom-exif = { version = "2.5", features = ["async"] }
+libheif-sys = { version = "5.0.0", features = ["v1_20"] }
+regex = "1.10"
+pcre2 = "0.2"
+sha1 = "0.10"
+sha2 = "0.10"
+sha3 = "0.10"
+md-5 = "0.10"
+hmac = "0.12"
+pbkdf2 = "0.12"
+aes = "0.8"   # CBC/ECB 模式基于 aes::cipher 原语手写实现，无需 cbc/ecb crate
+ctr = "0.9"
+cfb-mode = "0.8"
+bcrypt = "0.15"
+serde_yaml = "0.9"
+toml = "0.8"
+sqlparser = "0.58"

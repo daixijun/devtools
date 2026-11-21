@@ -1,0 +1,120 @@
+//! 应用配置持久化（`dirs::config_dir()/devtools/devtools-config.json`）。
+//!
+//! 历史版本只写入 `tray_enabled / start_minimized / close_to_tray` 三个字段；
+//! 本模块新增字段均带 serde 默认值——旧文件可正常读取，向后兼容。
+
+use serde::{Deserialize, Serialize};
+use std::fs;
+use std::path::PathBuf;
+
+/// 主题模式（light/dark/system 三态）
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum ThemeMode {
+    Light,
+    #[default]
+    System,
+    Dark,
+}
+
+/// 全局快捷键配置（快捷键功能已移除；字段仅为向后兼容保留）
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HotKeyConfig {
+    pub modifier: String,
+    pub key: String,
+}
+
+impl Default for HotKeyConfig {
+    fn default() -> Self {
+        Self {
+            modifier: if cfg!(target_os = "macos") {
+                "option".to_string()
+            } else {
+                "alt".to_string()
+            },
+            key: "Space".to_string(),
+        }
+    }
+}
+
+/// 应用配置。字段新增必须带 `#[serde(default)]` 以保持与历史版本配置文件双向兼容。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AppConfig {
+    pub tray_enabled: bool,
+    pub start_minimized: bool,
+    pub close_to_tray: bool,
+    #[serde(default)]
+    pub theme: ThemeMode,
+    #[serde(default)]
+    pub hotkey: HotKeyConfig,
+}
+
+impl Default for AppConfig {
+    fn default() -> Self {
+        Self {
+            tray_enabled: true,
+            start_minimized: false,
+            close_to_tray: true, // 默认启用关闭时最小化到托盘
+            theme: ThemeMode::default(),
+            hotkey: HotKeyConfig::default(),
+        }
+    }
+}
+
+fn config_path() -> PathBuf {
+    dirs::config_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join("devtools")
+        .join("devtools-config.json")
+}
+
+impl AppConfig {
+    /// 读取配置；文件不存在时返回默认值。
+    pub fn load() -> Self {
+        let path = config_path();
+        if path.exists() {
+            fs::read_to_string(path)
+                .ok()
+                .and_then(|content| serde_json::from_str(&content).ok())
+                .unwrap_or_default()
+        } else {
+            Self::default()
+        }
+    }
+
+    /// 写入配置（父目录不存在则创建）。
+    pub fn save(&self) -> std::io::Result<()> {
+        let path = config_path();
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        let content = serde_json::to_string_pretty(self)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+        fs::write(path, content)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_backward_compat_with_old_config() {
+        // 历史版本写入的配置（只有 3 个字段）必须能被读取
+        let old_json = r#"{"tray_enabled":true,"start_minimized":false,"close_to_tray":true}"#;
+        let config: AppConfig = serde_json::from_str(old_json).unwrap();
+        assert!(config.tray_enabled);
+        assert_eq!(config.theme, ThemeMode::System);
+        assert_eq!(config.hotkey.modifier, "option");
+    }
+
+    #[test]
+    fn test_new_fields_serialized() {
+        let config = AppConfig {
+            theme: ThemeMode::Dark,
+            ..Default::default()
+        };
+        let json = serde_json::to_string(&config).unwrap();
+        assert!(json.contains("\"theme\":\"dark\""));
+    }
+}

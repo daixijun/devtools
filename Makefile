@@ -1,24 +1,20 @@
-# Makefile for Devtools (Tauri + React + TypeScript)
+# Makefile for Devtools (GPUI 纯 Rust 桌面应用)
 # 管理开发、构建、清理、检查等常用工作流
 #
 # 用法:
 #   make help           # 显示所有可用命令
-#   make install        # 安装前端依赖
-#   make dev            # 启动桌面应用开发模式 (Tauri)
-#   make build          # 构建前端到 dist/
-#   make tauri-build    # 打包桌面应用
+#   make run            # 运行桌面应用 (debug; 装有 cargo-watch 时文件变化自动重编译重启)
+#   make run-direct     # 运行桌面应用 (debug, 不启用 watch)
+#   make check          # 全量检查 (check + clippy + test)
+#   make app            # 打包 DevTools.app
 #   make clean          # 清理构建产物
 
 # --- 可执行程序 -----------------------------------------------------------
-PNPM    := pnpm
-CARGO   := cargo
-NPM     := npm
+CARGO := cargo
 
 # --- 路径 -----------------------------------------------------------------
-ROOT_DIR     := $(CURDIR)
-SRC_TAURI    := $(ROOT_DIR)/src-tauri
-DIST_DIR     := $(ROOT_DIR)/dist
-TARGET_DIR   := $(SRC_TAURI)/target
+ROOT_DIR := $(CURDIR)
+TARGET_DIR := $(ROOT_DIR)/target
 
 # --- 颜色输出 -------------------------------------------------------------
 COLOR_RESET  := \033[0m
@@ -29,11 +25,8 @@ COLOR_YELLOW := \033[33m
 
 .DEFAULT_GOAL := help
 
-# Phony targets - 不对应实际文件
-.PHONY: help install install-ci dev preview build tauri \
-        tauri-build tauri-clean check check-tsc check-styles \
-        cargo-check cargo-fmt cargo-clippy clean clean-all release \
-        fmt info
+.PHONY: help run run-direct run-release check clippy test fmt app \
+        cargo-check clean clean-all info
 
 # =========================================================================
 # 帮助
@@ -45,91 +38,77 @@ help: ## 显示此帮助信息
 	@printf "\n详见 $(COLOR_YELLOW)AGENTS.md$(COLOR_RESET) 了解开发约定。\n"
 
 # =========================================================================
-# 依赖安装
-# =========================================================================
-install: ## 安装前端依赖 (pnpm install)
-	@printf "$(COLOR_CYAN)▶ 安装前端依赖...$(COLOR_RESET)\n"
-	$(PNPM) install
-
-install-ci: ## 以 CI 模式安装依赖 (frozen lockfile)
-	$(PNPM) install --frozen-lockfile
-
-# =========================================================================
 # 开发
 # =========================================================================
-dev: ## 启动桌面应用开发模式 (Tauri + Vite)
-	@printf "$(COLOR_CYAN)▶ 启动桌面应用开发模式...$(COLOR_RESET)\n"
-	$(PNPM) tauri dev
+run: ## 运行桌面应用 (debug; 装有 cargo-watch 时 watch 模式, 文件变化自动重启)
+	@printf "$(COLOR_CYAN)▶ 运行 devtools-app...$(COLOR_RESET)\n"
+	@if command -v cargo-watch >/dev/null 2>&1; then \
+		printf "$(COLOR_CYAN)▶ watch 模式: crates/、Cargo.toml 或 Cargo.lock 变化自动重编译并重启 (Ctrl+C 退出)$(COLOR_RESET)\n"; \
+		$(CARGO) watch -w crates -w Cargo.toml -w Cargo.lock -x "run -p devtools-app"; \
+	else \
+		printf "$(COLOR_YELLOW)提示: 未安装 cargo-watch, 普通模式运行; cargo install cargo-watch 可启用文件变化自动重启$(COLOR_RESET)\n"; \
+		$(CARGO) run -p devtools-app; \
+	fi
 
-preview: ## 预览构建后的 Web 产物
-	$(PNPM) preview
+run-direct: ## 运行桌面应用 (debug, 不启用 watch)
+	@printf "$(COLOR_CYAN)▶ 运行 devtools-app...$(COLOR_RESET)\n"
+	$(CARGO) run -p devtools-app
 
-# =========================================================================
-# 构建
-# =========================================================================
-build: check-tsc ## 构建前端 (tsc + vite build) 到 dist/
-	@printf "$(COLOR_CYAN)▶ 构建前端...$(COLOR_RESET)\n"
-	$(PNPM) build
-
-tauri-build: ## 打包桌面应用 (前端 + Rust)
-	@printf "$(COLOR_CYAN)▶ 打包桌面应用...$(COLOR_RESET)\n"
-	$(PNPM) tauri build
-
-tauri: ## 直接转发到 tauri CLI (make tauri args="dev" / "build" / ...)
-	$(PNPM) tauri $(args)
-
-release: tauri-build ## 以 release 模式打包桌面应用 (与 tauri-build 等价)
+run-release: ## 运行桌面应用 (release)
+	$(CARGO) run --release -p devtools-app
 
 # =========================================================================
-# 检查 / Lint
+# 检查 / Lint / 测试
 # =========================================================================
-check: check-tsc check-styles cargo-check ## 运行前端 + Rust 全部检查
+check: cargo-check clippy test ## 全量检查 (check + clippy + test)
 
-check-tsc: ## TypeScript 类型检查
-	@printf "$(COLOR_CYAN)▶ TypeScript 类型检查...$(COLOR_RESET)\n"
-	$(PNPM) exec tsc --noEmit
-
-check-styles: ## 检查 Tailwind/CSS 样式一致性
-	@printf "$(COLOR_CYAN)▶ 检查样式...$(COLOR_RESET)\n"
-	$(NPM) run check:styles
-
-fmt: cargo-fmt ## 格式化代码 (当前仅 Rust)
-
-# --- Rust 侧 -------------------------------------------------------------
-cargo-check: ## cargo check (src-tauri)
+cargo-check: ## cargo check (workspace)
 	@printf "$(COLOR_CYAN)▶ cargo check...$(COLOR_RESET)\n"
-	cd $(SRC_TAURI) && $(CARGO) check
+	$(CARGO) check -p devtools-core -p devtools-app
 
-cargo-fmt: ## cargo fmt (src-tauri)
-	@printf "$(COLOR_CYAN)▶ cargo fmt...$(COLOR_RESET)\n"
-	cd $(SRC_TAURI) && $(CARGO) fmt
-
-cargo-clippy: ## cargo clippy (src-tauri)
+clippy: ## cargo clippy (workspace, 零警告标准)
 	@printf "$(COLOR_CYAN)▶ cargo clippy...$(COLOR_RESET)\n"
-	cd $(SRC_TAURI) && $(CARGO) clippy --all-targets --all-features
+	$(CARGO) clippy -p devtools-core --all-targets
+	$(CARGO) clippy -p devtools-app --all-targets
+
+test: ## cargo test (core 单元测试 + 黄金向量)
+	@printf "$(COLOR_CYAN)▶ cargo test...$(COLOR_RESET)\n"
+	$(CARGO) test -p devtools-core
+
+fmt: ## cargo fmt (workspace)
+	$(CARGO) fmt
+
+# =========================================================================
+# 构建 / 打包
+# =========================================================================
+app: ## 打包 DevTools.app (debug, scripts/build-app.sh)
+	@printf "$(COLOR_CYAN)▶ 打包 DevTools.app...$(COLOR_RESET)\n"
+	scripts/build-app.sh
+
+app-release: ## 打包 DevTools.app (release)
+	@printf "$(COLOR_CYAN)▶ 打包 DevTools.app (release)...$(COLOR_RESET)\n"
+	scripts/build-app.sh release
+
+# 兼容别名
+gpui-run: run
+gpui-check: check
+gpui-clean: clean-all
 
 # =========================================================================
 # 清理
 # =========================================================================
-clean: ## 清理前端构建产物 (dist/)
-	@printf "$(COLOR_YELLOW)▶ 清理 dist/...$(COLOR_RESET)\n"
-	rm -rf $(DIST_DIR)
+clean: ## 清理构建产物 (target/)
+	@printf "$(COLOR_YELLOW)▶ 清理 target/...$(COLOR_RESET)\n"
+	$(CARGO) clean
 
-tauri-clean: ## 清理 Rust 构建产物 (src-tauri/target)
-	@printf "$(COLOR_YELLOW)▶ 清理 src-tauri/target...$(COLOR_RESET)\n"
-	cd $(SRC_TAURI) && $(CARGO) clean
-
-clean-all: clean tauri-clean ## 清理全部构建产物 (前端 + Rust)
+clean-all: clean ## 清理全部构建产物
 
 # =========================================================================
 # 信息
 # =========================================================================
 info: ## 显示项目环境信息
 	@printf "$(COLOR_BOLD)--- 环境信息 ---$(COLOR_RESET)\n"
-	@printf "Node:    %s\n" "$$(node --version)"
-	@printf "pnpm:    %s\n" "$$(pnpm --version)"
 	@printf "Rust:    %s\n" "$$(rustc --version)"
 	@printf "Cargo:   %s\n" "$$(cargo --version)"
-	@printf "Tauri:   %s\n" "$$(pnpm tauri --version 2>/dev/null || echo 'n/a')"
 	@printf "Root:    %s\n" "$(ROOT_DIR)"
-	@printf "Dist:    %s\n" "$(DIST_DIR)"
+	@printf "Target:  %s\n" "$(TARGET_DIR)"
