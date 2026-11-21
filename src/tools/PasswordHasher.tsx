@@ -1,9 +1,9 @@
 import bcrypt from 'bcryptjs'
-import CryptoJS from 'crypto-js'
 import React, { useCallback, useState } from 'react'
 import { Button } from '../components/common'
 import { ToolLayout } from '../components/layouts'
 import { useCopyToClipboard } from '../hooks'
+import { md5Hex, pbkdf2Hex, sha256Hex, sha512Hex } from '../utils/cipher'
 
 type HashAlgorithm = 'bcrypt' | 'md5' | 'sha256' | 'sha512' | 'pbkdf2'
 
@@ -99,15 +99,15 @@ const PasswordHasher: React.FC = () => {
           break
 
         case 'md5':
-          hashed = CryptoJS.MD5(password).toString()
+          hashed = md5Hex(password)
           break
 
         case 'sha256':
-          hashed = CryptoJS.SHA256(password).toString()
+          hashed = sha256Hex(password)
           break
 
         case 'sha512':
-          hashed = CryptoJS.SHA512(password).toString()
+          hashed = sha512Hex(password)
           break
 
         case 'pbkdf2':
@@ -115,11 +115,7 @@ const PasswordHasher: React.FC = () => {
             setHash('迭代次数必须在 1000-1000000 之间')
             return
           }
-          const pbkdf2Hash = CryptoJS.PBKDF2(password, 'salt', {
-            keySize: 256 / 32,
-            iterations: iterations,
-          })
-          hashed = pbkdf2Hash.toString()
+          hashed = pbkdf2Hex(password, 'salt', iterations, 32)
           break
 
         default:
@@ -159,24 +155,20 @@ const PasswordHasher: React.FC = () => {
           break
 
         case 'md5':
-          isValid = CryptoJS.MD5(verifyPassword).toString() === verifyHash
+          isValid = md5Hex(verifyPassword) === verifyHash
           break
 
         case 'sha256':
-          isValid = CryptoJS.SHA256(verifyPassword).toString() === verifyHash
+          isValid = sha256Hex(verifyPassword) === verifyHash
           break
 
         case 'sha512':
-          isValid = CryptoJS.SHA512(verifyPassword).toString() === verifyHash
+          isValid = sha512Hex(verifyPassword) === verifyHash
           break
 
         case 'pbkdf2':
           // PBKDF2 需要相同的盐值和迭代次数，这里简化处理
-          const pbkdf2Hash = CryptoJS.PBKDF2(verifyPassword, 'salt', {
-            keySize: 256 / 32,
-            iterations: iterations,
-          })
-          isValid = pbkdf2Hash.toString() === verifyHash
+          isValid = pbkdf2Hex(verifyPassword, 'salt', iterations, 32) === verifyHash
           break
 
         default:

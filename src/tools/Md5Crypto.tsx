@@ -1,10 +1,10 @@
 import { open as openDialog } from '@tauri-apps/plugin-dialog'
 import { readTextFile } from '@tauri-apps/plugin-fs'
-import CryptoJS from 'crypto-js'
 import React, { useEffect, useState } from 'react'
 import { Button, InputField } from '../components/common'
 import { ToolLayout } from '../components/layouts'
 import { useCopyToClipboard } from '../hooks'
+import { md5Hex } from '../utils/cipher'
 
 type TabType = 'text' | 'file' | 'batch'
 
@@ -48,7 +48,7 @@ const Md5Crypto: React.FC = () => {
     }
 
     try {
-      const hash = CryptoJS.MD5(textInput).toString()
+      const hash = md5Hex(textInput)
       setTextMd5Hash(hash)
       setTextError('')
     } catch (error) {
@@ -97,7 +97,7 @@ const Md5Crypto: React.FC = () => {
       const fileContent = await readTextFile(filePath)
 
       // 计算 MD5 值
-      const hash = CryptoJS.MD5(fileContent).toString()
+      const hash = md5Hex(fileContent)
       setFileMd5Hash(hash)
     } catch (error) {
       setFileMd5Hash('')
@@ -197,8 +197,8 @@ const Md5Crypto: React.FC = () => {
 
       const contents = await readTextFile(file.path)
 
-      // 使用CryptoJS计算MD5，支持所有类型的文件
-      const hash = CryptoJS.MD5(contents).toString()
+      // 计算 MD5，支持所有类型的文件
+      const hash = md5Hex(contents)
 
       // 更新文件状态为已完成
       setBatchFiles((prev) =>

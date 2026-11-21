@@ -1,10 +1,17 @@
 import { open as openDialog } from '@tauri-apps/plugin-dialog'
 import { readTextFile } from '@tauri-apps/plugin-fs'
-import CryptoJS from 'crypto-js'
 import React, { useEffect, useState } from 'react'
 import { Button, InputField } from '../components/common'
 import { ToolLayout } from '../components/layouts'
 import { useCopyToClipboard } from '../hooks'
+import {
+  sha1Hex,
+  sha224Hex,
+  sha256Hex,
+  sha384Hex,
+  sha3Hex,
+  sha512Hex,
+} from '../utils/cipher'
 
 type TabType = 'text' | 'file' | 'batch'
 type HashAlgorithm = 'sha1' | 'sha256' | 'sha512' | 'sha3' | 'sha224' | 'sha384'
@@ -56,30 +63,22 @@ const ShaCrypto: React.FC = () => {
 
   // 根据算法计算哈希值
   const calculateHash = (text: string, algo: HashAlgorithm): string => {
-    let hash: string
     switch (algo) {
       case 'sha1':
-        hash = CryptoJS.SHA1(text).toString()
-        break
+        return sha1Hex(text)
       case 'sha256':
-        hash = CryptoJS.SHA256(text).toString()
-        break
+        return sha256Hex(text)
       case 'sha512':
-        hash = CryptoJS.SHA512(text).toString()
-        break
+        return sha512Hex(text)
       case 'sha3':
-        hash = CryptoJS.SHA3(text).toString()
-        break
+        return sha3Hex(text)
       case 'sha224':
-        hash = CryptoJS.SHA224(text).toString()
-        break
+        return sha224Hex(text)
       case 'sha384':
-        hash = CryptoJS.SHA384(text).toString()
-        break
+        return sha384Hex(text)
       default:
-        hash = CryptoJS.SHA256(text).toString()
+        return sha256Hex(text)
     }
-    return hash
   }
 
   // 自动计算文本的 SHA 值
@@ -240,7 +239,7 @@ const ShaCrypto: React.FC = () => {
 
       const contents = await readTextFile(file.path)
 
-      // 使用CryptoJS计算SHA，支持所有类型的文件
+      // 计算 SHA，支持所有类型的文件
       const hash = calculateHash(contents, algorithm)
 
       // 更新文件状态为已完成

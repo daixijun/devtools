@@ -1,39 +1,16 @@
-import CryptoJS from 'crypto-js'
 import React, { useCallback, useState } from 'react'
 import { Button, InputField } from '../components/common'
 import { ToolLayout } from '../components/layouts'
 import { useCopyToClipboard } from '../hooks'
+import { aesDecryptToBytes, aesEncrypt, generateRandomIvHex } from '../utils/cipher'
+import type { AesMode, AesPadding } from '../utils/cipher'
 
-type AesMode = 'CBC' | 'ECB' | 'CFB' | 'OFB' | 'CTR'
 type TabType = 'encrypt' | 'decrypt'
 
 interface AesConfig {
   mode: AesMode
   keySize: 128 | 192 | 256
-  padding:
-    | 'Pkcs7'
-    | 'Iso97971'
-    | 'AnsiX923'
-    | 'Iso10126'
-    | 'ZeroPadding'
-    | 'NoPadding'
-}
-
-const modeMap = {
-  CBC: CryptoJS.mode.CBC,
-  ECB: CryptoJS.mode.ECB,
-  CFB: CryptoJS.mode.CFB,
-  OFB: CryptoJS.mode.OFB,
-  CTR: CryptoJS.mode.CTR,
-}
-
-const paddingMap = {
-  Pkcs7: CryptoJS.pad.Pkcs7,
-  Iso97971: CryptoJS.pad.Iso97971,
-  AnsiX923: CryptoJS.pad.AnsiX923,
-  Iso10126: CryptoJS.pad.Iso10126,
-  ZeroPadding: CryptoJS.pad.ZeroPadding,
-  NoPadding: CryptoJS.pad.NoPadding,
+  padding: AesPadding
 }
 
 /**
@@ -86,23 +63,14 @@ const AesCrypto: React.FC = () => {
     try {
       setEncryptError('')
 
-      // 准备密钥
-      const key = CryptoJS.enc.Utf8.parse(encryptKey)
-
-      // 准备配置
-      const config: any = {
-        mode: modeMap[aesConfig.mode],
-        padding: paddingMap[aesConfig.padding],
-      }
-
-      // 添加IV（除了ECB模式）
-      if (aesConfig.mode !== 'ECB') {
-        config.iv = CryptoJS.enc.Utf8.parse(encryptIv)
-      }
-
-      // 加密
-      const encrypted = CryptoJS.AES.encrypt(encryptText, key, config)
-      setEncryptedText(encrypted.toString())
+      // 加密（ECB 模式忽略 IV）
+      const encrypted = aesEncrypt(
+        encryptText,
+        encryptKey,
+        aesConfig.mode === 'ECB' ? '' : encryptIv,
+        aesConfig,
+      )
+      setEncryptedText(encrypted)
     } catch (error) {
       setEncryptError(
         '加密过程中发生错误: ' +
@@ -131,23 +99,16 @@ const AesCrypto: React.FC = () => {
     try {
       setDecryptError('')
 
-      // 准备密钥
-      const key = CryptoJS.enc.Utf8.parse(decryptKey)
-
-      // 准备配置
-      const config: any = {
-        mode: modeMap[aesConfig.mode],
-        padding: paddingMap[aesConfig.padding],
-      }
-
-      // 添加IV（除了ECB模式）
-      if (aesConfig.mode !== 'ECB') {
-        config.iv = CryptoJS.enc.Utf8.parse(decryptIv)
-      }
-
-      // 解密
-      const decrypted = CryptoJS.AES.decrypt(decryptText, key, config)
-      const decryptedStr = decrypted.toString(CryptoJS.enc.Utf8)
+      // 解密（ECB 模式忽略 IV）
+      const decryptedBytes = aesDecryptToBytes(
+        decryptText,
+        decryptKey,
+        aesConfig.mode === 'ECB' ? '' : decryptIv,
+        aesConfig,
+      )
+      const decryptedStr = new TextDecoder('utf-8', { fatal: true }).decode(
+        decryptedBytes,
+      )
 
       if (!decryptedStr) {
         setDecryptError('解密失败，请检查密钥、IV和密文是否正确')
@@ -179,7 +140,7 @@ const AesCrypto: React.FC = () => {
 
   // 生成随机IV
   const generateRandomIv = (isForEncrypt: boolean) => {
-    const iv = CryptoJS.lib.WordArray.random(16).toString()
+    const iv = generateRandomIvHex()
     if (isForEncrypt) {
       setEncryptIv(iv)
     } else {

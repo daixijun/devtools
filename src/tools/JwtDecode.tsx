@@ -4,6 +4,7 @@ import FileUpload from '../components/common/FileUpload'
 import { ToolLayout } from '../components/layouts'
 import { useCopyToClipboard, useDebounce } from '../hooks'
 import { errorUtils } from '../utils'
+import { decodeJwtSegment, verifyJwt } from '../utils/jwt'
 
 /**
  * JWT 解码工具
@@ -61,60 +62,46 @@ const JwtDecode: React.FC = () => {
 
   // JWT验证函数
   const verifyJWT = async (token: string, alg: string, key: string) => {
-    try {
-      // 动态导入jsrsasign
-      const jose = await import('jsrsasign')
-
-      if (alg.startsWith('HS')) {
-        // HMAC算法验证
-        const isValid = jose.KJUR.jws.JWS.verify(token, { utf8: key }, [alg])
-        return {
-          isValid,
-          message: isValid ? 'JWT签名验证成功' : 'JWT签名验证失败：签名不匹配',
-          type: isValid ? 'success' : 'error',
-        } as const
-      } else if (alg.startsWith('RS')) {
-        // RSA算法验证
-        if (!validateRSAPublicKey(key)) {
-          return {
-            isValid: false,
-            message: 'RSA公钥格式无效，请检查公钥内容',
-            type: 'error',
-          } as const
-        }
-
-        try {
-          // 对于RSA算法，直接使用公钥字符串进行验证
-          const isValid = jose.KJUR.jws.JWS.verify(token, key, [alg])
-
-          return {
-            isValid,
-            message: isValid
-              ? 'JWT签名验证成功'
-              : 'JWT签名验证失败：签名不匹配',
-            type: isValid ? 'success' : 'error',
-          } as const
-        } catch (keyError) {
-          return {
-            isValid: false,
-            message: 'RSA公钥解析失败，请检查公钥格式',
-            type: 'error',
-          } as const
-        }
-      } else {
+    if (alg.startsWith('HS')) {
+      // HMAC算法验证
+      const isValid = await verifyJwt(token, alg, key)
+      return {
+        isValid,
+        message: isValid ? 'JWT签名验证成功' : 'JWT签名验证失败：签名不匹配',
+        type: isValid ? 'success' : 'error',
+      } as const
+    } else if (alg.startsWith('RS')) {
+      // RSA算法验证
+      if (!validateRSAPublicKey(key)) {
         return {
           isValid: false,
-          message: `不支持的签名算法：${alg}`,
-          type: 'warning',
+          message: 'RSA公钥格式无效，请检查公钥内容',
+          type: 'error',
         } as const
       }
-    } catch (error) {
+
+      try {
+        const isValid = await verifyJwt(token, alg, key)
+
+        return {
+          isValid,
+          message: isValid
+            ? 'JWT签名验证成功'
+            : 'JWT签名验证失败：签名不匹配',
+          type: isValid ? 'success' : 'error',
+        } as const
+      } catch (keyError) {
+        return {
+          isValid: false,
+          message: 'RSA公钥解析失败，请检查公钥格式',
+          type: 'error',
+        } as const
+      }
+    } else {
       return {
         isValid: false,
-        message: `验证过程出错：${
-          error instanceof Error ? error.message : '未知错误'
-        }`,
-        type: 'error',
+        message: `不支持的签名算法：${alg}`,
+        type: 'warning',
       } as const
     }
   }
@@ -175,13 +162,13 @@ const JwtDecode: React.FC = () => {
         throw new Error('无效的JWT格式：JWT应该包含3个部分，用点号分隔')
       }
 
-      // 解码头部
-      const headerData = JSON.parse(atob(parts[0]))
+      // 解码头部（base64url）
+      const headerData = JSON.parse(decodeJwtSegment(parts[0]))
       setHeader(JSON.stringify(headerData, null, 2))
       setAlgorithm(headerData.alg || 'Unknown')
 
       // 解码载荷
-      const payloadData = JSON.parse(atob(parts[1]))
+      const payloadData = JSON.parse(decodeJwtSegment(parts[1]))
       setPayload(JSON.stringify(payloadData, null, 2))
 
       setSignature(parts[2])

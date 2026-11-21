@@ -4,6 +4,7 @@ import FileUpload from '../components/common/FileUpload'
 import { ToolLayout } from '../components/layouts'
 import { useCopyToClipboard } from '../hooks'
 import { errorUtils } from '../utils'
+import { signJwt } from '../utils/jwt'
 
 // 定义Header和Claims的接口
 interface JwtHeader {
@@ -73,9 +74,6 @@ const JwtEncode: React.FC = () => {
         return
       }
 
-      // 动态导入jsrsasign（因为它可能比较大）
-      const jose = await import('jsrsasign')
-
       // 更新payload，设置iat为当前时间，exp为过期时间
       const updatedPayload = {
         ...payload,
@@ -83,27 +81,22 @@ const JwtEncode: React.FC = () => {
       }
       setPayload(updatedPayload)
 
-      // 生成JWT
-      let token: string
-      if (header.alg.startsWith('HS')) {
-        // 使用HMAC算法
-        token = jose.KJUR.jws.JWS.sign(header.alg, header, updatedPayload, {
-          utf8: secretKey,
-        })
-      } else {
-        // 如果是RSA算法，验证私钥格式
-        if (!validateRSAPrivateKey(privateKey)) {
-          setOutput('生成出错: RSA私钥格式无效，请检查或重新选择文件')
-          return
-        }
-        // 使用RSA算法
-        token = jose.KJUR.jws.JWS.sign(
-          header.alg,
-          header,
-          updatedPayload,
-          privateKey,
-        )
+      // RSA 算法先校验私钥格式
+      if (
+        !header.alg.startsWith('HS') &&
+        !validateRSAPrivateKey(privateKey)
+      ) {
+        setOutput('生成出错: RSA私钥格式无效，请检查或重新选择文件')
+        return
       }
+
+      // 生成JWT（HS* 使用 Secret Key，RS* 使用 PEM 私钥）
+      const token = await signJwt(
+        header.alg,
+        header,
+        updatedPayload,
+        header.alg.startsWith('HS') ? secretKey : privateKey,
+      )
 
       setOutput(token)
     } catch (error) {
