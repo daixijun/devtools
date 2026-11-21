@@ -63,8 +63,8 @@ importers:
         specifier: ^2.0.14
         version: 2.0.14(react@18.3.1)
       smol-toml:
-        specifier: ^1.4.2
-        version: 1.4.2
+        specifier: ^1.9.0
+        version: 1.9.0
       toml:
         specifier: ^5.0.1
         version: 5.0.1
@@ -1069,8 +1069,8 @@ packages:
     engines: {node: '>=10'}
     hasBin: true
 
-  smol-toml@1.4.2:
-    resolution: {integrity: sha512-rInDH6lCNiEyn3+hH8KVGFdbjc099j47+OSgbMrfDYX1CmXLfdKd7qi6IfcWj2wFxvSVkuI46M+wPGYfEOEj6g==}
+  smol-toml@1.9.0:
+    resolution: {integrity: sha512-hpd+HLON7HdZXqYchMM/+LaTTbdK0AU3NngIJ4KVyWbY9bfQqdL9cD+4yf6dUoU2Ap4VsU0JkQi6FxAI1B2mXQ==}
     engines: {node: '>= 18'}
 
   source-map-js@1.2.2:
@@ -1968,7 +1968,7 @@ snapshots:
 
   semver@7.7.2: {}
 
-  smol-toml@1.4.2: {}
+  smol-toml@1.9.0: {}
 
   source-map-js@1.2.2: {}
 
