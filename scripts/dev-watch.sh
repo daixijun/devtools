@@ -15,10 +15,10 @@ cd "$(dirname "$0")/.."
 MARKER="$(mktemp -t devwatch-marker)"
 trap 'kill $(jobs -p) 2>/dev/null; rm -f "$MARKER"; exit 130' INT TERM
 
-# 阻塞直到 crates/、Cargo.toml、Cargo.lock 出现比标记新的内容，返回后刷新标记。
+# 阻塞直到 src/、tests/、assets/、Cargo.toml、Cargo.lock 出现比标记新的内容，返回后刷新标记。
 watch_changed() {
     while true; do
-        if [ -n "$(find crates Cargo.toml Cargo.lock -newer "$MARKER" -print -quit 2>/dev/null)" ]; then
+        if [ -n "$(find src tests assets Cargo.toml Cargo.lock -newer "$MARKER" -print -quit 2>/dev/null)" ]; then
             touch "$MARKER"
             return 0
         fi
@@ -26,9 +26,9 @@ watch_changed() {
     done
 }
 
-echo "▶ cargo run -p devtools（watch：运行中保存文件自动重启；退出应用即结束 watch）"
+echo "▶ cargo run（watch：运行中保存文件自动重启；退出应用即结束 watch）"
 while true; do
-    cargo run -p devtools &
+    cargo run &
     APP_PID=$!
     # 监视线程：文件变化 → 终止正在运行的应用，由主循环重新编译重启
     (

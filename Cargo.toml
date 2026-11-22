@@ -1,25 +1,85 @@
-[workspace]
-resolver = "2"
-members = ["crates/devtools"]
-
-[workspace.package]
+[package]
+name = "devtools"
+description = "DevTools 开发者工具箱（纯 Rust 桌面应用）"
 edition = "2021"
 version = "0.1.0"
 license = "MIT"
 
-[workspace.dependencies]
+# lib = 业务层（与 UI 框架无关）；bin = GPUI 壳（src/main.rs）。
+# 两个 target 共享 src/ 目录但各自声明模块树：lib.rs 声明业务模块，
+# main.rs 声明壳层模块；壳层经 `use devtools::...` 复用业务层。
+[lib]
+name = "devtools"
+path = "src/lib.rs"
+
+[[bin]]
+name = "devtools"
+path = "src/main.rs"
+
+[dependencies]
+# UI 壳（gpui 系）。gpui 系精确 pin，升级需单独评估 breaking change：
+# gpui-pre 是 gpui 官方快照包；版本必须与 gpui-component 0.10.0 的 `=0.3.12` 锁定完全一致
+gpui = { package = "gpui-pre", version = "=0.3.12" }
+gpui-platform = { package = "gpui-pre-platform", version = "=0.3.12", features = ["font-kit"] }
+# syntect：代码编辑器语法高亮后端（SQL/Go/JSON 等，颜色跟随主题；升级 tree-sitter 后端时一并评估）
+gpui-component = { version = "0.10", features = ["syntect"] }
+gpui-kit-assets = "0.10"
+# gpui-base 与 gpui-component 0.10 同源锁定（SelectableText 等文本选择基建）
+gpui-base = "0.10"
+
+# 数据与配置
 serde = { version = "1", features = ["derive"] }
 # preserve_order：键序保持插入序（与历史版本 JSON.stringify 行为一致，JWT 签名输入、TOML 序列化依赖此语义）
 serde_json = { version = "1", features = ["preserve_order"] }
 dirs = "6"
 
-# GPUI 依赖统一在此锁定版本（精确 pin，升级需单独评估 breaking change）
-# gpui-pre 是 gpui 官方快照包；版本必须与 gpui-component 0.10.0 的 `=0.3.12` 锁定完全一致
-gpui = { package = "gpui-pre", version = "=0.3.12" }
-gpui-platform = { package = "gpui-pre-platform", version = "=0.3.12", features = ["font-kit"] }
-gpui-component = "0.10"
-# gpui-base 与 gpui-component 0.10 同源锁定（SelectableText 等文本选择基建）
-gpui-base = "0.10"
+# 业务逻辑依赖（异步网络/证书/图片/加解密/格式解析）
+tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
+tokio-rustls = "0.26"
+rustls = { version = "0.23", features = ["ring"] }
+webpki-roots = "0.26"
+dns-lookup = "2"
+openssl = { version = "0.10.73", features = ["vendored"] }
+x509-parser = "0.17"
+base64 = "0.21"
+time = "0.3"
+chrono = { version = "0.4", features = ["serde"] }
+chrono-tz = "0.10"
+hex = "0.4"
+image = { version = "0.25", features = ["default-formats"] }
+oxipng = { version = "10", default-features = false, features = ["zopfli", "parallel"] }
+imagequant = "4"
+png = "0.18"
+nom-exif = { version = "2.5", features = ["async"] }
+libheif-sys = { version = "5.0.0", features = ["v1_20"] }
+regex = "1.10"
+pcre2 = "0.2"
+sha1 = "0.10"
+sha2 = "0.10"
+sha3 = "0.10"
+md-5 = "0.10"
+hmac = "0.12"
+pbkdf2 = "0.12"
+aes = "0.8"   # CBC/ECB 模式基于 aes::cipher 原语手写实现，无需 cbc/ecb crate
+ctr = "0.9"
+cfb-mode = "0.8"
+bcrypt = "0.15"
+serde_yaml = "0.9"
+toml = "0.8"
+sqlparser = "0.58"
+
+# 系统集成（gpui 不内置托盘）；rfd = 文件对话框（批次 II/III 工具使用）
+# 全局快捷键功能已移除；共享配置中的 hotkey 字段仅为向后兼容保留
+tray-icon = "0.21"
+muda = "0.17"
+rfd = "0.15"
+futures = "0.3"
+
+# macOS：逐窗口显隐（gpui 公开 API 只有 App 级 hide，无窗口级 orderOut/orderFront）
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+raw-window-handle = "0.6"
 
 [profile.release]
 lto = true

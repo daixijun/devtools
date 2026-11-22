@@ -12,12 +12,12 @@ if [ "${1:-}" = "release" ]; then
   CARGO_FLAGS="--release"
 fi
 
-echo "▶ cargo build -p devtools $CARGO_FLAGS"
-cargo build -p devtools $CARGO_FLAGS
+echo "▶ cargo build $CARGO_FLAGS"
+cargo build $CARGO_FLAGS
 
 BIN="$ROOT/target/$PROFILE/devtools"
 APP="$ROOT/target/DevTools.app"
-ICONS="$ROOT/crates/devtools/assets"
+ICONS="$ROOT/assets"
 
 echo "▶ 组装 $APP"
 rm -rf "$APP"

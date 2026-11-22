@@ -1,6 +1,6 @@
 # 工具页实现指南
 
-每个工具一个文件，实现模式统一。新增工具时：在 `crates/devtools/src/registry.rs` 注册元数据，
+每个工具一个文件，实现模式统一。新增工具时：在 `src/registry.rs` 注册元数据，
 在 `mod.rs` 增加模块声明与 `create_tool_view` 分发，并按 AGENTS.md 的流程执行。
 
 ## 文件骨架
@@ -64,7 +64,7 @@ impl gpui::Render for JsonFormatter {
 - 字号五档：11（注记）/12（正文小）/13（正文）/14（小标题）/17（页头/大数值）；圆角只用 `theme.radius`/`theme.radius_lg`（badge 用 rounded_full）；等宽统一 Menlo
 - 卡内子块用 `ui::panel`（muted 底），不得「卡内再套边框」
 
-## 组件层 API（crates/devtools/src/components/ui.rs）
+## 组件层 API（src/components/ui.rs）
 
 - `tool_page(id) -> Stateful<Div>`：页面根（纵向、p_4、gap_4；整页滚动由 ToolWindow 内容区承担）
 - `card(cx)`（无边框 popover 底分组卡）、`card_header(title, cx)`

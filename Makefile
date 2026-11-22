@@ -47,27 +47,27 @@ run: ## 运行桌面应用 (debug; watch 模式: 运行中保存文件自动重�
 
 run-direct: ## 运行桌面应用 (debug, 不启用 watch)
 	@printf "$(COLOR_CYAN)▶ 运行 devtools...$(COLOR_RESET)\n"
-	$(CARGO) run -p devtools
+	$(CARGO) run
 
 run-release: ## 运行桌面应用 (release)
-	$(CARGO) run --release -p devtools
+	$(CARGO) run --release
 
 # =========================================================================
 # 检查 / Lint / 测试
 # =========================================================================
 check: cargo-check clippy test ## 全量检查 (check + clippy + test)
 
-cargo-check: ## cargo check (workspace)
+cargo-check: ## cargo check
 	@printf "$(COLOR_CYAN)▶ cargo check...$(COLOR_RESET)\n"
-	$(CARGO) check -p devtools
+	$(CARGO) check
 
-clippy: ## cargo clippy (workspace, 零警告标准)
+clippy: ## cargo clippy (零警告标准)
 	@printf "$(COLOR_CYAN)▶ cargo clippy...$(COLOR_RESET)\n"
-	$(CARGO) clippy -p devtools --all-targets
+	$(CARGO) clippy --all-targets
 
 test: ## cargo test (单元测试 + 黄金向量)
 	@printf "$(COLOR_CYAN)▶ cargo test...$(COLOR_RESET)\n"
-	$(CARGO) test -p devtools
+	$(CARGO) test
 
 fmt: ## cargo fmt (workspace)
 	$(CARGO) fmt
