@@ -6,3 +6,4 @@
 pub mod code_formatter;
 pub mod crypto;
 pub mod string_utils;
+pub mod updater;

@@ -9,6 +9,7 @@ pub enum DevToolError {
     EmptyInput(String),
     ParseError(String, String), // (context, error)
     NetworkError(String),
+    NotFound(String), // 资源不存在（如 GitHub Releases 尚无发布）
     CertificateError(String),
     ValidationError(String),
     FileError(String),
@@ -23,6 +24,7 @@ impl DevToolError {
             DevToolError::EmptyInput(field) => format!("{}不能为空", field),
             DevToolError::ParseError(context, error) => format!("{}解析失败: {}", context, error),
             DevToolError::NetworkError(error) => format!("网络请求失败: {}", error),
+            DevToolError::NotFound(detail) => format!("未找到: {}", detail),
             DevToolError::CertificateError(error) => format!("证书处理错误: {}", error),
             DevToolError::ValidationError(error) => format!("验证失败: {}", error),
             DevToolError::FileError(error) => format!("文件操作错误: {}", error),

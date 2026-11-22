@@ -42,7 +42,7 @@ impl Render for AboutView {
                     .mt_2()
                     .text_size(px(12.5))
                     .text_color(theme.colors.muted_foreground)
-                    .child("面向开发者的 macOS 效率工具箱，内置 32 个常用工具"),
+                    .child("面向开发者的 macOS 效率工具箱，内置 31 个常用工具"),
             )
             .child(
                 div()

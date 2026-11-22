@@ -1,0 +1,39 @@
+# Dependabot 自动依赖更新。
+#
+# - cargo：每周检查。次要/补丁更新合并为单个 PR（groups）；
+#   gpui 系明确忽略——gpui-pre/-platform 精确 pin =0.3.12，必须与
+#   gpui-component 0.10 的 gpui 基线一致，升级走单独 PR 人工评估
+#   （见根 Cargo.toml 注释与 AGENTS.md「依赖 pin」约定）。
+# - github-actions：每周检查 .github/workflows 中的 action 版本。
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # 次要/补丁更新合并一个 PR，避免 PR 刷屏（cargo 的 0.x 次要升级
+      # 属 breaking，会单独开 PR 人工审查，不受本组影响）
+      cargo-minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      # gpui 系五件套：精确 pin / 同源锁定，升级需单独评估 breaking
+      - dependency-name: "gpui"          # → gpui-pre（=0.3.12）
+      - dependency-name: "gpui-platform" # → gpui-pre-platform（=0.3.12）
+      - dependency-name: "gpui-pre"
+      - dependency-name: "gpui-pre-platform"
+      - dependency-name: "gpui-component" # 0.10 semver（0.x 次要即 breaking）
+      - dependency-name: "gpui-base"      # 0.10 同源锁定
+      - dependency-name: "gpui-kit-assets"
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns:
+          - "*"

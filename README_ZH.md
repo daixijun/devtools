@@ -1,5 +1,7 @@
 # DevTools 开发者工具箱
 
+[![CI](https://github.com/daixijun/devtools/actions/workflows/ci.yml/badge.svg)](https://github.com/daixijun/devtools/actions/workflows/ci.yml)
+
 基于 **纯 Rust + GPUI**（原生 GPU 渲染）的 macOS 开发者工具箱——31 个开发工具集于一个轻量原生应用。无 WebView、无 Electron：单一二进制、秒级启动，浅色/深色双主题的 macOS 原生分组视图界面。
 
 > 🌐 English: [README.md](README.md) · 详细工具使用指南：[docs/tools.md](docs/tools.md)
@@ -17,6 +19,7 @@
 - **单一主窗口**——分类侧栏即输即搜，工具内容区、托盘菜单、应用菜单
 - **应用单例**——重复启动自动激活已有窗口，不会打开第二个应用
 - **关闭即入托盘**——关闭窗口隐藏到托盘，随时唤回
+- **版本更新检查**——app 菜单「检查更新…」查询 GitHub Releases 最新版本并直达下载页；tag 推送自动构建 DMG 发布
 - **可靠的加密实现**——与历史 JS 版本逐字节兼容，黄金向量校验（RFC 1321/6234/7914、noble AES 向量）
 
 ## 🧰 工具清单
@@ -58,7 +61,7 @@ make test           # 单元测试 + 加密黄金向量
 make fmt            # rustfmt
 ```
 
-目录结构：单包 workspace——`crates/devtools` 双 target：**lib**（业务层：`registry`、`crypto`、`tools/`、`text_tools/`、`config`，无 UI 依赖）与 **bin**（GPUI 壳：`pages/` 工具页、`components/` 共享组件、`theme.rs`、`tray.rs` 等）。仓库规范与新增工具流程见 [AGENTS.md](AGENTS.md)。
+目录结构：仓库根目录单包 `Cargo.toml` 双 target：**lib**（业务层：`registry`、`crypto`、`tools/`、`text_tools/`、`config`，无 UI 依赖）与 **bin**（GPUI 壳：`pages/` 工具页、`components/` 共享组件、`theme.rs`、`tray.rs` 等）。仓库规范与新增工具流程见 [AGENTS.md](AGENTS.md)。
 
 ## 📄 许可证
 

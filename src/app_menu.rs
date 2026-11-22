@@ -13,6 +13,7 @@ actions!(
     devtools_app,
     [
         About,
+        CheckUpdates,
         OpenSettings,
         HideApp,
         QuitApp,
@@ -35,6 +36,8 @@ pub fn init(cx: &mut App) {
     cx.set_menus([
         Menu::new("DevTools").items([
             MenuItem::action("关于 DevTools", About),
+            MenuItem::separator(),
+            MenuItem::action("检查更新…", CheckUpdates),
             MenuItem::separator(),
             MenuItem::action("设置…", OpenSettings),
             MenuItem::separator(),
@@ -59,6 +62,7 @@ pub fn init(cx: &mut App) {
     ]);
 
     cx.on_action(|_: &About, cx| windows::open_about(cx));
+    cx.on_action(|_: &CheckUpdates, cx| windows::open_update(cx));
     cx.on_action(|_: &OpenSettings, cx| windows::open_tool(cx, "settings"));
     cx.on_action(|_: &HideApp, cx| windows::hide_main(cx));
     cx.on_action(|_: &QuitApp, cx| cx.quit());

@@ -1,5 +1,7 @@
 # DevTools 开发者工具箱
 
+[![CI](https://github.com/daixijun/devtools/actions/workflows/ci.yml/badge.svg)](https://github.com/daixijun/devtools/actions/workflows/ci.yml)
+
 A macOS developer toolbox built with **pure Rust + GPUI** (native GPU-rendered UI) — 31 developer tools in one lightweight native app. No webviews, no Electron: one binary, instant startup, and a macOS-native grouped-view interface in light & dark themes.
 
 > 📖 中文说明：[README_ZH.md](README_ZH.md) · 详细工具使用指南（中文）：[docs/tools.md](docs/tools.md)
@@ -16,8 +18,8 @@ A macOS developer toolbox built with **pure Rust + GPUI** (native GPU-rendered U
 - **macOS-native look** — grouped-view cards, segmented tabs, system switches, macOS system-blue accent; light / dark / follow-system themes
 - **Single main window** — category sidebar with instant type-to-search, tool content area, tray menu, app menu
 - **Single instance** — launching again activates the existing window instead of opening a second app
-- **Single instance** — launching again activates the existing window instead of opening a second app
 - **Close to tray** — closing the window hides it to the tray; reopen or relaunch brings it back instantly
+- **Update check** — the app menu's "检查更新…" queries GitHub Releases and links to the latest DMG
 - **Reliable crypto** — byte-compatible with the historical JS implementation, verified against golden vectors (RFC 1321/6234/7914, noble AES vectors)
 
 ## 🧰 Tools
@@ -60,7 +62,7 @@ make test           # unit tests + crypto golden vectors
 make fmt            # rustfmt
 ```
 
-Layout: single-package workspace — `crates/devtools` with a **lib target** (business layer: `registry`, `crypto`, `tools/`, `text_tools/`, `config`; no UI deps) and a **bin target** (GPUI shell: `pages/` tool pages, `components/` shared widgets, `theme.rs`, `tray.rs`, …). See [AGENTS.md](AGENTS.md) for repository guidelines and how to add a tool.
+Layout: single Rust package at the repo root with a **lib target** (business layer: `registry`, `crypto`, `tools/`, `text_tools/`, `config`; no UI deps) and a **bin target** (GPUI shell: `pages/` tool pages, `components/` shared widgets, `theme.rs`, `tray.rs`, …). See [AGENTS.md](AGENTS.md) for repository guidelines and how to add a tool.
 
 ## 📄 License
 

@@ -1,0 +1,40 @@
+# CI：push main / PR 时跑格式检查、clippy（零警告标准）与单元测试。
+#
+# 说明：
+# - 必须用 macOS runner：gpui 依赖 Metal 着色器编译，runner 自带 Metal Toolchain；
+# - libheif-sys 走 pkg-config 链接系统 libheif（HEIC 解码），需 brew 安装；
+# - openssl 用 vendored 特性源码编译，runner 自带 perl/make，无需额外安装。
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: Check & Test (macOS)
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: 安装系统依赖（libheif）
+        run: brew install libheif
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: rustfmt
+        run: cargo fmt --all -- --check
+
+      - name: clippy（零警告标准）
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: 单元测试（含加密黄金向量）
+        run: cargo test --locked

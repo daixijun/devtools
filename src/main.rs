@@ -21,6 +21,7 @@ mod singleton;
 mod theme;
 mod tool_window;
 mod tray;
+mod update;
 mod windows;
 
 use devtools::config::AppConfig;
