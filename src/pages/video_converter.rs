@@ -27,6 +27,7 @@ use gpui_component::{
     ActiveTheme as _, Disableable as _,
 };
 
+use devtools::i18n::t;
 use devtools::tools::video_converter::{
     check_ffmpeg_available, convert_video, get_video_info, VideoConversionRequest,
 };
@@ -115,7 +116,7 @@ impl VideoConverter {
         })
         .detach();
 
-        let mut source_options: Vec<(&str, &str)> = vec![("auto", "自动检测")];
+        let mut source_options: Vec<(&str, &str)> = vec![("auto", t("自动检测"))];
         source_options.extend(VIDEO_FORMATS);
         let source_select = select_state(window, cx, &source_options, 0);
         cx.subscribe(
@@ -176,9 +177,9 @@ impl VideoConverter {
     fn add_files(&mut self, window: &mut Window, cx: &mut gpui::Context<Self>) {
         let exts = self.current_exts();
         let filter_name = if self.source_format == "auto" {
-            "视频文件".to_string()
+            t("视频文件").to_string()
         } else {
-            format!("{} 视频文件", self.source_format.to_uppercase())
+            format!("{} {}", self.source_format.to_uppercase(), t("视频文件"))
         };
         self.batch_loading = true;
         cx.notify();
@@ -247,11 +248,11 @@ impl VideoConverter {
 
         if valid.is_empty() {
             let list = if self.source_format == "auto" {
-                "支持的视频格式".to_string()
+                t("支持的视频格式").to_string()
             } else {
-                format!("{} 格式", self.source_format.to_uppercase())
+                format!("{} {}", self.source_format.to_uppercase(), t("格式"))
             };
-            self.error = Some(format!("没有找到 {list} 的视频文件"));
+            self.error = Some(format!("{} {} {}", t("没有找到"), list, t("的视频文件")));
             cx.notify();
             return;
         }
@@ -335,7 +336,7 @@ impl VideoConverter {
     ) {
         if let Some(text) = text {
             cx.write_to_clipboard(gpui::ClipboardItem::new_string(text));
-            notify::toast_success(window, cx, "已复制到剪贴板");
+            notify::toast_success(window, cx, t("已复制到剪贴板"));
         }
     }
 
@@ -364,12 +365,12 @@ impl VideoConverter {
 
     fn start_conversion(&mut self, window: &mut Window, cx: &mut gpui::Context<Self>) {
         if self.files.is_empty() {
-            self.error = Some("请先选择视频文件".into());
+            self.error = Some(t("请先选择视频文件").into());
             cx.notify();
             return;
         }
         if self.ffmpeg != Some(true) {
-            self.error = Some("FFmpeg 未安装，无法开始转换。请先安装 FFmpeg。".into());
+            self.error = Some(t("FFmpeg 未安装，无法开始转换。请先安装 FFmpeg。").into());
             cx.notify();
             return;
         }
@@ -435,7 +436,7 @@ impl VideoConverter {
                                 }
                                 None => {
                                     item.status = ConvertStatus::Error;
-                                    item.error = Some("转换任务已中断".into());
+                                    item.error = Some(t("转换任务已中断").into());
                                 }
                             }
                         }
@@ -462,11 +463,26 @@ impl VideoConverter {
                     .filter(|f| f.status == ConvertStatus::Error)
                     .count();
                 this.banner = Some(if failed == 0 {
-                    (true, format!("✅ 批量转换完成：成功转换 {success} 个文件"))
+                    (
+                        true,
+                        format!(
+                            "✅ {} {} {}",
+                            t("批量转换完成：成功转换"),
+                            success,
+                            t("个文件")
+                        ),
+                    )
                 } else {
                     (
                         false,
-                        format!("批量转换完成：成功转换 {success} 个文件，{failed} 个文件转换失败"),
+                        format!(
+                            "{} {} {}{} {}",
+                            t("批量转换完成：成功转换"),
+                            success,
+                            t("个文件，"),
+                            failed,
+                            t("个文件转换失败")
+                        ),
                     )
                 });
                 cx.notify();
@@ -498,9 +514,9 @@ impl VideoConverter {
                             .flex_1()
                             .flex_col()
                             .gap_1()
-                            .child(ui::field("源格式", Select::new(&self.source_select), cx))
+                            .child(ui::field(t("源格式"), Select::new(&self.source_select), cx))
                             .child(ui::hint_text(
-                                "选择源视频文件格式，自动检测可支持所有格式",
+                                t("选择源视频文件格式，自动检测可支持所有格式"),
                                 cx,
                             )),
                     )
@@ -509,14 +525,18 @@ impl VideoConverter {
                             .flex_1()
                             .flex_col()
                             .gap_1()
-                            .child(ui::field("目标格式", Select::new(&self.target_select), cx))
-                            .child(ui::hint_text("转换后的视频格式，MP4为通用格式", cx)),
+                            .child(ui::field(
+                                t("目标格式"),
+                                Select::new(&self.target_select),
+                                cx,
+                            ))
+                            .child(ui::hint_text(t("转换后的视频格式，MP4为通用格式"), cx)),
                     ),
             )
             .child(
                 div().flex().flex_col().gap_2().child(
                     Checkbox::new("vc-use-dir")
-                        .label("指定输出目录")
+                        .label(t("指定输出目录"))
                         .checked(self.use_custom_dir)
                         .disabled(locked)
                         .on_click(cx.listener(|this, checked: &bool, _window, cx| {
@@ -529,7 +549,10 @@ impl VideoConverter {
                 panel.child(self.output_dir_row(cx)).when_some(
                     self.custom_dir.clone(),
                     |panel, dir| {
-                        panel.child(ui::hint_text(&format!("转换后的文件将保存到: {dir}"), cx))
+                        panel.child(ui::hint_text(
+                            &format!("{} {}", t("转换后的文件将保存到:"), dir),
+                            cx,
+                        ))
                     },
                 )
             })
@@ -540,7 +563,7 @@ impl VideoConverter {
                     .gap_1()
                     .child(
                         Checkbox::new("vc-del-src")
-                            .label("删除源文件")
+                            .label(t("删除源文件"))
                             .checked(self.delete_source)
                             .disabled(locked)
                             .on_click(cx.listener(|this, checked: &bool, _window, cx| {
@@ -552,7 +575,7 @@ impl VideoConverter {
                         div()
                             .text_size(px(12.))
                             .text_color(cx.theme().colors.danger)
-                            .child("⚠️ 转换成功后自动删除源文件，此操作不可恢复，请谨慎使用"),
+                            .child(t("⚠️ 转换成功后自动删除源文件，此操作不可恢复，请谨慎使用")),
                     ),
             )
     }
@@ -563,10 +586,10 @@ impl VideoConverter {
         let dir_text = self
             .custom_dir
             .clone()
-            .unwrap_or_else(|| "选择输出目录...".into());
+            .unwrap_or_else(|| t("选择输出目录...").into());
         let mut row = ui::file_row(&dir_text, cx).child(
             Button::new("vc-pick-dir")
-                .label("选择目录")
+                .label(t("选择目录"))
                 .secondary()
                 .disabled(locked)
                 .on_click(cx.listener(|this, _ev, window, cx| {
@@ -576,7 +599,7 @@ impl VideoConverter {
         if self.custom_dir.is_some() {
             row = row.child(
                 Button::new("vc-clear-dir")
-                    .label("清除")
+                    .label(t("清除"))
                     .secondary()
                     .disabled(locked)
                     .on_click(cx.listener(|this, _ev, _window, cx| {
@@ -613,27 +636,47 @@ impl VideoConverter {
                 div()
                     .flex_1()
                     .min_w_0()
-                    .child(ui::table_head_cell("路径信息", cx)),
+                    .child(ui::table_head_cell(t("路径信息"), cx)),
             )
-            .child(ui::table_head_cell("大小", cx).w(px(76.)).flex_shrink_0())
-            .child(ui::table_head_cell("时长", cx).w(px(76.)).flex_shrink_0())
-            .child(ui::table_head_cell("分辨率", cx).w(px(96.)).flex_shrink_0())
-            .child(ui::table_head_cell("状态", cx).w(px(60.)).flex_shrink_0())
             .child(
-                ui::table_head_cell("错误信息", cx)
+                ui::table_head_cell(t("大小"), cx)
+                    .w(px(76.))
+                    .flex_shrink_0(),
+            )
+            .child(
+                ui::table_head_cell(t("时长"), cx)
+                    .w(px(76.))
+                    .flex_shrink_0(),
+            )
+            .child(
+                ui::table_head_cell(t("分辨率"), cx)
+                    .w(px(96.))
+                    .flex_shrink_0(),
+            )
+            .child(
+                ui::table_head_cell(t("状态"), cx)
+                    .w(px(60.))
+                    .flex_shrink_0(),
+            )
+            .child(
+                ui::table_head_cell(t("错误信息"), cx)
                     .w(px(150.))
                     .flex_shrink_0(),
             )
-            .child(ui::table_head_cell("操作", cx).w(px(52.)).flex_shrink_0())
+            .child(
+                ui::table_head_cell(t("操作"), cx)
+                    .w(px(52.))
+                    .flex_shrink_0(),
+            )
     }
 
     fn table_row(&self, index: usize, item: &VideoItem, cx: &mut gpui::Context<Self>) -> gpui::Div {
         let theme = cx.theme().clone();
         let (status_text, status_color) = match item.status {
-            ConvertStatus::Pending => ("等待中", theme.colors.warning),
-            ConvertStatus::Converting => ("转换中", theme.colors.info),
-            ConvertStatus::Completed => ("已完成", theme.colors.success),
-            ConvertStatus::Error => ("错误", theme.colors.danger),
+            ConvertStatus::Pending => (t("等待中"), theme.colors.warning),
+            ConvertStatus::Converting => (t("转换中"), theme.colors.info),
+            ConvertStatus::Completed => (t("已完成"), theme.colors.success),
+            ConvertStatus::Error => (t("错误"), theme.colors.danger),
         };
 
         // 错误列截断 30 字符（完整错误保留在数据中）
@@ -669,7 +712,7 @@ impl VideoConverter {
                     div()
                         .flex_shrink_0()
                         .text_color(theme.colors.muted_foreground)
-                        .child("源:"),
+                        .child(t("源:")),
                 )
                 .child(
                     div()
@@ -697,7 +740,7 @@ impl VideoConverter {
                         div()
                             .flex_shrink_0()
                             .text_color(theme.colors.muted_foreground)
-                            .child("转换后:"),
+                            .child(t("转换后:")),
                     )
                     .child(
                         div()
@@ -717,12 +760,12 @@ impl VideoConverter {
                         div()
                             .flex_shrink_0()
                             .text_color(theme.colors.muted_foreground)
-                            .child("转换后:"),
+                            .child(t("转换后:")),
                     )
                     .child(
                         div()
                             .text_color(theme.colors.muted_foreground)
-                            .child("未转换"),
+                            .child(t("未转换")),
                     ),
             );
         }
@@ -746,12 +789,12 @@ impl VideoConverter {
                 76.,
             ))
             .child(list_cell(
-                item.duration.clone().unwrap_or_else(|| "未知".into()),
+                item.duration.clone().unwrap_or_else(|| t("未知").into()),
                 theme.colors.foreground,
                 76.,
             ))
             .child(list_cell(
-                item.resolution.clone().unwrap_or_else(|| "未知".into()),
+                item.resolution.clone().unwrap_or_else(|| t("未知").into()),
                 theme.colors.foreground,
                 96.,
             ))
@@ -784,7 +827,7 @@ impl VideoConverter {
                     .justify_center()
                     .child(
                         Button::new(("vc-remove", index))
-                            .label("删除")
+                            .label(t("删除"))
                             .danger()
                             .disabled(self.converting || self.ffmpeg_unavailable())
                             .on_click(cx.listener(move |this, _ev, _window, cx| {
@@ -814,12 +857,12 @@ impl gpui::Render for VideoConverter {
         ui::tool_page("videoconverter")
             // FFmpeg 状态：检查中 / 未安装红横幅
             .when(self.ffmpeg.is_none(), |page| {
-                page.child(ui::loading_row("正在检查 FFmpeg 安装状态...", cx))
+                page.child(ui::loading_row(t("正在检查 FFmpeg 安装状态..."), cx))
             })
             .when(unavailable, |page| {
                 page.child(
                     ui::rich_banner(
-                        "❌ FFmpeg 未安装，无法使用视频转换功能",
+                        t("❌ FFmpeg 未安装，无法使用视频转换功能"),
                         theme.colors.danger,
                         cx,
                     )
@@ -833,13 +876,13 @@ impl gpui::Render for VideoConverter {
                             .gap_0p5()
                             .text_size(px(12.))
                             .text_color(theme.colors.danger)
-                            .child(div().child("安装方法："))
+                            .child(div().child(t("安装方法：")))
                             .child(
                                 div()
                                     .font_family("Menlo")
                                     .child("• macOS: brew install ffmpeg"),
                             )
-                            .child(div().child("• Windows: 下载 FFmpeg 并添加到 PATH"))
+                            .child(div().child(t("• Windows: 下载 FFmpeg 并添加到 PATH")))
                             .child(
                                 div()
                                     .font_family("Menlo")
@@ -850,14 +893,14 @@ impl gpui::Render for VideoConverter {
                                     .font_family("Menlo")
                                     .child("• Linux: sudo dnf install ffmpeg (Fedora)"),
                             )
-                            .child(div().child("安装完成后请重新打开本工具窗口。")),
+                            .child(div().child(t("安装完成后请重新打开本工具窗口。"))),
                     ),
                 )
             })
             // 转换设置卡
             .child(
                 ui::card(cx)
-                    .child(ui::card_header("转换设置", cx))
+                    .child(ui::card_header(t("转换设置"), cx))
                     .child(self.settings_panel(cx)),
             )
             // 文件列表区
@@ -876,7 +919,12 @@ impl gpui::Render for VideoConverter {
                                     .text_size(px(14.))
                                     .font_weight(FontWeight::MEDIUM)
                                     .text_color(theme.colors.foreground)
-                                    .child(format!("待转换文件列表 ({}个文件)", self.files.len())),
+                                    .child(format!(
+                                        "{} ({} {})",
+                                        t("待转换文件列表"),
+                                        self.files.len(),
+                                        t("个文件")
+                                    )),
                             )
                             .child(
                                 div()
@@ -885,7 +933,7 @@ impl gpui::Render for VideoConverter {
                                     .child(
                                         ui::secondary_button(
                                             "vc-add-files",
-                                            "添加文件",
+                                            t("添加文件"),
                                             cx.listener(|this, _ev, window, cx| {
                                                 this.add_files(window, cx);
                                             }),
@@ -895,7 +943,7 @@ impl gpui::Render for VideoConverter {
                                     .child(
                                         ui::secondary_button(
                                             "vc-add-dir",
-                                            "添加目录",
+                                            t("添加目录"),
                                             cx.listener(|this, _ev, window, cx| {
                                                 this.add_directory(window, cx);
                                             }),
@@ -905,7 +953,7 @@ impl gpui::Render for VideoConverter {
                             ),
                     )
                     .when(self.batch_loading, |list| {
-                        list.child(ui::loading_row("正在读取文件信息...", cx))
+                        list.child(ui::loading_row(t("正在读取文件信息..."), cx))
                     })
                     .when(!self.files.is_empty(), |list| {
                         let rows = (0..self.files.len())
@@ -925,7 +973,7 @@ impl gpui::Render for VideoConverter {
                     })
                     .when(self.files.is_empty() && !self.batch_loading, |list| {
                         list.child(ui::empty_hint(
-                            "暂无待转换文件，请点击右上角按钮添加文件或目录",
+                            t("暂无待转换文件，请点击右上角按钮添加文件或目录"),
                             cx,
                         ))
                     }),
@@ -941,7 +989,7 @@ impl gpui::Render for VideoConverter {
                 };
                 page.child(
                     ui::card(cx)
-                        .child(ui::card_header("转换控制", cx))
+                        .child(ui::card_header(t("转换控制"), cx))
                         .when(self.converting, |card| {
                             card.child(
                                 div()
@@ -956,9 +1004,11 @@ impl gpui::Render for VideoConverter {
                                             .text_size(px(12.))
                                             .text_color(theme.colors.muted_foreground)
                                             .child(format!(
-                                                "总体进度: {} / {} 个文件",
+                                                "{} {} / {} {}",
+                                                t("总体进度:"),
                                                 current + 1,
-                                                total
+                                                total,
+                                                t("个文件")
                                             ))
                                             .child(format!("{:.0}%", pct * 100.)),
                                     )
@@ -973,9 +1023,9 @@ impl gpui::Render for VideoConverter {
                                     ui::primary_button(
                                         "vc-start",
                                         if self.converting {
-                                            "转换中..."
+                                            t("转换中...")
                                         } else {
-                                            "开始转换"
+                                            t("开始转换")
                                         },
                                         cx.listener(|this, _ev, window, cx| {
                                             this.start_conversion(window, cx);
@@ -992,7 +1042,7 @@ impl gpui::Render for VideoConverter {
                                 .child(
                                     ui::secondary_button(
                                         "vc-clear",
-                                        "清空列表",
+                                        t("清空列表"),
                                         cx.listener(|this, _ev, _window, cx| {
                                             this.clear_list(cx);
                                         }),

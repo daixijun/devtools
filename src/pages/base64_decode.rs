@@ -5,6 +5,7 @@
 
 use std::time::Duration;
 
+use devtools::i18n::t;
 use gpui::{div, ClipboardItem, IntoElement, ParentElement as _, Render, Styled as _, Window};
 use gpui_component::input::{InputEvent, TextareaState};
 use gpui_component::Disableable as _;
@@ -70,7 +71,7 @@ impl Base64Decode {
                 });
             }
             Err(msg) => {
-                let display = format!("Base64解码失败: {msg}");
+                let display = format!("{}: {}", t("Base64解码失败"), msg);
                 self.error = Some(display.clone());
                 self.output.update(cx, |state, cx| {
                     state.set_value("", window, cx);
@@ -95,7 +96,7 @@ impl Render for Base64Decode {
                     .justify_between()
                     .child(ui::secondary_button(
                         "load-example",
-                        "示例",
+                        t("示例"),
                         cx.listener(|this, _ev, window, cx| {
                             let example = devtools::text_tools::base64::encode(EXAMPLE_TEXT);
                             this.input.update(cx, |state, cx| {
@@ -107,7 +108,7 @@ impl Render for Base64Decode {
                     .child(
                         ui::secondary_button(
                             "clear",
-                            "清空",
+                            t("清空"),
                             cx.listener(|this, _ev, window, cx| {
                                 this.input
                                     .update(cx, |state, cx| state.set_value("", window, cx));
@@ -125,7 +126,10 @@ impl Render for Base64Decode {
                             .flex()
                             .items_center()
                             .justify_between()
-                            .child(ui::hint_text(&format!("输入长度: {input_len}"), cx)),
+                            .child(ui::hint_text(
+                                &format!("{} {}", t("输入长度:"), input_len),
+                                cx,
+                            )),
                     )
                     .child(ui::edit_area(&self.input, 160.)),
             )
@@ -139,17 +143,17 @@ impl Render for Base64Decode {
                             .justify_between()
                             .gap_2()
                             .child(ui::hint_text(
-                                &format!("输出长度: {}", output_text.chars().count()),
+                                &format!("{} {}", t("输出长度:"), output_text.chars().count()),
                                 cx,
                             ))
                             .child(
-                                ui::primary_button("copy-result", "复制结果", {
+                                ui::primary_button("copy-result", t("复制结果"), {
                                     let output_for_copy = output_text.clone();
                                     move |_ev, window, cx| {
                                         cx.write_to_clipboard(ClipboardItem::new_string(
                                             output_for_copy.clone(),
                                         ));
-                                        notify::toast_success(window, cx, "已复制");
+                                        notify::toast_success(window, cx, t("已复制"));
                                     }
                                 })
                                 .disabled(!has_output || has_error),

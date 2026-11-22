@@ -1,5 +1,6 @@
 //! 未注册工具的占位页（兜底，正常情况下 32 个工具均有专属页面）。
 
+use devtools::i18n::t;
 use gpui::{div, prelude::*, px, App, IntoElement, Render, Window};
 use gpui_component::ActiveTheme as _;
 
@@ -29,9 +30,9 @@ impl Render for Placeholder {
                     div()
                         .text_size(px(14.))
                         .text_color(theme.colors.foreground)
-                        .child("页面不可用"),
+                        .child(t("页面不可用")),
                 )
-                .child(div().text_size(px(13.)).child("未注册的工具 id")),
+                .child(div().text_size(px(13.)).child(t("未注册的工具 id"))),
         )
     }
 }

@@ -6,6 +6,7 @@
 //! 为同步 hex 计算。PBKDF2 迭代次数两页共享同一 state。
 //! 契约见 docs/plans/tool-specs/batch1.md。
 
+use devtools::i18n::t;
 use futures::StreamExt as _;
 use gpui::{
     div, prelude::FluentBuilder as _, px, App, AppContext as _, Context, Div, Entity, FontWeight,
@@ -55,22 +56,22 @@ impl HashAlgorithm {
     /// 算法说明（「当前算法」说明卡）。
     fn description(self) -> &'static str {
         match self {
-            HashAlgorithm::Bcrypt => "业界标准的密码哈希算法，内置盐值和可调节的计算成本",
-            HashAlgorithm::Pbkdf2 => "基于密码的密钥派生函数，使用 HMAC-SHA256",
-            HashAlgorithm::Sha256 => "256位安全哈希算法，单向哈希函数",
-            HashAlgorithm::Sha512 => "512位安全哈希算法，比SHA-256更长的输出",
-            HashAlgorithm::Md5 => "已被破解的哈希算法，仅供兼容性使用",
+            HashAlgorithm::Bcrypt => t("业界标准的密码哈希算法，内置盐值和可调节的计算成本"),
+            HashAlgorithm::Pbkdf2 => t("基于密码的密钥派生函数，使用 HMAC-SHA256"),
+            HashAlgorithm::Sha256 => t("256位安全哈希算法，单向哈希函数"),
+            HashAlgorithm::Sha512 => t("512位安全哈希算法，比SHA-256更长的输出"),
+            HashAlgorithm::Md5 => t("已被破解的哈希算法，仅供兼容性使用"),
         }
     }
 
     /// 使用场景（算法卡描述 + 说明卡）。
     fn use_case(self) -> &'static str {
         match self {
-            HashAlgorithm::Bcrypt => "推荐用于密码存储",
-            HashAlgorithm::Pbkdf2 => "推荐用于密码存储和密钥派生",
-            HashAlgorithm::Sha256 => "仅用于数据完整性校验，不推荐用于密码存储",
-            HashAlgorithm::Sha512 => "仅用于数据完整性校验，不推荐用于密码存储",
-            HashAlgorithm::Md5 => "不安全，仅用于非安全场景的数据校验",
+            HashAlgorithm::Bcrypt => t("推荐用于密码存储"),
+            HashAlgorithm::Pbkdf2 => t("推荐用于密码存储和密钥派生"),
+            HashAlgorithm::Sha256 => t("仅用于数据完整性校验，不推荐用于密码存储"),
+            HashAlgorithm::Sha512 => t("仅用于数据完整性校验，不推荐用于密码存储"),
+            HashAlgorithm::Md5 => t("不安全，仅用于非安全场景的数据校验"),
         }
     }
 
@@ -130,12 +131,12 @@ impl PasswordHasher {
     fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let password = cx.new(|cx| {
             InputState::new(window, cx)
-                .placeholder("请输入要加密的密码...")
+                .placeholder(t("请输入要加密的密码..."))
                 .masked(true)
         });
         let salt_rounds = cx.new(|cx| {
             InputState::new(window, cx)
-                .placeholder("输入盐值轮数 (4-20)")
+                .placeholder(t("输入盐值轮数 (4-20)"))
                 .default_value("10")
                 .min(4.)
                 .max(20.)
@@ -143,7 +144,7 @@ impl PasswordHasher {
         });
         let iterations = cx.new(|cx| {
             InputState::new(window, cx)
-                .placeholder("输入迭代次数 (1000-1000000)")
+                .placeholder(t("输入迭代次数 (1000-1000000)"))
                 .default_value("10000")
                 .min(1000.)
                 .max(1_000_000.)
@@ -151,11 +152,11 @@ impl PasswordHasher {
         });
         let verify_password = cx.new(|cx| {
             InputState::new(window, cx)
-                .placeholder("请输入要验证的密码...")
+                .placeholder(t("请输入要验证的密码..."))
                 .masked(true)
         });
         let verify_hash =
-            cx.new(|cx| TextareaState::new(window, cx).placeholder("请输入要验证的哈希值..."));
+            cx.new(|cx| TextareaState::new(window, cx).placeholder(t("请输入要验证的哈希值...")));
 
         Self {
             active_tab: Tab::Hash,
@@ -194,7 +195,7 @@ impl PasswordHasher {
     fn hash_password(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let password = self.password.read(cx).value().to_string();
         if password.is_empty() {
-            self.hash_result = Some("请输入密码".to_string());
+            self.hash_result = Some(t("请输入密码").to_string());
             cx.notify();
             return;
         }
@@ -205,7 +206,7 @@ impl PasswordHasher {
                 let rounds = match self.salt_rounds_value(cx) {
                     Some(r) if ROUNDS_RANGE.contains(&r) => r,
                     _ => {
-                        self.hash_result = Some("盐值轮数必须在 4-20 之间".to_string());
+                        self.hash_result = Some(t("盐值轮数必须在 4-20 之间").to_string());
                         cx.notify();
                         return;
                     }
@@ -221,7 +222,7 @@ impl PasswordHasher {
                 let iterations = match self.iterations_value(cx) {
                     Some(n) if ITERATIONS_RANGE.contains(&n) => n,
                     _ => {
-                        self.hash_result = Some("迭代次数必须在 1000-1000000 之间".to_string());
+                        self.hash_result = Some(t("迭代次数必须在 1000-1000000 之间").to_string());
                         cx.notify();
                         return;
                     }
@@ -278,7 +279,7 @@ impl PasswordHasher {
         self.is_hashing = false;
         self.hash_result = Some(match result {
             Ok(hash) => hash,
-            Err(msg) => format!("加密过程中发生错误: {msg}"),
+            Err(msg) => format!("{}: {msg}", t("哈希过程中发生错误")),
         });
         cx.notify();
     }
@@ -306,7 +307,7 @@ impl PasswordHasher {
         if password.is_empty() {
             self.verify_result = Some(VerifyOutcome {
                 is_valid: None,
-                message: "请输入要验证的密码".to_string(),
+                message: t("请输入要验证的密码").to_string(),
             });
             cx.notify();
             return;
@@ -314,7 +315,7 @@ impl PasswordHasher {
         if hash.is_empty() {
             self.verify_result = Some(VerifyOutcome {
                 is_valid: None,
-                message: "请输入哈希值".to_string(),
+                message: t("请输入哈希值").to_string(),
             });
             cx.notify();
             return;
@@ -336,7 +337,7 @@ impl PasswordHasher {
                     _ => {
                         self.verify_result = Some(VerifyOutcome {
                             is_valid: None,
-                            message: "迭代次数必须在 1000-1000000 之间".to_string(),
+                            message: t("迭代次数必须在 1000-1000000 之间").to_string(),
                         });
                         cx.notify();
                         return;
@@ -387,9 +388,9 @@ impl PasswordHasher {
 
     fn finish_verify(&mut self, is_valid: bool, cx: &mut Context<Self>) {
         let message = if is_valid {
-            "✅ 密码验证成功！"
+            t("✅ 密码验证成功！")
         } else {
-            "❌ 密码验证失败！"
+            t("❌ 密码验证失败！")
         };
         self.verify_result = Some(VerifyOutcome {
             is_valid: Some(is_valid),
@@ -433,7 +434,7 @@ impl PasswordHasher {
         };
         ui::tab_bar(
             "passwordhasher-tabs",
-            &["密码加密", "密码验证"],
+            &[t("密码加密"), t("密码验证")],
             selected,
             cx.listener(move |this, ix: &usize, _window, cx| {
                 let tab = match ix {
@@ -462,7 +463,7 @@ impl PasswordHasher {
             grid = grid.child(self.algorithm_card(&id, alg, selected, verify, cx));
         }
         ui::card(cx)
-            .child(ui::card_header("选择加密算法", cx))
+            .child(ui::card_header(t("选择加密算法"), cx))
             .child(grid)
     }
 
@@ -493,7 +494,11 @@ impl PasswordHasher {
         } else {
             theme.colors.warning
         };
-        let badge_text = if alg.secure() { "安全" } else { "不安全" };
+        let badge_text = if alg.secure() {
+            t("安全")
+        } else {
+            t("不安全")
+        };
 
         div()
             .id(id.to_string())
@@ -536,28 +541,28 @@ impl PasswordHasher {
         let alg = self.algorithm;
 
         let mut params_card = ui::card(cx)
-            .child(ui::card_header("加密参数", cx))
-            .child(ui::field("输入密码", Input::new(&self.password), cx));
+            .child(ui::card_header(t("加密参数"), cx))
+            .child(ui::field(t("输入密码"), Input::new(&self.password), cx));
         if alg == HashAlgorithm::Bcrypt {
             params_card = params_card
                 .child(ui::field(
-                    "盐值轮数 (Salt Rounds)",
+                    t("盐值轮数 (Salt Rounds)"),
                     NumberInput::new(&self.salt_rounds).w_full(),
                     cx,
                 ))
                 .child(ui::hint_text(
-                    "盐值轮数越高，安全性越好，但加密时间越长。推荐值为 10-12。范围：4 - 20",
+                    t("盐值轮数越高，安全性越好，但加密时间越长。推荐值为 10-12。范围：4 - 20"),
                     cx,
                 ));
         } else if alg == HashAlgorithm::Pbkdf2 {
             params_card = params_card
                 .child(ui::field(
-                    "迭代次数 (Iterations)",
+                    t("迭代次数 (Iterations)"),
                     NumberInput::new(&self.iterations).w_full(),
                     cx,
                 ))
                 .child(ui::hint_text(
-                    "迭代次数越多，安全性越好，但加密时间越长。推荐值为 10,000 以上。范围：1,000 - 1,000,000",
+                    t("迭代次数越多，安全性越好，但加密时间越长。推荐值为 10,000 以上。范围：1,000 - 1,000,000"),
                     cx,
                 ));
         }
@@ -569,9 +574,9 @@ impl PasswordHasher {
                     ui::primary_button(
                         "hash-go",
                         if self.is_hashing {
-                            "加密中..."
+                            t("加密中...")
                         } else {
-                            "加密密码"
+                            t("加密密码")
                         },
                         cx.listener(|this, _, window, cx| this.hash_password(window, cx)),
                     )
@@ -582,7 +587,7 @@ impl PasswordHasher {
                 .child(
                     ui::secondary_button(
                         "hash-reset",
-                        "重置",
+                        t("重置"),
                         cx.listener(|this, _, window, cx| this.reset_hash(window, cx)),
                     )
                     .flex_1(),
@@ -601,15 +606,22 @@ impl PasswordHasher {
             let copyable = hash_copyable(&result);
             page = page.child(
                 ui::card(cx)
-                    .child(ui::card_header("加密结果", cx).when(copyable, |h| {
-                        h.child(ui::copy_result_button("hash-copy", "复制", result.clone()))
+                    .child(ui::card_header(t("哈希结果"), cx).when(copyable, |h| {
+                        h.child(ui::copy_result_button(
+                            "hash-copy",
+                            t("复制"),
+                            result.clone(),
+                        ))
                     }))
                     .child(ui::mono_block("mono-password-result", result.clone(), cx))
                     .child(ui::hint_text(
                         &format!(
-                            "算法: {} | 哈希长度: {} 字符",
+                            "{}: {} | {}: {} {}",
+                            t("算法"),
                             alg.display(),
-                            result.chars().count()
+                            t("哈希长度"),
+                            result.chars().count(),
+                            t("字符")
                         ),
                         cx,
                     )),
@@ -619,7 +631,7 @@ impl PasswordHasher {
         // 当前算法说明条
         page = page.child(
             ui::rich_banner(
-                &format!("当前算法: {}", alg.display()),
+                &format!("{}: {}", t("当前算法"), alg.display()),
                 theme.colors.primary,
                 cx,
             )
@@ -636,7 +648,7 @@ impl PasswordHasher {
                 div()
                     .text_size(px(12.))
                     .text_color(theme.colors.muted_foreground)
-                    .child(format!("使用场景: {}", alg.use_case())),
+                    .child(format!("{}: {}", t("使用场景"), alg.use_case())),
             ),
         );
         page
@@ -648,14 +660,14 @@ impl PasswordHasher {
         let alg = self.verify_algorithm;
 
         let mut params_card = ui::card(cx)
-            .child(ui::card_header("验证参数", cx))
+            .child(ui::card_header(t("验证参数"), cx))
             .child(ui::field(
-                "输入要验证的密码",
+                t("输入要验证的密码"),
                 Input::new(&self.verify_password),
                 cx,
             ))
             .child(ui::field(
-                "输入哈希值",
+                t("输入哈希值"),
                 ui::edit_area(&self.verify_hash, 72.),
                 cx,
             ));
@@ -666,18 +678,18 @@ impl PasswordHasher {
                     div()
                         .text_size(px(12.))
                         .text_color(theme.colors.muted_foreground)
-                        .child("bcrypt 的盐值轮数已包含在哈希值中，验证时无需手动设置"),
+                        .child(t("bcrypt 的盐值轮数已包含在哈希值中，验证时无需手动设置")),
                 ),
             );
         } else if alg == HashAlgorithm::Pbkdf2 {
             params_card = params_card
                 .child(ui::field(
-                    "迭代次数 (Iterations)",
+                    t("迭代次数 (Iterations)"),
                     NumberInput::new(&self.iterations).w_full(),
                     cx,
                 ))
                 .child(ui::hint_text(
-                    "验证时需要使用与加密时相同的迭代次数。范围：1,000 - 1,000,000",
+                    t("验证时需要使用与加密时相同的迭代次数。范围：1,000 - 1,000,000"),
                     cx,
                 ));
         }
@@ -689,9 +701,9 @@ impl PasswordHasher {
                     ui::primary_button(
                         "verify-go",
                         if self.is_verifying {
-                            "验证中..."
+                            t("验证中...")
                         } else {
-                            "验证密码"
+                            t("验证密码")
                         },
                         cx.listener(|this, _, window, cx| this.verify_password(window, cx)),
                     )
@@ -702,7 +714,7 @@ impl PasswordHasher {
                 .child(
                     ui::secondary_button(
                         "verify-reset",
-                        "重置",
+                        t("重置"),
                         cx.listener(|this, _, window, cx| this.reset_verify(window, cx)),
                     )
                     .flex_1(),
@@ -725,7 +737,7 @@ impl PasswordHasher {
             };
             page = page.child(
                 ui::card(cx)
-                    .child(ui::card_header("验证结果", cx))
+                    .child(ui::card_header(t("验证结果"), cx))
                     .child(banner),
             );
         }
@@ -737,11 +749,11 @@ impl PasswordHasher {
                 div()
                     .text_size(px(11.))
                     .text_color(theme.colors.warning)
-                    .child(format!("• {tip}")),
+                    .child(format!("• {}", t(tip))),
             );
         }
         page = page.child(
-            ui::rich_banner("⚠️ 安全提示", theme.colors.warning, cx)
+            ui::rich_banner(t("⚠️ 安全提示"), theme.colors.warning, cx)
                 .flex_col()
                 .items_start()
                 .gap_1()
@@ -759,12 +771,13 @@ const SAFETY_TIPS: [&str; 4] = [
     "推荐使用 bcrypt 或 PBKDF2 算法进行密码存储",
 ];
 
-/// 结果是否为真实哈希（按错误文案前缀禁用复制按钮）。
+/// 结果是否为真实哈希（按错误文案前缀禁用复制按钮；文案已经 t() 本地化，
+/// 比较时同样经 t() 换算，两种语言下行为一致）。
 fn hash_copyable(result: &str) -> bool {
-    !(result.starts_with("请输入密码")
-        || result.starts_with("盐值轮数必须在")
-        || result.starts_with("迭代次数必须在")
-        || result.starts_with("加密过程中发生错误"))
+    !(result == t("请输入密码")
+        || result == t("盐值轮数必须在 4-20 之间")
+        || result == t("迭代次数必须在 1000-1000000 之间")
+        || result.starts_with(t("哈希过程中发生错误")))
 }
 
 impl Render for PasswordHasher {

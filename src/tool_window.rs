@@ -2,6 +2,7 @@
 //!
 //! 页面内容由 `tools::create_tool_view` 按 tool id 分发（M5-M7 逐批实现）。
 
+use devtools::i18n::t;
 use devtools::registry::ToolDefinition;
 use gpui::{div, prelude::*, px, FocusHandle, Focusable, Render, Window};
 use gpui_component::ActiveTheme as _;
@@ -57,20 +58,20 @@ impl Render for ToolWindow {
                                 div()
                                     .text_size(px(17.))
                                     .font_weight(gpui::FontWeight::SEMIBOLD)
-                                    .child(tool.name),
+                                    .child(t(tool.name)),
                             )
                             .child(
                                 div()
                                     .text_size(px(12.))
                                     .text_color(theme.colors.muted_foreground)
-                                    .child(tool.description),
+                                    .child(t(tool.description)),
                             ),
                     )
                     .child(
                         div()
                             .text_size(px(12.))
                             .text_color(theme.colors.muted_foreground)
-                            .child(category),
+                            .child(t(category)),
                     ),
             )
             // 内容区：工具页面。滚动在此承担——页面（tool_page）为内容自然高，

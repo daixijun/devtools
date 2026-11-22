@@ -22,6 +22,7 @@ use std::io::Cursor;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use devtools::i18n::t;
 use futures::StreamExt as _;
 use gpui::{
     div, img, prelude::*, px, App, ClickEvent, Entity, ImageFormat, ImageSource, IntoElement,
@@ -122,7 +123,7 @@ impl ImagePreview {
 
     fn new(window: &mut Window, cx: &mut gpui::Context<Self>) -> Self {
         let url_input =
-            cx.new(|cx| InputState::new(window, cx).placeholder("粘贴图片 URL 或 data: URL..."));
+            cx.new(|cx| InputState::new(window, cx).placeholder(t("粘贴图片 URL 或 data: URL...")));
         cx.subscribe(&url_input, |this, _, event: &InputEvent, cx| {
             if matches!(event, InputEvent::PressEnter { .. }) {
                 this.load_from_input(cx);
@@ -137,10 +138,10 @@ impl ImagePreview {
             window,
             cx,
             &[
-                ("png", "PNG (无损)"),
-                ("jpeg", "JPEG (有损)"),
-                ("gif", "GIF (动图)"),
-                ("webp", "WebP (现代格式)"),
+                ("png", t("PNG (无损)")),
+                ("jpeg", t("JPEG (有损)")),
+                ("gif", t("GIF (动图)")),
+                ("webp", t("WebP (现代格式)")),
             ],
             0,
         );
@@ -201,7 +202,7 @@ impl ImagePreview {
     fn load_from_input(&mut self, cx: &mut gpui::Context<Self>) {
         let input = self.url_input.read(cx).value().trim().to_string();
         if input.is_empty() {
-            self.error = Some("请输入图片 URL 或 data: URL".into());
+            self.error = Some(t("请输入图片 URL 或 data: URL").into());
             self.loading = false;
             cx.notify();
             return;
@@ -216,7 +217,7 @@ impl ImagePreview {
             let outcome = rx
                 .next()
                 .await
-                .unwrap_or(LoadOutcome::Failed("加载任务已中断".into()));
+                .unwrap_or(LoadOutcome::Failed(t("加载任务已中断").into()));
             let _ = this.update(cx, |this, cx| this.on_loaded(outcome, cx));
         })
         .detach();
@@ -231,7 +232,7 @@ impl ImagePreview {
         let mut rx = crate::core_rt::submit(cx, async move {
             let Some(path) = rfd::FileDialog::new()
                 .add_filter(
-                    "图片文件",
+                    t("图片文件"),
                     &["png", "jpg", "jpeg", "gif", "webp", "bmp", "tiff", "ico"],
                 )
                 .pick_file()
@@ -245,7 +246,7 @@ impl ImagePreview {
             let outcome = rx
                 .next()
                 .await
-                .unwrap_or(LoadOutcome::Failed("加载任务已中断".into()));
+                .unwrap_or(LoadOutcome::Failed(t("加载任务已中断").into()));
             let _ = this.update_in(cx, |this, _window, cx| this.on_loaded(outcome, cx));
         })
         .detach();
@@ -362,7 +363,7 @@ impl ImagePreview {
     fn copy_source_url(&mut self, window: &mut Window, cx: &mut gpui::Context<Self>) {
         if let Some(label) = self.source_label.clone() {
             cx.write_to_clipboard(gpui::ClipboardItem::new_string(label));
-            notify::toast_success(window, cx, "已复制");
+            notify::toast_success(window, cx, t("已复制"));
         }
     }
 
@@ -373,7 +374,7 @@ impl ImagePreview {
     fn save_image(&mut self, window: &mut Window, cx: &mut gpui::Context<Self>) {
         let Some(bytes) = self.source_bytes.clone() else {
             self.error = Some(
-                "远程 URL 图片没有本地数据，暂不支持保存；请通过「上传文件」加载本地图片后再保存"
+                t("远程 URL 图片没有本地数据，暂不支持保存；请通过「上传文件」加载本地图片后再保存")
                     .into(),
             );
             cx.notify();
@@ -398,7 +399,7 @@ impl ImagePreview {
             let result = rx
                 .next()
                 .await
-                .unwrap_or(SaveOutcome::Failed("保存任务已中断".into()));
+                .unwrap_or(SaveOutcome::Failed(t("保存任务已中断").into()));
             let _ = this.update_in(cx, |this, window, cx| this.on_saved(result, window, cx));
         })
         .detach();
@@ -409,12 +410,12 @@ impl ImagePreview {
         match result {
             SaveOutcome::Saved(path) => {
                 self.error = None;
-                notify::toast_success(window, cx, format!("图片已保存到 {path}"));
+                notify::toast_success(window, cx, format!("{} {}", t("图片已保存到"), path));
             }
             SaveOutcome::Cancelled => {}
             SaveOutcome::Failed(message) => {
-                self.error = Some(format!("保存失败: {message}"));
-                notify::toast_error(window, cx, "保存图片失败");
+                self.error = Some(format!("{}: {}", t("保存失败"), message));
+                notify::toast_error(window, cx, t("保存图片失败"));
             }
         }
         cx.notify();
@@ -428,13 +429,13 @@ impl ImagePreview {
         match &self.meta {
             Some(meta) => ui::info_rows(
                 [
-                    ui::info_row("尺寸", format!("{} × {}", meta.width, meta.height), cx),
-                    ui::info_row("格式", meta.format.clone(), cx),
-                    ui::info_row("大小", format_file_size(meta.size), cx),
+                    ui::info_row(t("尺寸"), format!("{} × {}", meta.width, meta.height), cx),
+                    ui::info_row(t("格式"), meta.format.clone(), cx),
+                    ui::info_row(t("大小"), format_file_size(meta.size), cx),
                 ],
                 cx,
             ),
-            None => div().child(ui::hint_text("暂无图片信息", cx)),
+            None => div().child(ui::hint_text(t("暂无图片信息"), cx)),
         }
     }
 
@@ -444,12 +445,16 @@ impl ImagePreview {
             .flex()
             .flex_col()
             .gap_2()
-            .child(ui::field("格式", Select::new(&self.save_format_select), cx))
+            .child(ui::field(
+                t("格式"),
+                Select::new(&self.save_format_select),
+                cx,
+            ))
             .when(
                 matches!(self.save_format.as_str(), "jpeg" | "webp"),
                 |panel| {
                     panel.child(ui::field(
-                        "质量",
+                        t("质量"),
                         div()
                             .flex()
                             .items_center()
@@ -465,11 +470,11 @@ impl ImagePreview {
                     ))
                 },
             )
-            .child(ui::field("文件名", Input::new(&self.filename_input), cx))
+            .child(ui::field(t("文件名"), Input::new(&self.filename_input), cx))
             .child(
                 ui::primary_button(
                     "ip-save",
-                    "保存图片到指定目录",
+                    t("保存图片到指定目录"),
                     cx.listener(|this, _ev, window, cx| this.save_image(window, cx)),
                 )
                 .disabled(!has_bytes || self.saving)
@@ -477,7 +482,7 @@ impl ImagePreview {
                 .w_full(),
             )
             .child(ui::hint_text(
-                "点击后将弹出保存对话框，您可以自由选择保存目录和文件名",
+                t("点击后将弹出保存对话框，您可以自由选择保存目录和文件名"),
                 cx,
             ))
     }
@@ -490,14 +495,14 @@ impl gpui::Render for ImagePreview {
 
         let load_btn = ui::primary_button(
             "ip-load",
-            "加载",
+            t("加载"),
             cx.listener(|this, _ev, _window, cx| this.load_from_input(cx)),
         )
         .loading(self.loading)
         .disabled(self.loading);
         let upload_btn = ui::secondary_button(
             "ip-upload",
-            "上传文件",
+            t("上传文件"),
             cx.listener(|this, _ev, window, cx| this.pick_file(window, cx)),
         )
         .disabled(self.loading);
@@ -536,7 +541,7 @@ impl gpui::Render for ImagePreview {
                     .flex()
                     .items_center()
                     .justify_center()
-                    .child(ui::loading_row("加载中...", cx)),
+                    .child(ui::loading_row(t("加载中..."), cx)),
             )
         } else if let Some(source) = self.source.clone() {
             // gpui img 渲染：本地文件用 Resource::Path（gpui 内置 loader 读盘），
@@ -572,12 +577,12 @@ impl gpui::Render for ImagePreview {
                 .gap_1()
                 .child(ui::secondary_button(
                     "ip-reset",
-                    "重置",
+                    t("重置"),
                     cx.listener(|this, _ev, _window, cx| this.reset_view(cx)),
                 ))
                 .child(ui::secondary_button(
                     "ip-copy-url",
-                    "复制 URL",
+                    t("复制 URL"),
                     cx.listener(|this, _ev, window, cx| this.copy_source_url(window, cx)),
                 ));
 
@@ -633,7 +638,7 @@ impl gpui::Render for ImagePreview {
                     .flex()
                     .items_center()
                     .justify_center()
-                    .child(ui::empty_hint("粘贴图片或输入 URL 开始预览", cx)),
+                    .child(ui::empty_hint(t("粘贴图片或输入 URL 开始预览"), cx)),
             )
         };
 
@@ -650,7 +655,7 @@ impl gpui::Render for ImagePreview {
                             .child(upload_btn),
                     )
                     .child(ui::hint_text(
-                        "💡 提示：支持 http(s) 链接、data: URL 与本地文件路径；预览区支持滚轮缩放、拖拽平移、双击切换 1×/2×",
+                        t("💡 提示：支持 http(s) 链接、data: URL 与本地文件路径；预览区支持滚轮缩放、拖拽平移、双击切换 1×/2×"),
                         cx,
                     ))
                     .when_some(self.error.clone(), |card, error| {
@@ -668,13 +673,13 @@ impl gpui::Render for ImagePreview {
                         ui::card(cx)
                             .flex_1()
                             .min_w(px(280.))
-                            .child(ui::card_header("图片信息", cx))
+                            .child(ui::card_header(t("图片信息"), cx))
                             .child(self.info_panel(cx)),
                     )
                     .child(
                         ui::card(cx)
                             .w(px(340.))
-                            .child(ui::card_header("保存设置", cx))
+                            .child(ui::card_header(t("保存设置"), cx))
                             .child(self.save_panel(cx)),
                     ),
             )
@@ -689,13 +694,13 @@ impl gpui::Render for ImagePreview {
 fn decode_source_job(input: String) -> LoadOutcome {
     if input.starts_with("data:") {
         let Some((header, payload)) = input.split_once(',') else {
-            return LoadOutcome::Failed("无效的 data: URL 格式：缺少数据段".into());
+            return LoadOutcome::Failed(t("无效的 data: URL 格式：缺少数据段").into());
         };
         if !header.ends_with(";base64") {
-            return LoadOutcome::Failed("仅支持 base64 编码的 data: URL".into());
+            return LoadOutcome::Failed(t("仅支持 base64 编码的 data: URL").into());
         }
         let Some(bytes) = base64_decode(payload) else {
-            return LoadOutcome::Failed("data: URL base64 解码失败".into());
+            return LoadOutcome::Failed(t("data: URL base64 解码失败").into());
         };
         let meta = decode_meta(&bytes, None);
         let gpui_format = gpui_format_of(&bytes);
@@ -716,7 +721,7 @@ fn decode_source_job(input: String) -> LoadOutcome {
                     meta,
                 }
             }
-            Err(e) => LoadOutcome::Failed(format!("读取本地文件失败: {e}")),
+            Err(e) => LoadOutcome::Failed(format!("{}: {}", t("读取本地文件失败"), e)),
         }
     }
 }
@@ -771,7 +776,7 @@ fn gpui_format_of(bytes: &[u8]) -> ImageFormat {
 /// 保存任务：rfd save_file（后台线程）+ image crate 重编码 + 写盘。
 fn save_image_job(bytes: Arc<Vec<u8>>, format: &str, quality: u32, filename: &str) -> SaveOutcome {
     let Some(path) = rfd::FileDialog::new()
-        .add_filter("图片文件", &[format])
+        .add_filter(t("图片文件"), &[format])
         .set_file_name(format!("{filename}.{format}"))
         .save_file()
     else {
@@ -780,7 +785,7 @@ fn save_image_job(bytes: Arc<Vec<u8>>, format: &str, quality: u32, filename: &st
 
     let img = match image::load_from_memory(&bytes) {
         Ok(img) => img,
-        Err(e) => return SaveOutcome::Failed(format!("解码源图片失败: {e}")),
+        Err(e) => return SaveOutcome::Failed(format!("{}: {}", t("解码源图片失败"), e)),
     };
 
     let mut buf = Cursor::new(Vec::new());
@@ -814,12 +819,12 @@ fn save_image_job(bytes: Arc<Vec<u8>>, format: &str, quality: u32, filename: &st
             .map_err(|e| e.to_string()),
     };
     if let Err(e) = encode_result {
-        return SaveOutcome::Failed(format!("格式转换失败: {e}"));
+        return SaveOutcome::Failed(format!("{}: {}", t("格式转换失败"), e));
     }
 
     match std::fs::write(&path, buf.into_inner()) {
         Ok(_) => SaveOutcome::Saved(path.display().to_string()),
-        Err(e) => SaveOutcome::Failed(format!("写入文件失败: {e}")),
+        Err(e) => SaveOutcome::Failed(format!("{}: {}", t("写入文件失败"), e)),
     }
 }
 

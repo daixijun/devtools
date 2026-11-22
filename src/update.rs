@@ -4,6 +4,7 @@
 //! `devtools::utils::updater`（GitHub Releases），经 core_rt 提交到后台
 //! tokio Runtime，结果回流本视图更新状态（与工具页异步模式同构）。
 
+use devtools::i18n::t;
 use devtools::utils::updater::{self, ReleaseInfo};
 use futures::StreamExt as _;
 use gpui::{div, prelude::*, px, Context, FontWeight, IntoElement, Render, Window};
@@ -78,7 +79,7 @@ impl Render for UpdateView {
                 UpdateState::Checking => div()
                     .text_size(px(13.))
                     .text_color(theme.colors.muted_foreground)
-                    .child("正在检查更新…"),
+                    .child(t("正在检查更新…")),
                 UpdateState::UpToDate => div()
                     .flex()
                     .flex_col()
@@ -88,13 +89,13 @@ impl Render for UpdateView {
                         div()
                             .text_size(px(14.))
                             .font_weight(FontWeight::SEMIBOLD)
-                            .child("已是最新版本"),
+                            .child(t("已是最新版本")),
                     )
                     .child(
                         div()
                             .text_size(px(12.))
                             .text_color(theme.colors.muted_foreground)
-                            .child(format!("当前版本 v{current}")),
+                            .child(format!("{} v{current}", t("当前版本"))),
                     ),
                 UpdateState::Available(info) => {
                     let url = info.url.clone();
@@ -110,13 +111,13 @@ impl Render for UpdateView {
                             div()
                                 .text_size(px(14.))
                                 .font_weight(FontWeight::SEMIBOLD)
-                                .child(format!("发现新版本 v{}", info.version)),
+                                .child(format!("{} v{}", t("发现新版本"), info.version)),
                         )
                         .child(
                             div()
                                 .text_size(px(12.))
                                 .text_color(theme.colors.muted_foreground)
-                                .child(format!("当前版本 v{current}")),
+                                .child(format!("{} v{current}", t("当前版本"))),
                         )
                         .when(!notes.is_empty(), |el| {
                             el.child(
@@ -135,7 +136,7 @@ impl Render for UpdateView {
                         })
                         .child(ui::primary_button(
                             "update-download",
-                            "前往下载",
+                            t("前往下载"),
                             move |_, _, cx| {
                                 cx.open_url(&url);
                             },
@@ -154,7 +155,7 @@ impl Render for UpdateView {
                             div()
                                 .text_size(px(14.))
                                 .font_weight(FontWeight::SEMIBOLD)
-                                .child("检查更新失败"),
+                                .child(t("检查更新失败")),
                         )
                         .child(
                             div()
@@ -164,7 +165,7 @@ impl Render for UpdateView {
                         )
                         .child(ui::secondary_button(
                             "update-retry",
-                            "重试",
+                            t("重试"),
                             cx.listener(|this, _, _, cx| this.start_check(cx)),
                         ))
                 }

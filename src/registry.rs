@@ -1,6 +1,9 @@
 //! 工具注册表（32 个工具 + 8 个分类）。
 //!
 //! 工具元数据的权威来源（id、中文名称/描述、keywords、分类、窗口尺寸）。
+//! 名称/描述为中文原文，展示时经 i18n::t 翻译（EN 表见 src/i18n/en_registry.rs）。
+
+use crate::i18n;
 
 /// 工具窗口尺寸（逻辑像素）
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -662,8 +665,23 @@ pub fn category_name(category_id: &str) -> &'static str {
         .unwrap_or("")
 }
 
-/// 搜索工具：按 name+description+分类名+keywords 匹配
-/// 拼接后做小写子串匹配；空查询返回全部工具。
+/// 把 key 的两种语言译名追加进搜索索引：当前语言译名（t）+ EN 译名
+/// （en_of，跨语言搜索——任何语言下都能用另一种语言的名称搜索）。
+/// EN 模式下 t() 已返回 EN 译名，相同则不再重复追加。
+fn push_index(haystack: &mut String, key: &'static str) {
+    let current = i18n::t(key);
+    haystack.push(' ');
+    haystack.push_str(current);
+    if let Some(en) = i18n::en_of(key) {
+        if en != current {
+            haystack.push(' ');
+            haystack.push_str(en);
+        }
+    }
+}
+
+/// 搜索工具：按 name+description+分类名+keywords 匹配，拼接后做小写
+/// 子串匹配；空查询返回全部工具。
 pub fn search_tools(query: &str) -> Vec<&'static ToolDefinition> {
     let trimmed = query.trim();
     if trimmed.is_empty() {
@@ -674,12 +692,14 @@ pub fn search_tools(query: &str) -> Vec<&'static ToolDefinition> {
     TOOLS
         .iter()
         .filter(|tool| {
-            let mut haystack = String::with_capacity(256);
+            let mut haystack = String::with_capacity(384);
             haystack.push_str(tool.name);
             haystack.push(' ');
             haystack.push_str(tool.description);
-            haystack.push(' ');
             haystack.push_str(category_name(tool.category));
+            push_index(&mut haystack, tool.name);
+            push_index(&mut haystack, tool.description);
+            push_index(&mut haystack, category_name(tool.category));
             for keyword in tool.keywords {
                 haystack.push(' ');
                 haystack.push_str(keyword);
@@ -726,5 +746,27 @@ mod tests {
             .iter()
             .any(|t| t.id == "subnetcalculator"));
         assert!(search_tools("不存在的工具xyz").is_empty());
+    }
+
+    /// 双语言搜索索引：任何语言下都能用另一种语言的工具名搜索。
+    #[test]
+    fn test_search_cross_language() {
+        crate::i18n::set_language(crate::i18n::Language::En);
+        // 英文模式：英文名称与中文关键词都能命中
+        assert!(search_tools("Subnet Calculator")
+            .iter()
+            .any(|t| t.id == "subnetcalculator"));
+        assert!(search_tools("子网")
+            .iter()
+            .any(|t| t.id == "subnetcalculator"));
+        crate::i18n::set_language(crate::i18n::Language::ZhCn);
+        // 中文模式：英文名称同样可搜
+        assert!(search_tools("subnet calculator")
+            .iter()
+            .any(|t| t.id == "subnetcalculator"));
+        assert!(search_tools("Password Generator")
+            .iter()
+            .any(|t| t.id == "passwordgenerator"));
+        crate::i18n::set_language(crate::i18n::Language::ZhCn);
     }
 }

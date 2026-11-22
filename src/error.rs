@@ -1,7 +1,9 @@
 //! 统一错误模型。
 //!
-//! 变体与中文文案保持历史版本一致。
+//! 变体与中文文案保持历史版本一致；固定文案段经 i18n（英文模式查 EN_ERRORS
+//! 表拼接），业务层传入的 detail 参数随原文。
 
+use crate::i18n::t;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -21,16 +23,18 @@ pub enum DevToolError {
 impl DevToolError {
     pub fn to_localized_string(&self) -> String {
         match self {
-            DevToolError::EmptyInput(field) => format!("{}不能为空", field),
-            DevToolError::ParseError(context, error) => format!("{}解析失败: {}", context, error),
-            DevToolError::NetworkError(error) => format!("网络请求失败: {}", error),
-            DevToolError::NotFound(detail) => format!("未找到: {}", detail),
-            DevToolError::CertificateError(error) => format!("证书处理错误: {}", error),
-            DevToolError::ValidationError(error) => format!("验证失败: {}", error),
-            DevToolError::FileError(error) => format!("文件操作错误: {}", error),
-            DevToolError::SystemError(error) => format!("系统错误: {}", error),
-            DevToolError::ConversionError(error) => format!("格式转换失败: {}", error),
-            DevToolError::AsyncExecutionError => "异步执行失败".to_string(),
+            DevToolError::EmptyInput(field) => format!("{}{}", field, t("不能为空")),
+            DevToolError::ParseError(context, error) => {
+                format!("{}{}: {}", context, t("解析失败"), error)
+            }
+            DevToolError::NetworkError(error) => format!("{}: {}", t("网络请求失败"), error),
+            DevToolError::NotFound(detail) => format!("{}: {}", t("未找到"), detail),
+            DevToolError::CertificateError(error) => format!("{}: {}", t("证书处理错误"), error),
+            DevToolError::ValidationError(error) => format!("{}: {}", t("验证失败"), error),
+            DevToolError::FileError(error) => format!("{}: {}", t("文件操作错误"), error),
+            DevToolError::SystemError(error) => format!("{}: {}", t("系统错误"), error),
+            DevToolError::ConversionError(error) => format!("{}: {}", t("格式转换失败"), error),
+            DevToolError::AsyncExecutionError => t("异步执行失败").to_string(),
         }
     }
 }

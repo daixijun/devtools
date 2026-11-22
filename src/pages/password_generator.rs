@@ -15,6 +15,7 @@ use gpui_component::{ActiveTheme as _, Disableable as _};
 
 use crate::components::{notify, ui};
 
+use devtools::i18n::t;
 use devtools::text_tools::password as pw;
 
 const MIN_LENGTH: f32 = 4.;
@@ -77,7 +78,7 @@ impl PasswordGenerator {
         let custom_input = cx.new(|cx| {
             InputState::new(window, cx)
                 .default_value(pw::DEFAULT_CUSTOM_SYMBOLS)
-                .placeholder("输入您想要使用的特殊字符...")
+                .placeholder(t("输入您想要使用的特殊字符..."))
         });
         cx.subscribe(&custom_input, |this, _, event: &InputEvent, cx| {
             if matches!(event, InputEvent::Change) {
@@ -172,13 +173,13 @@ impl Render for PasswordGenerator {
                 pw::Strength::Medium => theme.colors.warning,
                 pw::Strength::Weak => theme.colors.danger,
             };
-            ui::badge(&format!("强度: {}", s.label()), color)
+            ui::badge(&format!("{}: {}", t("强度"), s.label()), color)
         });
         let password_for_copy = password.clone();
 
         // 显示区：密码 / 提示文案 / 空态
         let display = if password.is_empty() {
-            ui::empty_hint("点击生成按钮创建密码", cx)
+            ui::empty_hint(t("点击生成按钮创建密码"), cx)
         } else if self.no_charset {
             div()
                 .w_full()
@@ -203,7 +204,7 @@ impl Render for PasswordGenerator {
                             .items_center()
                             .justify_between()
                             .gap_2()
-                            .child(ui::hint_text("生成的密码", cx))
+                            .child(ui::hint_text(t("生成的密码"), cx))
                             .child(
                                 div()
                                     .flex()
@@ -213,12 +214,12 @@ impl Render for PasswordGenerator {
                                     .child(
                                         ui::primary_button(
                                             "copy-password",
-                                            "复制密码",
+                                            t("复制密码"),
                                             move |_, window, cx| {
                                                 cx.write_to_clipboard(ClipboardItem::new_string(
                                                     password_for_copy.clone(),
                                                 ));
-                                                notify::toast_success(window, cx, "已复制");
+                                                notify::toast_success(window, cx, t("已复制"));
                                             },
                                         )
                                         .disabled(!can_copy),
@@ -231,7 +232,7 @@ impl Render for PasswordGenerator {
             .child(
                 ui::card(cx)
                     .child(ui::field(
-                        &format!("密码长度: {}", self.length),
+                        &format!("{}: {}", t("密码长度"), self.length),
                         Slider::new(&self.slider).w_full(),
                         cx,
                     ))
@@ -246,7 +247,7 @@ impl Render for PasswordGenerator {
             // 字符类型控制
             .child(
                 ui::card(cx)
-                    .child(ui::card_header("字符类型控制", cx))
+                    .child(ui::card_header(t("字符类型控制"), cx))
                     .child(
                         div()
                             .flex()
@@ -254,7 +255,7 @@ impl Render for PasswordGenerator {
                             .gap_4()
                             .child(
                                 Checkbox::new("opt-uppercase")
-                                    .label("大写字母 (A-Z)")
+                                    .label(t("大写字母 (A-Z)"))
                                     .checked(self.include_uppercase)
                                     .on_click(cx.listener(|this, checked: &bool, _window, cx| {
                                         this.include_uppercase = *checked;
@@ -263,7 +264,7 @@ impl Render for PasswordGenerator {
                             )
                             .child(
                                 Checkbox::new("opt-lowercase")
-                                    .label("小写字母 (a-z)")
+                                    .label(t("小写字母 (a-z)"))
                                     .checked(self.include_lowercase)
                                     .on_click(cx.listener(|this, checked: &bool, _window, cx| {
                                         this.include_lowercase = *checked;
@@ -272,7 +273,7 @@ impl Render for PasswordGenerator {
                             )
                             .child(
                                 Checkbox::new("opt-numbers")
-                                    .label("数字 (0-9)")
+                                    .label(t("数字 (0-9)"))
                                     .checked(self.include_numbers)
                                     .on_click(cx.listener(|this, checked: &bool, _window, cx| {
                                         this.include_numbers = *checked;
@@ -281,7 +282,7 @@ impl Render for PasswordGenerator {
                             )
                             .child(
                                 Checkbox::new("opt-symbols")
-                                    .label("特殊符号")
+                                    .label(t("特殊符号"))
                                     .checked(self.include_symbols)
                                     .on_click(cx.listener(|this, checked: &bool, _window, cx| {
                                         this.include_symbols = *checked;
@@ -294,8 +295,8 @@ impl Render for PasswordGenerator {
             .when(self.include_symbols, |el| {
                 el.child(
                     ui::card(cx)
-                        .child(ui::card_header("自定义特殊字符", cx))
-                        .child(ui::hint_text("快速选择：", cx))
+                        .child(ui::card_header(t("自定义特殊字符"), cx))
+                        .child(ui::hint_text(t("快速选择："), cx))
                         .child(
                             div()
                                 .flex()
@@ -305,7 +306,7 @@ impl Render for PasswordGenerator {
                                     let value = value.to_string();
                                     ui::secondary_button(
                                         id,
-                                        label,
+                                        t(label),
                                         cx.listener(move |this, _ev, window, cx| {
                                             this.set_chip(&value, window, cx);
                                         }),
@@ -313,11 +314,14 @@ impl Render for PasswordGenerator {
                                 })),
                         )
                         .child(ui::field(
-                            "自定义字符（直接输入）：",
+                            t("自定义字符（直接输入）："),
                             Input::new(&self.custom_input),
                             cx,
                         ))
-                        .child(ui::hint_text(&format!("当前字符数: {char_count}"), cx)),
+                        .child(ui::hint_text(
+                            &format!("{}: {}", t("当前字符数"), char_count),
+                            cx,
+                        )),
                 )
             })
             // 操作按钮
@@ -328,7 +332,7 @@ impl Render for PasswordGenerator {
                     .child(
                         ui::primary_button(
                             "generate",
-                            "生成新密码",
+                            t("生成新密码"),
                             cx.listener(|this, _ev, _window, cx| this.regenerate(cx)),
                         )
                         .flex_1(),
@@ -336,7 +340,7 @@ impl Render for PasswordGenerator {
                     .child(
                         ui::secondary_button(
                             "reset",
-                            "重置选项",
+                            t("重置选项"),
                             cx.listener(|this, _ev, window, cx| this.reset_options(window, cx)),
                         )
                         .flex_1(),
@@ -345,17 +349,32 @@ impl Render for PasswordGenerator {
             // 密码强度说明
             .child(
                 ui::card(cx)
-                    .child(ui::card_header("密码强度说明", cx))
+                    .child(ui::card_header(t("密码强度说明"), cx))
                     .child(
                         div()
                             .flex()
                             .flex_col()
                             .gap_1()
                             .text_color(theme.colors.muted_foreground)
-                            .child(div().child("• 长度 ≥ 12 且包含 4 种字符类型：非常强"))
-                            .child(div().child("• 长度 ≥ 8 且包含 3-4 种字符类型：强"))
-                            .child(div().child("• 长度 ≥ 8 且包含 2 种字符类型：中等"))
-                            .child(div().child("• 其他情况：弱")),
+                            .child(
+                                div().child(format!(
+                                    "• {}",
+                                    t("长度 ≥ 12 且包含 4 种字符类型：非常强")
+                                )),
+                            )
+                            .child(
+                                div().child(format!(
+                                    "• {}",
+                                    t("长度 ≥ 8 且包含 3-4 种字符类型：强")
+                                )),
+                            )
+                            .child(
+                                div().child(format!(
+                                    "• {}",
+                                    t("长度 ≥ 8 且包含 2 种字符类型：中等")
+                                )),
+                            )
+                            .child(div().child(format!("• {}", t("其他情况：弱")))),
                     ),
             )
     }

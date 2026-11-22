@@ -8,6 +8,7 @@
 use std::path::PathBuf;
 
 use devtools::crypto::{md5_file_hex, md5_hex};
+use devtools::i18n::t;
 use futures::StreamExt as _;
 use gpui::{div, prelude::*, px, App, Context, Div, Entity, IntoElement, Render, Window};
 use gpui_component::input::{Input, InputEvent, InputState, TextareaState};
@@ -75,7 +76,7 @@ impl Md5Crypto {
 
     fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let text_input =
-            cx.new(|cx| TextareaState::new(window, cx).placeholder("请输入要加密的文本..."));
+            cx.new(|cx| TextareaState::new(window, cx).placeholder(t("请输入要加密的文本...")));
         // 输入即算（无防抖）：Change 直接调 core 同步哈希
         cx.subscribe(&text_input, |this, _, event: &InputEvent, cx| {
             if matches!(event, InputEvent::Change) {
@@ -85,7 +86,7 @@ impl Md5Crypto {
         .detach();
 
         let file_path_input =
-            cx.new(|cx| InputState::new(window, cx).placeholder("点击右边按钮选择文件..."));
+            cx.new(|cx| InputState::new(window, cx).placeholder(t("点击右边按钮选择文件...")));
 
         Self {
             tab: Tab::Text,
@@ -125,7 +126,7 @@ impl Md5Crypto {
             }
             Err(msg) => {
                 self.text_hash.clear();
-                self.text_error = Some(format!("加密过程中发生错误: {msg}"));
+                self.text_error = Some(format!("{}: {msg}", t("哈希过程中发生错误")));
             }
         }
         cx.notify();
@@ -168,7 +169,7 @@ impl Md5Crypto {
     /// 后台读取文件并计算哈希（完成回调无需 window，普通 spawn 即可）。
     fn start_file_hash(&mut self, cx: &mut Context<Self>) {
         let Some(path) = self.file_path.clone() else {
-            self.file_error = Some("请先选择一个文件".to_string());
+            self.file_error = Some(t("请先选择一个文件").to_string());
             cx.notify();
             return;
         };
@@ -184,7 +185,7 @@ impl Md5Crypto {
             let result = rx
                 .next()
                 .await
-                .unwrap_or_else(|| Err(std::io::Error::other("任务已取消")));
+                .unwrap_or_else(|| Err(std::io::Error::other(t("任务已取消"))));
             let _ = this.update(cx, |this, cx| this.on_file_hashed(task, result, cx));
         })
         .detach();
@@ -204,7 +205,7 @@ impl Md5Crypto {
             Ok(hash) => self.file_hash = hash,
             Err(err) => {
                 self.file_hash.clear();
-                self.file_error = Some(format!("处理文件时发生错误: {err}"));
+                self.file_error = Some(format!("{}: {err}", t("处理文件时发生错误")));
             }
         }
         cx.notify();
@@ -279,7 +280,7 @@ impl Md5Crypto {
                 });
                 let result = match rx.next().await {
                     Some(result) => result,
-                    None => Err(std::io::Error::other("任务已取消")),
+                    None => Err(std::io::Error::other(t("任务已取消"))),
                 };
                 let _ = this.update(cx, |this, cx| {
                     if generation != this.batch_generation {
@@ -342,7 +343,7 @@ impl Md5Crypto {
         }
         let mut rx = crate::core_rt::submit(cx, async move {
             let Some(path) = rfd::FileDialog::new()
-                .add_filter("文本文件", &["txt"])
+                .add_filter(t("文本文件"), &["txt"])
                 .save_file()
             else {
                 return Ok(None); // 用户取消
@@ -356,11 +357,15 @@ impl Md5Crypto {
                 return;
             };
             let _ = this.update_in(cx, |_this, window, cx| match result {
-                Ok(Some(path)) => {
-                    notify::toast_success(window, cx, format!("结果已导出到 {}", path.display()))
-                }
+                Ok(Some(path)) => notify::toast_success(
+                    window,
+                    cx,
+                    format!("{} {}", t("结果已导出到"), path.display()),
+                ),
                 Ok(None) => {}
-                Err(err) => notify::toast_error(window, cx, format!("导出结果失败: {err}")),
+                Err(err) => {
+                    notify::toast_error(window, cx, format!("{}: {err}", t("导出结果失败")))
+                }
             });
         })
         .detach();
@@ -379,7 +384,7 @@ impl Md5Crypto {
         };
         ui::tab_bar(
             "md5-tabs",
-            &["文本加密", "文件加密", "批量加密"],
+            &[t("文本加密"), t("文件加密"), t("批量加密")],
             selected,
             cx.listener(move |this, ix: &usize, _window, cx| {
                 this.tab = match ix {
@@ -395,7 +400,7 @@ impl Md5Crypto {
     fn render_text_tab(&self, cx: &Context<Self>) -> Div {
         let theme = cx.theme().colors;
         let hash_display = if self.text_hash.is_empty() {
-            HASH_PLACEHOLDER.to_string()
+            t(HASH_PLACEHOLDER).to_string()
         } else {
             self.text_hash.clone()
         };
@@ -416,7 +421,7 @@ impl Md5Crypto {
                                 div()
                                     .text_size(px(12.))
                                     .text_color(theme.muted_foreground)
-                                    .child(format!("输入长度: {}", self.text_len)),
+                                    .child(format!("{}: {}", t("输入长度"), self.text_len)),
                             )
                             .child(
                                 div()
@@ -425,7 +430,7 @@ impl Md5Crypto {
                                     .gap_2()
                                     .child(ui::secondary_button(
                                         "md5-example",
-                                        "示例",
+                                        t("示例"),
                                         cx.listener(|this, _, window, cx| {
                                             this.set_text_input(EXAMPLE_TEXT, window, cx);
                                         }),
@@ -433,7 +438,7 @@ impl Md5Crypto {
                                     .child(
                                         ui::secondary_button(
                                             "md5-clear-text",
-                                            "清空",
+                                            t("清空"),
                                             cx.listener(|this, _, window, cx| {
                                                 this.set_text_input("", window, cx);
                                             }),
@@ -453,11 +458,11 @@ impl Md5Crypto {
                             .flex()
                             .items_center()
                             .justify_between()
-                            .child(ui::card_header("MD5 哈希值", cx))
+                            .child(ui::card_header(t("MD5 哈希值"), cx))
                             .children((!self.text_hash.is_empty()).then(|| {
                                 ui::copy_result_button(
                                     "md5-copy-text",
-                                    "复制结果",
+                                    t("复制结果"),
                                     self.text_hash.clone(),
                                 )
                             })),
@@ -468,7 +473,7 @@ impl Md5Crypto {
 
     fn render_file_tab(&self, cx: &Context<Self>) -> Div {
         let hash_display = if self.file_hash.is_empty() {
-            HASH_PLACEHOLDER.to_string()
+            t(HASH_PLACEHOLDER).to_string()
         } else {
             self.file_hash.clone()
         };
@@ -485,11 +490,11 @@ impl Md5Crypto {
                             .flex()
                             .items_center()
                             .justify_between()
-                            .child(ui::card_header("选择文件", cx))
+                            .child(ui::card_header(t("选择文件"), cx))
                             .child(
                                 ui::secondary_button(
                                     "md5-file-clear",
-                                    "清空",
+                                    t("清空"),
                                     cx.listener(|this, _, window, cx| {
                                         this.clear_file(window, cx);
                                     }),
@@ -510,7 +515,7 @@ impl Md5Crypto {
                             )
                             .child(ui::secondary_button(
                                 "md5-file-pick",
-                                "选择文件",
+                                t("选择文件"),
                                 cx.listener(|this, _, window, cx| {
                                     this.pick_file(window, cx);
                                 }),
@@ -526,7 +531,7 @@ impl Md5Crypto {
                             .flex()
                             .items_center()
                             .justify_between()
-                            .child(ui::card_header("MD5 哈希值", cx))
+                            .child(ui::card_header(t("MD5 哈希值"), cx))
                             .children(
                                 (!self.file_loading
                                     && self.file_error.is_none()
@@ -534,14 +539,14 @@ impl Md5Crypto {
                                 .then(|| {
                                     ui::copy_result_button(
                                         "md5-copy-file",
-                                        "复制结果",
+                                        t("复制结果"),
                                         self.file_hash.clone(),
                                     )
                                 }),
                             ),
                     )
                     .child(if self.file_loading {
-                        ui::loading_row("正在处理文件...", cx).into_any_element()
+                        ui::loading_row(t("正在处理文件..."), cx).into_any_element()
                     } else {
                         ui::mono_block("mono-md5-file", hash_display, cx)
                             .min_h(px(96.))
@@ -564,7 +569,7 @@ impl Md5Crypto {
                     .items_center()
                     .justify_between()
                     .child(ui::card_header(
-                        &format!("选择多个文件 ({})", self.batch_files.len()),
+                        &format!("{} ({})", t("选择多个文件"), self.batch_files.len()),
                         cx,
                     ))
                     .child(
@@ -575,7 +580,7 @@ impl Md5Crypto {
                             .child(
                                 ui::secondary_button(
                                     "md5-batch-clear",
-                                    "清空",
+                                    t("清空"),
                                     cx.listener(|this, _, _, cx| {
                                         this.clear_batch(cx);
                                     }),
@@ -584,7 +589,7 @@ impl Md5Crypto {
                             )
                             .child(ui::secondary_button(
                                 "md5-batch-pick",
-                                "选择文件",
+                                t("选择文件"),
                                 cx.listener(|this, _, window, cx| {
                                     this.pick_batch_files(window, cx);
                                 }),
@@ -594,7 +599,7 @@ impl Md5Crypto {
         );
 
         if self.batch_files.is_empty() {
-            container = container.child(ui::empty_hint(BATCH_EMPTY_HINT, cx));
+            container = container.child(ui::empty_hint(t(BATCH_EMPTY_HINT), cx));
         } else {
             let results = self.completed_results_text();
             let list_card = ui::card(cx)
@@ -608,10 +613,10 @@ impl Md5Crypto {
                                 .flex()
                                 .items_center()
                                 .gap_2()
-                                .child(ui::card_header("文件列表", cx))
+                                .child(ui::card_header(t("文件列表"), cx))
                                 .children(
                                     self.batch_processing
-                                        .then(|| ui::badge("处理中...", theme.info)),
+                                        .then(|| ui::badge(t("处理中..."), theme.info)),
                                 ),
                         )
                         .child(
@@ -620,12 +625,12 @@ impl Md5Crypto {
                                 .items_center()
                                 .gap_2()
                                 .children(has_completed.then(|| {
-                                    ui::copy_result_button("md5-copy-batch", "复制结果", results)
+                                    ui::copy_result_button("md5-copy-batch", t("复制结果"), results)
                                 }))
                                 .child(
                                     ui::secondary_button(
                                         "md5-batch-export",
-                                        "导出结果",
+                                        t("导出结果"),
                                         cx.listener(|this, _, window, cx| {
                                             this.export_results(window, cx);
                                         }),
@@ -643,9 +648,9 @@ impl Md5Crypto {
     /// 批量表格：文件名 / 状态 / 哈希值。
     fn render_batch_table(&self, cx: &Context<Self>) -> Div {
         let header = ui::table_head(cx)
-            .child(ui::table_head_cell("文件名", cx).w(px(220.)))
-            .child(ui::table_head_cell("状态", cx).w(px(72.)))
-            .child(ui::table_head_cell("MD5 哈希值", cx).flex_1());
+            .child(ui::table_head_cell(t("文件名"), cx).w(px(220.)))
+            .child(ui::table_head_cell(t("状态"), cx).w(px(72.)))
+            .child(ui::table_head_cell(t("MD5 哈希值"), cx).flex_1());
 
         let rows = self
             .batch_files
@@ -693,10 +698,10 @@ fn hash_text(text: &str) -> Result<String, String> {
 fn status_badge(status: BatchStatus, cx: &App) -> Div {
     let colors = cx.theme().colors;
     match status {
-        BatchStatus::Pending => ui::badge("待处理", colors.muted_foreground),
-        BatchStatus::Processing => ui::badge("处理中", colors.info),
-        BatchStatus::Completed => ui::badge("已完成", colors.success),
-        BatchStatus::Error => ui::badge("错误", colors.danger),
+        BatchStatus::Pending => ui::badge(t("待处理"), colors.muted_foreground),
+        BatchStatus::Processing => ui::badge(t("处理中"), colors.info),
+        BatchStatus::Completed => ui::badge(t("已完成"), colors.success),
+        BatchStatus::Error => ui::badge(t("错误"), colors.danger),
     }
 }
 

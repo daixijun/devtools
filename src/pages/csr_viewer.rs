@@ -14,6 +14,7 @@ use gpui_component::{
 };
 
 use crate::components::{notify, ui};
+use devtools::i18n::t;
 use devtools::tools::csr_parser::{self, CsrInfo};
 
 /// 文件保存结果（rfd save_file + std::fs::write，均在 core_rt 后台任务中执行）。
@@ -48,7 +49,7 @@ impl CsrViewer {
 
     fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let csr_text =
-            cx.new(|cx| TextareaState::new(window, cx).placeholder("粘贴 PEM 格式的 CSR 文件…"));
+            cx.new(|cx| TextareaState::new(window, cx).placeholder(t("粘贴 PEM 格式的 CSR 文件…")));
         let key_text = cx.new(|cx| {
             TextareaState::new(window, cx)
                 .placeholder("-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----")
@@ -90,15 +91,15 @@ impl CsrViewer {
     fn pick_file(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let mut rx = crate::core_rt::submit(cx, async move {
             let path = rfd::FileDialog::new()
-                .add_filter("CSR 文件", &["csr", "pem", "txt"])
+                .add_filter(t("CSR 文件"), &["csr", "pem", "txt"])
                 .pick_file()?;
             let name = path
                 .file_name()
                 .map(|n| n.to_string_lossy().to_string())
-                .unwrap_or_else(|| "未命名文件".to_string());
+                .unwrap_or_else(|| t("未命名文件").to_string());
             match std::fs::read(&path) {
                 Ok(data) => Some(Ok((name, data))),
-                Err(e) => Some(Err(format!("读取文件失败: {e}"))),
+                Err(e) => Some(Err(format!("{}: {}", t("读取文件失败"), e))),
             }
         });
 
@@ -140,7 +141,7 @@ impl CsrViewer {
         let has_file = self.file_data.is_some();
 
         if !has_file && csr_text.trim().is_empty() {
-            self.error = Some("请先粘贴 PEM 格式的 CSR 内容或上传 CSR 文件".to_string());
+            self.error = Some(t("请先粘贴 PEM 格式的 CSR 内容或上传 CSR 文件").to_string());
             cx.notify();
             return;
         }
@@ -224,7 +225,7 @@ impl CsrViewer {
         let Some(info) = &self.result else { return };
         let content = info.pem.clone();
         let mut rx = crate::core_rt::submit(cx, async move {
-            save_text(content, "certificate_request.csr", "csr", "CSR 文件").await
+            save_text(content, "certificate_request.csr", "csr", t("CSR 文件")).await
         });
 
         cx.spawn_in(window, async move |this, cx| {
@@ -255,14 +256,14 @@ async fn save_text(
     };
     match std::fs::write(&path, content) {
         Ok(_) => SaveOutcome::Saved,
-        Err(e) => SaveOutcome::Failed(format!("保存文件失败: {e}")),
+        Err(e) => SaveOutcome::Failed(format!("{}: {}", t("保存文件失败"), e)),
     }
 }
 
 fn report_save(outcome: SaveOutcome, window: &mut Window, cx: &mut App) {
     match outcome {
         SaveOutcome::Cancelled => {}
-        SaveOutcome::Saved => notify::toast_success(window, cx, "文件保存成功"),
+        SaveOutcome::Saved => notify::toast_success(window, cx, t("文件保存成功")),
         SaveOutcome::Failed(message) => notify::toast_error(window, cx, message),
     }
 }
@@ -273,7 +274,7 @@ fn report_save(outcome: SaveOutcome, window: &mut Window, cx: &mut App) {
 
 fn format_der_size(size: usize) -> String {
     if size < 1024 {
-        format!("{size} 字节")
+        format!("{} {}", size, t("字节"))
     } else {
         format!("{:.2} KB", size as f64 / 1024.0)
     }
@@ -282,10 +283,10 @@ fn format_der_size(size: usize) -> String {
 fn key_line(key_type: &str, key_size: Option<u32>, curve_name: Option<&str>) -> String {
     let mut line = key_type.to_string();
     if let Some(bits) = key_size {
-        line.push_str(&format!(" · {bits} 位"));
+        line.push_str(&format!(" · {} {}", bits, t("位")));
     }
     if let Some(curve) = curve_name {
-        line.push_str(&format!(" · 曲线 {curve}"));
+        line.push_str(&format!(" · {} {}", t("曲线"), curve));
     }
     line
 }
@@ -357,35 +358,35 @@ fn render_result(
 
     // 基本信息
     let sig_badge = if info.signature_valid {
-        ui::badge("✓ 签名验证通过", theme.colors.success)
+        ui::badge(t("✓ 签名验证通过"), theme.colors.success)
     } else {
-        ui::badge("✗ 签名验证失败", theme.colors.danger)
+        ui::badge(t("✗ 签名验证失败"), theme.colors.danger)
     };
     let version_text = if info.version == 0 {
-        "v1（版本号 0）".to_string()
+        t("v1（版本号 0）").to_string()
     } else {
         format!("{}", info.version)
     };
     let basic_rows = vec![
-        ui::info_row("CSR 版本", version_text, cx),
-        ui::info_row("签名算法", info.signature_algorithm.clone(), cx),
-        ui::info_row("DER 大小", format_der_size(info.der_size), cx),
+        ui::info_row(t("CSR 版本"), version_text, cx),
+        ui::info_row(t("签名算法"), info.signature_algorithm.clone(), cx),
+        ui::info_row(t("DER 大小"), format_der_size(info.der_size), cx),
     ];
     let basic_card = ui::card(cx)
-        .child(ui::card_header("基本信息", cx).child(sig_badge))
+        .child(ui::card_header(t("基本信息"), cx).child(sig_badge))
         .child(ui::info_rows(basic_rows, cx))
         .when(!info.signature_valid, |el| {
             el.child(note_line(
-                "CSR 的自签名未通过验证：通常表示内容被篡改，或文件与生成它的私钥不匹配",
+                t("CSR 的自签名未通过验证：通常表示内容被篡改，或文件与生成它的私钥不匹配"),
                 theme.colors.danger,
             ))
         });
 
     // 主题（Subject）：name 左，value + OID 右
-    let mut subject_card = ui::card(cx).child(ui::card_header("主题（Subject）", cx));
+    let mut subject_card = ui::card(cx).child(ui::card_header(t("主题（Subject）"), cx));
     if info.subject.is_empty() {
         subject_card = subject_card.child(small_hint(
-            "该 CSR 未包含主题属性",
+            t("该 CSR 未包含主题属性"),
             theme.colors.muted_foreground,
         ));
     } else {
@@ -434,7 +435,7 @@ fn render_result(
     let fingerprint = public_key.fingerprint_sha256.clone();
     let key_rows = vec![
         ui::info_row(
-            "密钥类型",
+            t("密钥类型"),
             key_line(
                 &public_key.key_type,
                 public_key.key_size,
@@ -443,14 +444,14 @@ fn render_result(
             cx,
         ),
         action_row(
-            "公钥指纹 (SHA-256)",
+            t("公钥指纹 (SHA-256)"),
             fingerprint.clone(),
             ui::copy_button("csr-fp-copy", fingerprint),
             cx,
         ),
     ];
     let key_card = ui::card(cx)
-        .child(ui::card_header("公钥信息", cx))
+        .child(ui::card_header(t("公钥信息"), cx))
         .child(ui::info_rows(key_rows, cx))
         .child(
             div()
@@ -468,7 +469,7 @@ fn render_result(
                             div()
                                 .text_size(px(12.))
                                 .text_color(theme.colors.muted_foreground)
-                                .child("公钥 PEM（SPKI 格式，可用于比对私钥是否与 CSR 匹配）"),
+                                .child(t("公钥 PEM（SPKI 格式，可用于比对私钥是否与 CSR 匹配）")),
                         )
                         .child(ui::copy_button(
                             "csr-spki-copy",
@@ -484,31 +485,31 @@ fn render_result(
     // 私钥校验（仅提供私钥时）
     if let Some(key) = &info.private_key {
         let check_badge = if key.matches_csr {
-            ui::badge("✓ 私钥与 CSR 匹配", theme.colors.success)
+            ui::badge(t("✓ 私钥与 CSR 匹配"), theme.colors.success)
         } else {
-            ui::badge("✗ 私钥与 CSR 不匹配", theme.colors.danger)
+            ui::badge(t("✗ 私钥与 CSR 不匹配"), theme.colors.danger)
         };
         let key_fp = key.fingerprint_sha256.clone();
         let key_rows = vec![
-            ui::info_row("私钥格式", key.format.clone(), cx),
+            ui::info_row(t("私钥格式"), key.format.clone(), cx),
             ui::info_row(
-                "密钥类型",
+                t("密钥类型"),
                 key_line(&key.key_type, key.key_size, key.curve_name.as_deref()),
                 cx,
             ),
             action_row(
-                "公钥指纹 (SHA-256)",
+                t("公钥指纹 (SHA-256)"),
                 key_fp.clone(),
                 ui::copy_button("csr-key-fp-copy", key_fp),
                 cx,
             ),
         ];
         let mut key_card = ui::card(cx)
-            .child(ui::card_header("私钥校验", cx).child(check_badge))
+            .child(ui::card_header(t("私钥校验"), cx).child(check_badge))
             .child(ui::info_rows(key_rows, cx));
         if !key.matches_csr {
             key_card = key_card.child(note_line(
-                "该私钥与 CSR 中的公钥不一致：请确认是否拿错了密钥文件",
+                t("该私钥与 CSR 中的公钥不一致：请确认是否拿错了密钥文件"),
                 theme.colors.danger,
             ));
         }
@@ -516,10 +517,10 @@ fn render_result(
     }
 
     // 请求的扩展
-    let mut ext_card = ui::card(cx).child(ui::card_header("请求的扩展", cx));
+    let mut ext_card = ui::card(cx).child(ui::card_header(t("请求的扩展"), cx));
     if info.requested_extensions.is_empty() {
         ext_card = ext_card.child(small_hint(
-            "该 CSR 未包含扩展请求（SAN、Key Usage 等也可能在 CA 签发时补充）",
+            t("该 CSR 未包含扩展请求（SAN、Key Usage 等也可能在 CA 签发时补充）"),
             theme.colors.muted_foreground,
         ));
     } else {
@@ -565,9 +566,9 @@ impl Render for CsrViewer {
 
         // 输入卡片
         let parse_label = if self.loading {
-            "解析中…"
+            t("解析中…")
         } else {
-            "解析 CSR"
+            t("解析 CSR")
         };
         let actions = div()
             .flex()
@@ -575,7 +576,7 @@ impl Render for CsrViewer {
             .gap_2()
             .child(ui::secondary_button(
                 "csr-pick",
-                "选择文件",
+                t("选择文件"),
                 cx.listener(|this, _, window, cx| this.pick_file(window, cx)),
             ))
             .child(
@@ -589,27 +590,27 @@ impl Render for CsrViewer {
             )
             .child(ui::secondary_button(
                 "csr-clear",
-                "清空",
+                t("清空"),
                 cx.listener(|this, _, window, cx| this.clear(window, cx)),
             ));
 
         let input_card = ui::card(cx)
-            .child(ui::card_header("CSR 内容", cx).child(actions))
+            .child(ui::card_header(t("CSR 内容"), cx).child(actions))
             .when_some(self.file_name.clone(), |el, name| {
                 el.child(
                     div()
                         .text_size(px(12.))
                         .text_color(theme.colors.muted_foreground)
-                        .child(format!("已选择文件： {name}")),
+                        .child(format!("{} {}", t("已选择文件："), name)),
                 )
             })
             .child(ui::field(
-                "CSR 文件内容",
+                t("CSR 文件内容"),
                 ui::edit_area(&self.csr_text, 120.),
                 cx,
             ))
             .child(ui::field(
-                "私钥（可选）— 提供 PKCS#8 / PKCS#1 / SEC1 私钥，校验其与 CSR 公钥是否匹配",
+                t("私钥（可选）— 提供 PKCS#8 / PKCS#1 / SEC1 私钥，校验其与 CSR 公钥是否匹配"),
                 ui::edit_area(&self.key_text, 96.),
                 cx,
             ));
@@ -622,7 +623,7 @@ impl Render for CsrViewer {
 
         if show_empty {
             page = page.child(ui::empty_hint(
-                "上传或粘贴 CSR 文件（PEM / Base64 / DER 格式）后点击「解析 CSR」",
+                t("上传或粘贴 CSR 文件（PEM / Base64 / DER 格式）后点击「解析 CSR」"),
                 cx,
             ));
         }
@@ -630,7 +631,7 @@ impl Render for CsrViewer {
         if let Some(info) = self.result.clone() {
             let download = ui::secondary_button(
                 "csr-pem-dl",
-                "下载 .csr",
+                t("下载 .csr"),
                 cx.listener(|this, _, window, cx| this.download_pem(window, cx)),
             );
             let pem = info.pem.clone();
@@ -638,12 +639,12 @@ impl Render for CsrViewer {
             cards = cards.child(
                 ui::card(cx)
                     .child(
-                        ui::card_header("原始 CSR（PEM）", cx).child(
+                        ui::card_header(t("原始 CSR（PEM）"), cx).child(
                             div()
                                 .flex()
                                 .items_center()
                                 .gap_2()
-                                .child(ui::copy_result_button("csr-pem-copy", "复制PEM", pem))
+                                .child(ui::copy_result_button("csr-pem-copy", t("复制PEM"), pem))
                                 .child(download),
                         ),
                     )

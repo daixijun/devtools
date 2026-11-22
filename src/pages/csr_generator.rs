@@ -15,6 +15,7 @@ use gpui_component::{
 
 use crate::components::select::SimpleSelectDelegate;
 use crate::components::{notify, select_state, ui};
+use devtools::i18n::t;
 use devtools::tools::csr_generator::{generate_csr, CsrGenerateRequest, GeneratedCsr};
 
 /// 文件保存结果（rfd save_file + std::fs::write，均在 core_rt 后台任务中执行）。
@@ -57,13 +58,13 @@ impl CsrGenerator {
     }
 
     fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let common_name = cx.new(|cx| InputState::new(window, cx).placeholder("如 example.com"));
-        let country = cx.new(|cx| InputState::new(window, cx).placeholder("两位字母，如 CN"));
-        let state = cx.new(|cx| InputState::new(window, cx).placeholder("如 Shanghai"));
-        let locality = cx.new(|cx| InputState::new(window, cx).placeholder("如 Shanghai"));
-        let organization = cx.new(|cx| InputState::new(window, cx).placeholder("如 DevTools"));
-        let org_unit = cx.new(|cx| InputState::new(window, cx).placeholder("如 Engineering"));
-        let email = cx.new(|cx| InputState::new(window, cx).placeholder("如 admin@example.com"));
+        let common_name = cx.new(|cx| InputState::new(window, cx).placeholder(t("如 example.com")));
+        let country = cx.new(|cx| InputState::new(window, cx).placeholder(t("两位字母，如 CN")));
+        let state = cx.new(|cx| InputState::new(window, cx).placeholder(t("如 Shanghai")));
+        let locality = cx.new(|cx| InputState::new(window, cx).placeholder(t("如 Shanghai")));
+        let organization = cx.new(|cx| InputState::new(window, cx).placeholder(t("如 DevTools")));
+        let org_unit = cx.new(|cx| InputState::new(window, cx).placeholder(t("如 Engineering")));
+        let email = cx.new(|cx| InputState::new(window, cx).placeholder(t("如 admin@example.com")));
         let san_text = cx.new(|cx| {
             TextareaState::new(window, cx).placeholder("example.com\nwww.example.com\n10.0.0.1")
         });
@@ -73,9 +74,9 @@ impl CsrGenerator {
             window,
             cx,
             &[
-                ("2048", "2048 位（推荐）"),
-                ("3072", "3072 位"),
-                ("4096", "4096 位"),
+                ("2048", t("2048 位（推荐）")),
+                ("3072", t("3072 位")),
+                ("4096", t("4096 位")),
             ],
             0,
         );
@@ -83,9 +84,9 @@ impl CsrGenerator {
             window,
             cx,
             &[
-                ("P-256", "P-256（prime256v1）"),
-                ("P-384", "P-384（secp384r1）"),
-                ("P-521", "P-521（secp521r1）"),
+                ("P-256", t("P-256（prime256v1）")),
+                ("P-384", t("P-384（secp384r1）")),
+                ("P-521", t("P-521（secp521r1）")),
             ],
             0,
         );
@@ -164,7 +165,7 @@ impl CsrGenerator {
     /// 生成 CSR（openssl 生成秒级，异步走 core_rt）。
     fn generate(&mut self, cx: &mut Context<Self>) {
         let Some(common_name) = Self::input_value(&self.common_name, cx) else {
-            self.error = Some("请填写通用名称（CN），通常为要申请证书的域名".to_string());
+            self.error = Some(t("请填写通用名称（CN），通常为要申请证书的域名").to_string());
             cx.notify();
             return;
         };
@@ -242,7 +243,7 @@ impl CsrGenerator {
             };
             match std::fs::write(&path, content) {
                 Ok(_) => SaveOutcome::Saved,
-                Err(e) => SaveOutcome::Failed(format!("保存文件失败: {e}")),
+                Err(e) => SaveOutcome::Failed(format!("{}: {}", t("保存文件失败"), e)),
             }
         });
 
@@ -250,7 +251,7 @@ impl CsrGenerator {
             if let Some(outcome) = rx.next().await {
                 let _ = this.update_in(cx, |_this, window, cx| match outcome {
                     SaveOutcome::Cancelled => {}
-                    SaveOutcome::Saved => notify::toast_success(window, cx, "文件保存成功"),
+                    SaveOutcome::Saved => notify::toast_success(window, cx, t("文件保存成功")),
                     SaveOutcome::Failed(message) => notify::toast_error(window, cx, message),
                 });
             }
@@ -286,10 +287,10 @@ fn safe_file_name(name: &str, fallback: &str) -> String {
 fn key_line(key_type: &str, key_size: Option<u32>, curve_name: Option<&str>) -> String {
     let mut line = key_type.to_string();
     if let Some(bits) = key_size {
-        line.push_str(&format!(" · {bits} 位"));
+        line.push_str(&format!(" · {} {}", bits, t("位")));
     }
     if let Some(curve) = curve_name {
-        line.push_str(&format!(" · 曲线 {curve}"));
+        line.push_str(&format!(" · {} {}", t("曲线"), curve));
     }
     line
 }
@@ -345,7 +346,11 @@ fn output_card(
                         .flex()
                         .items_center()
                         .gap_2()
-                        .child(ui::copy_result_button(copy_id, "复制", content.to_string()))
+                        .child(ui::copy_result_button(
+                            copy_id,
+                            t("复制"),
+                            content.to_string(),
+                        ))
                         .child(
                             Button::new(download_id)
                                 .label(download_label)
@@ -365,34 +370,34 @@ impl Render for CsrGenerator {
 
         // 表单卡片
         let cn_field = ui::field(
-            "通用名称（CN，必填）",
+            t("通用名称（CN，必填）"),
             gpui_component::input::Input::new(&self.common_name)
                 .disabled(loading)
                 .w(px(256.)),
             cx,
         );
         let key_type_field = ui::field(
-            "密钥类型",
+            t("密钥类型"),
             Select::new(&self.key_type_sel).disabled(loading),
             cx,
         );
         let key_param_field = if self.key_type == "ec" {
             ui::field(
-                "ECC 曲线",
+                t("ECC 曲线"),
                 Select::new(&self.ec_curve_sel).disabled(loading),
                 cx,
             )
         } else {
             ui::field(
-                "密钥长度",
+                t("密钥长度"),
                 Select::new(&self.rsa_size_sel).disabled(loading),
                 cx,
             )
         };
         let generate_label = if loading {
-            "生成中…"
+            t("生成中…")
         } else {
-            "生成 CSR"
+            t("生成 CSR")
         };
 
         let row1 = div()
@@ -419,42 +424,42 @@ impl Render for CsrGenerator {
             .items_end()
             .gap_3()
             .child(ui::field(
-                "国家（C）",
+                t("国家（C）"),
                 gpui_component::input::Input::new(&self.country)
                     .disabled(loading)
                     .w(px(128.)),
                 cx,
             ))
             .child(ui::field(
-                "省份（ST）",
+                t("省份（ST）"),
                 gpui_component::input::Input::new(&self.state)
                     .disabled(loading)
                     .w(px(160.)),
                 cx,
             ))
             .child(ui::field(
-                "城市（L）",
+                t("城市（L）"),
                 gpui_component::input::Input::new(&self.locality)
                     .disabled(loading)
                     .w(px(160.)),
                 cx,
             ))
             .child(ui::field(
-                "组织（O）",
+                t("组织（O）"),
                 gpui_component::input::Input::new(&self.organization)
                     .disabled(loading)
                     .w(px(176.)),
                 cx,
             ))
             .child(ui::field(
-                "部门（OU）",
+                t("部门（OU）"),
                 gpui_component::input::Input::new(&self.org_unit)
                     .disabled(loading)
                     .w(px(176.)),
                 cx,
             ))
             .child(ui::field(
-                "邮箱",
+                t("邮箱"),
                 gpui_component::input::Input::new(&self.email)
                     .disabled(loading)
                     .w(px(208.)),
@@ -462,7 +467,7 @@ impl Render for CsrGenerator {
             ));
 
         let san_field = ui::field(
-            "SAN（可选，每行一个域名或 IP，IP 自动识别）",
+            t("SAN（可选，每行一个域名或 IP，IP 自动识别）"),
             gpui_component::input::Textarea::new(&self.san_text)
                 .disabled(loading)
                 .h(px(80.)),
@@ -470,7 +475,7 @@ impl Render for CsrGenerator {
         );
 
         let form_card = ui::card(cx)
-            .child(ui::card_header("参数设置", cx))
+            .child(ui::card_header(t("参数设置"), cx))
             .child(row1)
             .child(row2)
             .child(san_field);
@@ -483,7 +488,7 @@ impl Render for CsrGenerator {
 
         if show_empty {
             page = page.child(ui::empty_hint(
-                "填写主题信息后点击「生成 CSR」，生成的私钥请妥善保管",
+                t("填写主题信息后点击「生成 CSR」，生成的私钥请妥善保管"),
                 cx,
             ));
         }
@@ -504,9 +509,9 @@ impl CsrGenerator {
 
         // 生成结果卡
         let mut rows: Vec<gpui::Div> = vec![
-            ui::info_row("主题", result.subject.clone(), cx),
+            ui::info_row(t("主题"), result.subject.clone(), cx),
             ui::info_row(
-                "密钥",
+                t("密钥"),
                 key_line(
                     &result.key_type,
                     result.key_size,
@@ -539,7 +544,7 @@ impl CsrGenerator {
             );
         }
         let summary = ui::card(cx)
-            .child(ui::card_header("生成结果", cx))
+            .child(ui::card_header(t("生成结果"), cx))
             .child(ui::info_rows(rows, cx));
         let container = container.child(summary);
 
@@ -571,17 +576,17 @@ impl CsrGenerator {
             "csr-out",
             "csr-out-copy",
             "csr-out-dl",
-            "证书签名请求（CSR）",
-            "提交给 CA 签发证书时使用，可安全分享",
+            t("证书签名请求（CSR）"),
+            t("提交给 CA 签发证书时使用，可安全分享"),
             &result.csr_pem,
             192.,
-            "下载 .csr",
+            t("下载 .csr"),
             make_download(
                 entity.clone(),
                 result.csr_pem.clone(),
                 format!("{base}.csr"),
                 "csr",
-                "CSR 文件",
+                t("CSR 文件"),
             ),
             cx,
         );
@@ -589,17 +594,17 @@ impl CsrGenerator {
             "csr-key-out",
             "csr-key-out-copy",
             "csr-key-out-dl",
-            "私钥（PKCS#8）",
-            "泄露私钥将危及对应证书的安全，切勿提交到代码仓库或聊天工具",
+            t("私钥（PKCS#8）"),
+            t("泄露私钥将危及对应证书的安全，切勿提交到代码仓库或聊天工具"),
             &result.private_key_pem,
             192.,
-            "下载 .key",
+            t("下载 .key"),
             make_download(
                 entity.clone(),
                 result.private_key_pem.clone(),
                 format!("{base}_private_key.key"),
                 "key",
-                "私钥文件",
+                t("私钥文件"),
             ),
             cx,
         );
@@ -607,17 +612,17 @@ impl CsrGenerator {
             "csr-pub-out",
             "csr-pub-out-copy",
             "csr-pub-out-dl",
-            "公钥（SPKI）",
-            "可用于核对私钥与 CSR 是否匹配",
+            t("公钥（SPKI）"),
+            t("可用于核对私钥与 CSR 是否匹配"),
             &result.public_key_pem,
             128.,
-            "下载 .pem",
+            t("下载 .pem"),
             make_download(
                 entity,
                 result.public_key_pem.clone(),
                 format!("{base}_public_key.pem"),
                 "pem",
-                "PEM 文件",
+                t("PEM 文件"),
             ),
             cx,
         );

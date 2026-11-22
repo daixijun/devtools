@@ -6,6 +6,7 @@
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use devtools::i18n::t;
 use gpui::div;
 use gpui::prelude::*;
 use gpui::{px, App, ClickEvent, Context, Entity, IntoElement, Window};
@@ -142,10 +143,12 @@ impl JwtEncode {
         secret_key.update(cx, |s, cx| s.set_value("mySecretKey", window, cx));
         expires_in.update(cx, |s, cx| s.set_value("3600", window, cx));
         private_key.update(cx, |s, cx| {
-            s.set_placeholder("请输入RSA私钥内容...", window, cx)
+            s.set_placeholder(t("请输入RSA私钥内容..."), window, cx)
         });
-        secret_key.update(cx, |s, cx| s.set_placeholder("输入 Secret Key", window, cx));
-        expires_in.update(cx, |s, cx| s.set_placeholder("输入有效期", window, cx));
+        secret_key.update(cx, |s, cx| {
+            s.set_placeholder(t("输入 Secret Key"), window, cx)
+        });
+        expires_in.update(cx, |s, cx| s.set_placeholder(t("输入有效期"), window, cx));
 
         // Header 编辑：实时 JSON 校验 + 提取 alg 供密钥区联动。
         cx.subscribe(&header_input, |this, _, event: &InputEvent, cx| {
@@ -163,7 +166,7 @@ impl JwtEncode {
                     this.header_error = None;
                 }
                 Err(_) => {
-                    this.header_error = Some("Header 格式错误: 请输入有效的 JSON".to_string());
+                    this.header_error = Some(t("Header 格式错误: 请输入有效的 JSON").to_string());
                 }
             }
             cx.notify();
@@ -178,7 +181,7 @@ impl JwtEncode {
             let text = this.payload_input.read(cx).value().to_string();
             this.payload_error = match serde_json::from_str::<Value>(&text) {
                 Ok(_) => None,
-                Err(_) => Some("Payload 格式错误: 请输入有效的 JSON".to_string()),
+                Err(_) => Some(t("Payload 格式错误: 请输入有效的 JSON").to_string()),
             };
             cx.notify();
         })
@@ -194,7 +197,7 @@ impl JwtEncode {
             {
                 None
             } else {
-                Some("RSA私钥格式无效，请检查或重新选择文件".to_string())
+                Some(t("RSA私钥格式无效，请检查或重新选择文件").to_string())
             };
             cx.notify();
         })
@@ -250,7 +253,12 @@ impl JwtEncode {
         let expires_in = match expires_raw.trim().parse::<i64>() {
             Ok(v) if v > 0 => v,
             _ => {
-                self.set_output("生成出错: 有效期必须是正整数", true, window, cx);
+                self.set_output(
+                    &format!("{}: {}", t("生成出错"), t("有效期必须是正整数")),
+                    true,
+                    window,
+                    cx,
+                );
                 return;
             }
         };
@@ -260,7 +268,11 @@ impl JwtEncode {
             Ok(v) => v,
             Err(_) => {
                 self.set_output(
-                    "生成出错: Header 格式错误: 请输入有效的 JSON",
+                    &format!(
+                        "{}: {}",
+                        t("生成出错"),
+                        t("Header 格式错误: 请输入有效的 JSON")
+                    ),
                     true,
                     window,
                     cx,
@@ -272,7 +284,11 @@ impl JwtEncode {
             Ok(v) => v,
             Err(_) => {
                 self.set_output(
-                    "生成出错: Payload 格式错误: 请输入有效的 JSON",
+                    &format!(
+                        "{}: {}",
+                        t("生成出错"),
+                        t("Payload 格式错误: 请输入有效的 JSON")
+                    ),
                     true,
                     window,
                     cx,
@@ -292,7 +308,11 @@ impl JwtEncode {
         let private_key = self.private_key.read(cx).value().to_string();
         if !is_hs && !validate_pem(&private_key, "PRIVATE KEY") {
             self.set_output(
-                "生成出错: RSA私钥格式无效，请检查或重新选择文件",
+                &format!(
+                    "{}: {}",
+                    t("生成出错"),
+                    t("RSA私钥格式无效，请检查或重新选择文件")
+                ),
                 true,
                 window,
                 cx,
@@ -301,7 +321,12 @@ impl JwtEncode {
         }
 
         if !payload.is_object() {
-            self.set_output("生成出错: Payload 必须是 JSON 对象", true, window, cx);
+            self.set_output(
+                &format!("{}: {}", t("生成出错"), t("Payload 必须是 JSON 对象")),
+                true,
+                window,
+                cx,
+            );
             return;
         }
         // iat 保持不动，仅注入 exp = now + expiresIn。
@@ -320,7 +345,7 @@ impl JwtEncode {
                     .update(cx, |s, cx| s.set_value(payload_pretty.as_str(), window, cx));
                 self.set_output(&token, false, window, cx);
             }
-            Err(e) => self.set_output(&format!("生成JWT失败: {e}"), true, window, cx),
+            Err(e) => self.set_output(&format!("{}: {e}", t("生成JWT失败")), true, window, cx),
         }
     }
 
@@ -374,7 +399,7 @@ impl JwtEncode {
     ) {
         let mut rx = crate::core_rt::submit(cx, async move {
             rfd::FileDialog::new()
-                .add_filter("密钥文件", &["pem", "key"])
+                .add_filter(t("密钥文件"), &["pem", "key"])
                 .pick_file()
                 .and_then(|path| std::fs::read_to_string(path).ok())
         });
@@ -399,7 +424,7 @@ impl JwtEncode {
         self.private_key_error = if validate_pem(&text, "PRIVATE KEY") {
             None
         } else {
-            Some("RSA私钥格式无效，请检查或重新选择文件".to_string())
+            Some(t("RSA私钥格式无效，请检查或重新选择文件").to_string())
         };
         cx.notify();
     }
@@ -465,13 +490,13 @@ impl gpui::Render for JwtEncode {
                         .child(
                             ui::secondary_button(
                                 "jwt-pick-private-key",
-                                "选择文件",
+                                t("选择文件"),
                                 cx.listener(Self::pick_private_key_file),
                             )
                             .small(),
                         )
                         .child(ui::hint_text(
-                            "支持 .pem / .key 文件，或直接粘贴 PEM 内容",
+                            t("支持 .pem / .key 文件，或直接粘贴 PEM 内容"),
                             cx,
                         )),
                 )
@@ -491,7 +516,7 @@ impl gpui::Render for JwtEncode {
                     .justify_between()
                     .gap_4()
                     .child(ui::hint_text(
-                        "配置Header、Payload和签名密钥，生成符合标准的JWT令牌",
+                        t("配置Header、Payload和签名密钥，生成符合标准的JWT令牌"),
                         cx,
                     ))
                     .child(
@@ -502,7 +527,7 @@ impl gpui::Render for JwtEncode {
                             .child(
                                 ui::secondary_button(
                                     "jwt-example",
-                                    "示例",
+                                    t("示例"),
                                     cx.listener(Self::load_example),
                                 )
                                 .small(),
@@ -510,7 +535,7 @@ impl gpui::Render for JwtEncode {
                             .child(
                                 ui::secondary_button(
                                     "jwt-clear",
-                                    "清空",
+                                    t("清空"),
                                     cx.listener(Self::clear_all),
                                 )
                                 .small(),
@@ -524,14 +549,14 @@ impl gpui::Render for JwtEncode {
                     .gap_4()
                     .child(self.editor_column(
                         "Header",
-                        "包含令牌的元数据，如签名算法(alg)和类型(typ)",
+                        t("包含令牌的元数据，如签名算法(alg)和类型(typ)"),
                         &self.header_input,
                         self.header_error.clone(),
                         cx,
                     ))
                     .child(self.editor_column(
                         "Payload",
-                        "包含声明(claims)，如主题(sub)、签发者(iss)、签发时间(iat)和过期时间(exp)",
+                        t("包含声明(claims)，如主题(sub)、签发者(iss)、签发时间(iat)和过期时间(exp)"),
                         &self.payload_input,
                         self.payload_error.clone(),
                         cx,
@@ -539,17 +564,21 @@ impl gpui::Render for JwtEncode {
             )
             // 配置区：有效期 + 密钥。
             .child(ui::card(cx).child(field_row(
-                "有效期 (秒)",
+                t("有效期 (秒)"),
                 div().w(px(200.)).child(NumberInput::new(&self.expires_in)),
                 cx,
             )))
             .child(key_area)
             // 生成按钮（primary、大号、全宽）。
             .child(
-                ui::primary_button("jwt-generate", "生成JWT", cx.listener(Self::generate))
-                    .large()
-                    .w_full()
-                    .disabled(generate_disabled),
+                ui::primary_button(
+                    "jwt-generate",
+                    t("生成JWT"),
+                    cx.listener(Self::generate),
+                )
+                .large()
+                .w_full()
+                .disabled(generate_disabled),
             );
 
         // 输出区：非空才显示；「生成出错」标题标红且无复制按钮（见文件头降级说明）。
@@ -563,7 +592,7 @@ impl gpui::Render for JwtEncode {
                 .text_size(px(14.))
                 .font_weight(gpui::FontWeight::MEDIUM)
                 .text_color(title_color)
-                .child("生成的JWT");
+                .child(t("生成的JWT"));
             let mut section = div()
                 .flex()
                 .flex_col()
@@ -572,7 +601,7 @@ impl gpui::Render for JwtEncode {
             if !output_is_error {
                 section = section.child(ui::copy_result_button(
                     "jwt-copy-output",
-                    "复制JWT",
+                    t("复制JWT"),
                     output.clone(),
                 ));
             }

@@ -4,6 +4,7 @@
 //! IPv4/IPv6 校验，经 core_rt 异步调用 core `query_ip_info`（ipinfo.io +
 //! ip-api.com 双源），每来源一张信息卡，可切换显示格式化原始 JSON。
 
+use devtools::i18n::t;
 use devtools::tools::ip_info::{query_ip_info, SourceInfo};
 use futures::StreamExt as _;
 use gpui::{
@@ -35,8 +36,8 @@ impl IpInfo {
     }
 
     fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let ip_input =
-            cx.new(|cx| InputState::new(window, cx).placeholder("请输入IP地址，留空则查询当前IP"));
+        let ip_input = cx
+            .new(|cx| InputState::new(window, cx).placeholder(t("请输入IP地址，留空则查询当前IP")));
 
         let mut this = Self {
             ip_input,
@@ -74,7 +75,7 @@ impl IpInfo {
 
         let ip = self.ip_input.read(cx).value().trim().to_string();
         if !ip.is_empty() && !is_valid_ip(&ip) {
-            self.error = Some("请输入有效的IP地址".to_string());
+            self.error = Some(t("请输入有效的IP地址").to_string());
             cx.notify();
             return;
         }
@@ -102,7 +103,7 @@ impl IpInfo {
                         this.error = resp.error;
                     }
                     Err(e) => {
-                        this.error = Some(format!("查询出错: {}", e));
+                        this.error = Some(format!("{}: {}", t("查询出错"), e));
                         this.infos.clear();
                         this.raw_json.clear();
                     }
@@ -120,30 +121,33 @@ impl IpInfo {
             "ipinfo-copy-ip-1"
         };
 
-        let mut ip_row = ui::info_row("IP 地址", opt_or_na(&info.ip), cx);
+        let mut ip_row = ui::info_row(t("IP 地址"), opt_or_na(&info.ip), cx);
         if let Some(ip) = &info.ip {
             // IP 带复制小图标（Clipboard 组件，icon-only）
             ip_row = ip_row.child(
                 Clipboard::new(copy_id)
                     .value(ip.clone())
                     .xsmall()
-                    .tooltip("复制 IP"),
+                    .tooltip(t("复制 IP")),
             );
         }
 
         let rows = vec![
             ip_row,
-            ui::info_row("国家", opt_or_na(&info.country), cx),
-            ui::info_row("城市", opt_or_na(&info.city), cx),
-            ui::info_row("地区", opt_or_na(&info.region), cx),
-            ui::info_row("运营商", opt_or_na(&info.org), cx),
-            ui::info_row("时区", opt_or_na(&info.timezone), cx),
+            ui::info_row(t("国家"), opt_or_na(&info.country), cx),
+            ui::info_row(t("城市"), opt_or_na(&info.city), cx),
+            ui::info_row(t("地区"), opt_or_na(&info.region), cx),
+            ui::info_row(t("运营商"), opt_or_na(&info.org), cx),
+            ui::info_row(t("时区"), opt_or_na(&info.timezone), cx),
         ];
 
         ui::card(cx)
             .flex_1()
             .min_w(px(0.))
-            .child(ui::card_header(&format!("IP 信息 ({})", info.source), cx))
+            .child(ui::card_header(
+                &format!("{} ({})", t("IP 信息"), info.source),
+                cx,
+            ))
             .child(ui::info_rows(rows, cx))
     }
 }
@@ -219,7 +223,7 @@ fn skeleton_card(cx: &App) -> Div {
         .justify_center()
         .rounded(theme.radius)
         .bg(theme.colors.muted)
-        .child(ui::loading_row("正在查询 IP 信息...", cx))
+        .child(ui::loading_row(t("正在查询 IP 信息..."), cx))
 }
 
 impl Render for IpInfo {
@@ -234,14 +238,14 @@ impl Render for IpInfo {
         });
 
         let query_label = if self.loading {
-            "查询中..."
+            t("查询中...")
         } else {
-            "查询"
+            t("查询")
         };
         let raw_label = if self.show_raw {
-            "隐藏原始"
+            t("隐藏原始")
         } else {
-            "显示原始 JSON"
+            t("显示原始 JSON")
         };
         let error = self.error.clone();
         let infos = self.infos.clone();
@@ -307,11 +311,11 @@ impl Render for IpInfo {
                                         .text_size(px(14.))
                                         .font_weight(FontWeight::MEDIUM)
                                         .text_color(theme.colors.foreground)
-                                        .child("原始响应"),
+                                        .child(t("原始响应")),
                                 )
                                 .child(ui::copy_result_button(
                                     "ipinfo-copy-json",
-                                    "复制JSON",
+                                    t("复制JSON"),
                                     raw_json.clone(),
                                 )),
                         )

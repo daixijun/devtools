@@ -12,6 +12,7 @@ use gpui_component::{
 };
 
 use crate::components::ui;
+use devtools::i18n::t;
 use devtools::text_tools::format;
 
 /// 示例（最小化 JSON 字符串）。
@@ -30,7 +31,7 @@ impl JsonFormatter {
     fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let editor = ui::new_editor(window, cx);
         editor.update(cx, |state, cx| {
-            state.set_placeholder("在此输入 JSON 内容...", window, cx);
+            state.set_placeholder(t("在此输入 JSON 内容..."), window, cx);
             // JSON 语法高亮（syntect 后端，颜色跟随主题）
             state.set_highlighter("json", cx);
         });
@@ -67,13 +68,12 @@ impl JsonFormatter {
                     return; // 空输入不动作
                 }
                 let result = match action {
-                    Action::Format => {
-                        format::json_pretty(&input).map_err(|e| format!("JSON格式化失败: {e}"))
-                    }
-                    Action::Minify => {
-                        format::json_minify(&input).map_err(|e| format!("JSON压缩失败: {e}"))
-                    }
-                    _ => format::json_unescape(&input).map_err(|e| format!("去除转义失败: {e}")),
+                    Action::Format => format::json_pretty(&input)
+                        .map_err(|e| format!("{}: {e}", t("JSON格式化失败"))),
+                    Action::Minify => format::json_minify(&input)
+                        .map_err(|e| format!("{}: {e}", t("JSON压缩失败"))),
+                    _ => format::json_unescape(&input)
+                        .map_err(|e| format!("{}: {e}", t("去除转义失败"))),
                 };
                 match result {
                     Ok(out) => {
@@ -128,35 +128,35 @@ impl Render for JsonFormatter {
                 ui::toolbar()
                     .child(Self::toolbar_button(
                         "jsonformatter-format",
-                        "格式化",
+                        t("格式化"),
                         has_input,
                         Action::Format,
                         cx,
                     ))
                     .child(Self::toolbar_button(
                         "jsonformatter-minify",
-                        "压缩",
+                        t("压缩"),
                         has_input,
                         Action::Minify,
                         cx,
                     ))
                     .child(Self::toolbar_button(
                         "jsonformatter-example",
-                        "示例",
+                        t("示例"),
                         true,
                         Action::Example,
                         cx,
                     ))
                     .child(Self::toolbar_button(
                         "jsonformatter-unescape",
-                        "去除转义",
+                        t("去除转义"),
                         has_input,
                         Action::Unescape,
                         cx,
                     ))
                     .child(Self::toolbar_button(
                         "jsonformatter-clear",
-                        "清空",
+                        t("清空"),
                         has_input,
                         Action::Clear,
                         cx,
@@ -166,9 +166,13 @@ impl Render for JsonFormatter {
                         gpui::div()
                             .text_size(px(13.))
                             .text_color(theme.colors.muted_foreground)
-                            .child(format!("长度: {}", text.chars().count())),
+                            .child(format!("{}: {}", t("长度"), text.chars().count())),
                     )
-                    .child(ui::copy_result_button("jsonformatter-copy", "复制", text)),
+                    .child(ui::copy_result_button(
+                        "jsonformatter-copy",
+                        t("复制"),
+                        text,
+                    )),
             )
             // 错误红条在工具条下
             .when_some(self.error.clone(), |el, err| {

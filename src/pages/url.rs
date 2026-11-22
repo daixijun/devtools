@@ -3,6 +3,7 @@
 //! 单工具双功能：编码 / 解码两个 Tab；两侧各自持有输入输出状态，
 //! 切换不丢失已输入内容。
 
+use devtools::i18n::t;
 use gpui::Entity;
 use gpui::{
     prelude::FluentBuilder as _, App, AppContext as _, IntoElement, ParentElement as _, Render,
@@ -40,7 +41,7 @@ impl Render for Url {
         ui::tool_page("url")
             .child(ui::tab_bar(
                 "url-tabs",
-                TABS,
+                &[t(TABS[0]), t(TABS[1])],
                 self.active_tab,
                 cx.listener(|this, ix: &usize, _window, cx| {
                     if this.active_tab != *ix {

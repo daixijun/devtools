@@ -8,6 +8,7 @@
 //! `init` 注册 action 监听与快捷键（仅启动时一次）；`apply_menus` 可重复
 //! 调用（语言切换后重建菜单文案）。
 
+use devtools::i18n::t;
 #[cfg(target_os = "macos")]
 use gpui::OsAction;
 use gpui::{actions, App, KeyBinding, Menu, MenuItem};
@@ -63,23 +64,23 @@ pub fn init(cx: &mut App) {
 /// 构建（或语言切换后重建）应用菜单。
 pub fn apply_menus(cx: &mut App) {
     cx.set_menus([
-        Menu::new("DevTools").items([
-            MenuItem::action("关于 DevTools", About),
+        Menu::new(t("DevTools")).items([
+            MenuItem::action(t("关于 DevTools"), About),
             MenuItem::separator(),
-            MenuItem::action("检查更新…", CheckUpdates),
+            MenuItem::action(t("检查更新…"), CheckUpdates),
             MenuItem::separator(),
-            MenuItem::action("设置…", OpenSettings),
+            MenuItem::action(t("设置…"), OpenSettings),
             MenuItem::separator(),
-            MenuItem::action("隐藏 DevTools", HideApp),
+            MenuItem::action(t("隐藏 DevTools"), HideApp),
             MenuItem::separator(),
-            MenuItem::action("退出 DevTools", QuitApp),
+            MenuItem::action(t("退出 DevTools"), QuitApp),
         ]),
         edit_menu(),
-        Menu::new("窗口").items([
-            MenuItem::action("最小化", MinimizeWindow),
-            MenuItem::action("关闭窗口", CloseWindow),
+        Menu::new(t("窗口")).items([
+            MenuItem::action(t("最小化"), MinimizeWindow),
+            MenuItem::action(t("关闭窗口"), CloseWindow),
         ]),
-        Menu::new("帮助").items([MenuItem::action("DevTools 帮助", OpenHelp)]),
+        Menu::new(t("帮助")).items([MenuItem::action(t("DevTools 帮助"), OpenHelp)]),
     ]);
 }
 
@@ -87,25 +88,25 @@ pub fn apply_menus(cx: &mut App) {
 /// 直接用 gpui action（行为来自输入组件默认 keymap）。
 fn edit_menu() -> Menu {
     #[cfg(target_os = "macos")]
-    return Menu::new("编辑").items([
-        MenuItem::os_action("撤销", Undo, OsAction::Undo),
-        MenuItem::os_action("重做", Redo, OsAction::Redo),
+    return Menu::new(t("编辑")).items([
+        MenuItem::os_action(t("撤销"), Undo, OsAction::Undo),
+        MenuItem::os_action(t("重做"), Redo, OsAction::Redo),
         MenuItem::separator(),
-        MenuItem::os_action("剪切", Cut, OsAction::Cut),
-        MenuItem::os_action("拷贝", Copy, OsAction::Copy),
-        MenuItem::os_action("粘贴", Paste, OsAction::Paste),
-        MenuItem::os_action("全选", SelectAll, OsAction::SelectAll),
+        MenuItem::os_action(t("剪切"), Cut, OsAction::Cut),
+        MenuItem::os_action(t("拷贝"), Copy, OsAction::Copy),
+        MenuItem::os_action(t("粘贴"), Paste, OsAction::Paste),
+        MenuItem::os_action(t("全选"), SelectAll, OsAction::SelectAll),
     ]);
 
     #[cfg(not(target_os = "macos"))]
-    return Menu::new("编辑").items([
-        MenuItem::action("撤销", Undo),
-        MenuItem::action("重做", Redo),
+    return Menu::new(t("编辑")).items([
+        MenuItem::action(t("撤销"), Undo),
+        MenuItem::action(t("重做"), Redo),
         MenuItem::separator(),
-        MenuItem::action("剪切", Cut),
-        MenuItem::action("拷贝", Copy),
-        MenuItem::action("粘贴", Paste),
-        MenuItem::action("全选", SelectAll),
+        MenuItem::action(t("剪切"), Cut),
+        MenuItem::action(t("拷贝"), Copy),
+        MenuItem::action(t("粘贴"), Paste),
+        MenuItem::action(t("全选"), SelectAll),
     ]);
 }
 

@@ -6,6 +6,7 @@
 
 use std::time::Duration;
 
+use devtools::i18n::t;
 use devtools::text_tools::subnet::{self, IpVersion, SubnetResult};
 use gpui::prelude::*;
 use gpui::{px, App, Div, Entity, IntoElement, Render, Window};
@@ -47,8 +48,8 @@ impl SubnetCalculator {
     }
 
     fn new(window: &mut Window, cx: &mut gpui::Context<Self>) -> Self {
-        let input =
-            cx.new(|cx| InputState::new(window, cx).placeholder(placeholder_for(IpVersion::Auto)));
+        let input = cx
+            .new(|cx| InputState::new(window, cx).placeholder(t(placeholder_for(IpVersion::Auto))));
 
         // 输入变化 → 500ms 防抖自动计算
         cx.subscribe(&input, |this, _, event: &InputEvent, cx| {
@@ -150,12 +151,12 @@ impl Render for SubnetCalculator {
                     _ => IpVersion::Auto,
                 };
                 this.input.update(cx, |input, cx| {
-                    input.set_placeholder(placeholder_for(this.version), window, cx);
+                    input.set_placeholder(t(placeholder_for(this.version)), window, cx);
                 });
                 cx.notify();
             }))
             .children([
-                Radio::new("subnet-version-auto").label("自动检测"),
+                Radio::new("subnet-version-auto").label(t("自动检测")),
                 Radio::new("subnet-version-v4").label("IPv4"),
                 Radio::new("subnet-version-v6").label("IPv6"),
             ]);
@@ -167,34 +168,38 @@ impl Render for SubnetCalculator {
             .child(gpui::div().flex_1().child(Input::new(&self.input)))
             .child(ui::primary_button(
                 "subnet-calculate",
-                "计算",
+                t("计算"),
                 cx.listener(|this, _, _, cx| {
                     this.calculate(cx);
                 }),
             ));
 
         // 示例格式：信息横条（浅底同色文字，无边框），行内容链式追加
-        let example_card = ui::rich_banner("示例格式:", theme.colors.info, cx)
+        let example_card = ui::rich_banner(t("示例格式:"), theme.colors.info, cx)
             .flex_col()
             .items_start()
             .gap_1()
             .child(Self::example_row(
                 "IPv4:",
-                "192.168.1.0/24 或 10.0.0.0/255.0.0.0",
+                t("192.168.1.0/24 或 10.0.0.0/255.0.0.0"),
                 cx,
             ))
-            .child(Self::example_row("IPv6:", "2001:db8::/64 或 fe80::/10", cx))
             .child(Self::example_row(
-                "简写IPv6:",
-                "::1/128 或 2001:db8::1/64",
+                "IPv6:",
+                t("2001:db8::/64 或 fe80::/10"),
+                cx,
+            ))
+            .child(Self::example_row(
+                t("简写IPv6:"),
+                t("::1/128 或 2001:db8::1/64"),
                 cx,
             ));
 
         let mut page = ui::tool_page("subnetcalculator")
             .child(
                 ui::card(cx)
-                    .child(ui::field("IP版本", version_group, cx))
-                    .child(ui::field("地址", input_row, cx))
+                    .child(ui::field(t("IP版本"), version_group, cx))
+                    .child(ui::field(t("地址"), input_row, cx))
                     .child(example_card),
             )
             .when_some(self.error.clone(), |page, message| {
@@ -205,44 +210,48 @@ impl Render for SubnetCalculator {
             let ipv4 = result.version == "IPv4";
             // 键值行成组：行间 hairline 分隔（末行无线）
             let mut rows = vec![
-                Self::result_row("版本", &result.version, cx),
+                Self::result_row(t("版本"), &result.version, cx),
                 Self::result_row("CIDR", &result.cidr, cx),
             ];
             if ipv4 {
-                rows.push(Self::result_row("子网掩码", &result.mask, cx));
-                rows.push(Self::result_row("广播地址", &result.broadcast, cx));
+                rows.push(Self::result_row(t("子网掩码"), &result.mask, cx));
+                rows.push(Self::result_row(t("广播地址"), &result.broadcast, cx));
             }
-            rows.push(Self::result_row("网络地址", &result.network, cx));
+            rows.push(Self::result_row(t("网络地址"), &result.network, cx));
             rows.push(Self::result_row(
                 if ipv4 {
-                    "第一个可用IP"
+                    t("第一个可用IP")
                 } else {
-                    "网络前缀"
+                    t("网络前缀")
                 },
                 &result.first_ip,
                 cx,
             ));
             if ipv4 {
-                rows.push(Self::result_row("最后一个可用IP", &result.last_ip, cx));
+                rows.push(Self::result_row(t("最后一个可用IP"), &result.last_ip, cx));
             }
             rows.push(Self::result_row(
-                if ipv4 { "总IP数" } else { "总地址数" },
+                if ipv4 {
+                    t("总IP数")
+                } else {
+                    t("总地址数")
+                },
                 &result.total_ips,
                 cx,
             ));
             rows.push(Self::result_row(
                 if ipv4 {
-                    "可用IP数"
+                    t("可用IP数")
                 } else {
-                    "可用地址数"
+                    t("可用地址数")
                 },
                 &result.usable_ips,
                 cx,
             ));
             if !ipv4 {
-                rows.push(Self::result_row("网络部分", &result.network_portion, cx));
+                rows.push(Self::result_row(t("网络部分"), &result.network_portion, cx));
                 rows.push(Self::result_row(
-                    "主机部分",
+                    t("主机部分"),
                     if result.host_portion.is_empty() {
                         "N/A"
                     } else {
@@ -253,7 +262,7 @@ impl Render for SubnetCalculator {
             }
             let result_card = ui::card(cx)
                 .child(ui::card_header(
-                    &format!("计算结果 ({})", result.version),
+                    &format!("{} ({})", t("计算结果"), result.version),
                     cx,
                 ))
                 .child(ui::info_rows(rows, cx));

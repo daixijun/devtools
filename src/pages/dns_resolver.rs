@@ -8,6 +8,7 @@
 //!   结果为 IP + domains 列表卡。
 //!   返回字段为 camelCase serde 名（Rust 侧仍是 snake_case 字段）。
 
+use devtools::i18n::t;
 use devtools::tools::dns_resolver::{
     batch_reverse_dns_lookup, get_dns_servers, lookup_dns, reverse_dns_lookup,
     BatchReverseDnsResponse, DnsLookupResponse, DnsServerEntry, ReverseDnsResponse,
@@ -37,6 +38,11 @@ const RECORD_TYPES: [(&str, &str); 8] = [
 
 /// 反向批量示例。
 const BATCH_EXAMPLE: &str = "8.8.8.8\n114.114.114.114\n1.1.1.1";
+
+/// 记录类型下拉选项（使用处经 i18n 翻译，常量保持中文 label）。
+fn record_type_options() -> [(&'static str, &'static str); 8] {
+    RECORD_TYPES.map(|(value, label)| (value, t(label)))
+}
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum DnsTab {
@@ -78,14 +84,14 @@ impl DnsResolver {
 
     fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let custom_dns_input =
-            cx.new(|cx| InputState::new(window, cx).placeholder("例如: 9.9.9.9"));
-        let record_select = select_state(window, cx, &RECORD_TYPES, 0);
+            cx.new(|cx| InputState::new(window, cx).placeholder(t("例如: 9.9.9.9")));
+        let record_select = select_state(window, cx, &record_type_options(), 0);
         let domain_input =
-            cx.new(|cx| InputState::new(window, cx).placeholder("例如: www.example.com"));
+            cx.new(|cx| InputState::new(window, cx).placeholder(t("例如: www.example.com")));
         let reverse_ip_input =
-            cx.new(|cx| InputState::new(window, cx).placeholder("例如: 8.8.8.8"));
-        let batch_ips =
-            cx.new(|cx| TextareaState::new(window, cx).placeholder("输入多个 IP 地址，每行一个"));
+            cx.new(|cx| InputState::new(window, cx).placeholder(t("例如: 8.8.8.8")));
+        let batch_ips = cx
+            .new(|cx| TextareaState::new(window, cx).placeholder(t("输入多个 IP 地址，每行一个")));
 
         let this = Self {
             active_tab: DnsTab::Forward,
@@ -156,7 +162,7 @@ impl DnsResolver {
             }
             Err(err) => {
                 // 预设服务器加载失败静默降级为红条提示
-                self.forward_error = Some(format!("加载 DNS 服务器失败: {err}"));
+                self.forward_error = Some(format!("{}: {err}", t("加载 DNS 服务器失败")));
             }
         }
         cx.notify();
@@ -203,13 +209,13 @@ impl DnsResolver {
         let domain = self.domain_input.read(cx).value().trim().to_string();
         if domain.is_empty() {
             self.lookup = None;
-            self.forward_error = Some("请输入域名".to_string());
+            self.forward_error = Some(t("请输入域名").to_string());
             cx.notify();
             return;
         }
         if self.selected_servers.is_empty() {
             self.lookup = None;
-            self.forward_error = Some("请至少选择一个 DNS 服务器".to_string());
+            self.forward_error = Some(t("请至少选择一个 DNS 服务器").to_string());
             cx.notify();
             return;
         }
@@ -242,7 +248,7 @@ impl DnsResolver {
             Ok(response) => self.lookup = Some(response),
             Err(err) => {
                 self.lookup = None;
-                self.forward_error = Some(format!("查询失败: {err}"));
+                self.forward_error = Some(format!("{}: {err}", t("查询失败")));
             }
         }
         cx.notify();
@@ -254,7 +260,7 @@ impl DnsResolver {
             state.set_value("www.example.com", window, cx)
         });
         self.record_type = "ALL".to_string();
-        self.record_select = select_state(window, cx, &RECORD_TYPES, 0);
+        self.record_select = select_state(window, cx, &record_type_options(), 0);
         self.observe_record_select(window, cx);
         cx.notify();
     }
@@ -292,7 +298,7 @@ impl DnsResolver {
         let ip = self.reverse_ip_input.read(cx).value().trim().to_string();
         if ip.is_empty() {
             self.reverse_result = None;
-            self.reverse_error = Some("请输入 IP 地址".to_string());
+            self.reverse_error = Some(t("请输入 IP 地址").to_string());
             cx.notify();
             return;
         }
@@ -322,7 +328,7 @@ impl DnsResolver {
             Ok(response) => self.reverse_result = Some(response),
             Err(err) => {
                 self.reverse_result = None;
-                self.reverse_error = Some(format!("查询失败: {err}"));
+                self.reverse_error = Some(format!("{}: {err}", t("查询失败")));
             }
         }
         cx.notify();
@@ -339,7 +345,7 @@ impl DnsResolver {
             .collect();
         if ips.is_empty() {
             self.batch_result = None;
-            self.reverse_error = Some("请输入 IP 地址列表".to_string());
+            self.reverse_error = Some(t("请输入 IP 地址列表").to_string());
             cx.notify();
             return;
         }
@@ -368,7 +374,7 @@ impl DnsResolver {
             Ok(response) => self.batch_result = Some(response),
             Err(err) => {
                 self.batch_result = None;
-                self.reverse_error = Some(format!("批量查询失败: {err}"));
+                self.reverse_error = Some(format!("{}: {err}", t("批量查询失败")));
             }
         }
         cx.notify();
@@ -433,7 +439,7 @@ impl DnsResolver {
     fn render_tab_bar(&mut self, cx: &mut Context<Self>) -> gpui_component::tab::TabBar {
         ui::tab_bar(
             "dns-tabs",
-            &["正向解析", "反向解析"],
+            &[t("正向解析"), t("反向解析")],
             match self.active_tab {
                 DnsTab::Forward => 0,
                 DnsTab::Reverse => 1,
@@ -468,13 +474,13 @@ impl DnsResolver {
                 );
             }
         } else {
-            server_list = server_list.child(ui::loading_row("加载预设服务器中...", cx));
+            server_list = server_list.child(ui::loading_row(t("加载预设服务器中..."), cx));
         }
 
         let config = ui::card(cx)
             .flex_1()
             .min_w_0()
-            .child(ui::card_header("查询配置", cx))
+            .child(ui::card_header(t("查询配置"), cx))
             .child(
                 div()
                     .flex()
@@ -482,13 +488,13 @@ impl DnsResolver {
                     .gap_3()
                     // DNS 服务器
                     .child(ui::field(
-                        "DNS 服务器（可多选，同时对比查询）",
+                        t("DNS 服务器（可多选，同时对比查询）"),
                         server_list,
                         cx,
                     ))
                     // 添加自定义 DNS 服务器
                     .child(ui::field(
-                        "添加自定义 DNS 服务器",
+                        t("添加自定义 DNS 服务器"),
                         div()
                             .flex()
                             .items_center()
@@ -496,15 +502,15 @@ impl DnsResolver {
                             .child(Input::new(&self.custom_dns_input).flex_1())
                             .child(ui::secondary_button(
                                 "dns-add-server",
-                                "添加",
+                                t("添加"),
                                 cx.listener(|this, _, window, cx| this.add_custom_dns(window, cx)),
                             )),
                         cx,
                     ))
                     // 记录类型
-                    .child(ui::field("记录类型", Select::new(&self.record_select), cx).flex_1())
+                    .child(ui::field(t("记录类型"), Select::new(&self.record_select), cx).flex_1())
                     // 域名
-                    .child(ui::field("域名", Input::new(&self.domain_input), cx))
+                    .child(ui::field(t("域名"), Input::new(&self.domain_input), cx))
                     // 操作按钮
                     .child(
                         div()
@@ -515,9 +521,9 @@ impl DnsResolver {
                                 ui::primary_button(
                                     "dns-lookup",
                                     if self.loading {
-                                        "查询中..."
+                                        t("查询中...")
                                     } else {
-                                        "查询"
+                                        t("查询")
                                     },
                                     cx.listener(|this, _, window, cx| this.run_lookup(window, cx)),
                                 )
@@ -526,14 +532,14 @@ impl DnsResolver {
                             )
                             .child(ui::secondary_button(
                                 "dns-forward-example",
-                                "示例",
+                                t("示例"),
                                 cx.listener(|this, _, window, cx| {
                                     this.load_forward_example(window, cx)
                                 }),
                             ))
                             .child(ui::secondary_button(
                                 "dns-forward-clear",
-                                "清空",
+                                t("清空"),
                                 cx.listener(|this, _, window, cx| this.clear_forward(window, cx)),
                             )),
                     ),
@@ -551,8 +557,12 @@ impl DnsResolver {
         let head = ui::table_head(cx)
             .px_2()
             .gap_2()
-            .child(ui::table_head_cell("类型", cx).w(px(56.)).flex_shrink_0())
-            .child(ui::table_head_cell("值", cx).flex_1().min_w_0())
+            .child(
+                ui::table_head_cell(t("类型"), cx)
+                    .w(px(56.))
+                    .flex_shrink_0(),
+            )
+            .child(ui::table_head_cell(t("值"), cx).flex_1().min_w_0())
             .child(ui::table_head_cell("TTL", cx).w(px(72.)).flex_shrink_0());
 
         let mut rows = Vec::new();
@@ -584,7 +594,7 @@ impl DnsResolver {
         let mut pane = ui::card(cx)
             .flex_1()
             .min_w_0()
-            .child(ui::card_header("查询结果", cx));
+            .child(ui::card_header(t("查询结果"), cx));
 
         if let Some(err) = &self.forward_error {
             pane = pane.child(ui::error_banner(err, cx));
@@ -600,7 +610,7 @@ impl DnsResolver {
                         div()
                             .text_size(px(13.))
                             .text_color(theme.colors.muted_foreground)
-                            .child(format!("域名: {}", response.domain)),
+                            .child(format!("{}: {}", t("域名"), response.domain)),
                     )
                     .when_some(response.error.clone(), |el, err| {
                         el.child(
@@ -612,7 +622,7 @@ impl DnsResolver {
                     })
                     .when(response.error.is_none(), |el| {
                         if response.results.is_empty() {
-                            el.child(ui::empty_hint("未找到记录", cx))
+                            el.child(ui::empty_hint(t("未找到记录"), cx))
                         } else {
                             let mut groups = div().flex().flex_col().gap_3();
                             for result in &response.results {
@@ -628,7 +638,7 @@ impl DnsResolver {
                                             .text_size(px(13.))
                                             .font_weight(gpui::FontWeight::MEDIUM)
                                             .text_color(theme.colors.foreground)
-                                            .child("DNS 记录:"),
+                                            .child(t("DNS 记录:")),
                                     )
                                     .child(groups),
                             )
@@ -639,7 +649,7 @@ impl DnsResolver {
                     }),
             );
         } else if self.forward_error.is_none() {
-            pane = pane.child(ui::empty_hint("输入域名后点击「查询」查看解析结果", cx));
+            pane = pane.child(ui::empty_hint(t("输入域名后点击「查询」查看解析结果"), cx));
         }
 
         pane
@@ -686,7 +696,7 @@ impl DnsResolver {
                 div()
                     .text_size(px(13.))
                     .text_color(theme.colors.muted_foreground)
-                    .child("未找到记录"),
+                    .child(t("未找到记录")),
             );
         } else {
             group = group.child(self.render_records_table(&result.records, cx));
@@ -706,12 +716,12 @@ impl DnsResolver {
 
         let mut grid = div().flex().flex_wrap().gap_x_6().gap_y_2();
         let entries = [
-            ("IP 地址", info.ip.clone()),
-            ("国家", opt(&info.country)),
-            ("城市", opt(&info.city)),
-            ("运营商", opt(&info.org)),
-            ("地区", opt(&info.region)),
-            ("时区", opt(&info.timezone)),
+            (t("IP 地址"), info.ip.clone()),
+            (t("国家"), opt(&info.country)),
+            (t("城市"), opt(&info.city)),
+            (t("运营商"), opt(&info.org)),
+            (t("地区"), opt(&info.region)),
+            (t("时区"), opt(&info.timezone)),
         ];
         for (label, value) in entries {
             grid = grid.child(
@@ -742,14 +752,14 @@ impl DnsResolver {
                     .text_size(px(13.))
                     .font_weight(gpui::FontWeight::MEDIUM)
                     .text_color(theme.colors.foreground)
-                    .child("IP 地理位置信息"),
+                    .child(t("IP 地理位置信息")),
             )
             .child(grid)
             .child(
                 div()
                     .text_size(px(11.))
                     .text_color(theme.colors.muted_foreground)
-                    .child(format!("数据来源: {}", info.source)),
+                    .child(format!("{}: {}", t("数据来源"), info.source)),
             )
     }
 
@@ -758,7 +768,7 @@ impl DnsResolver {
         ui::card(cx)
             .flex_1()
             .min_w_0()
-            .child(ui::card_header("反向解析配置", cx))
+            .child(ui::card_header(t("反向解析配置"), cx))
             .child(
                 div()
                     .flex()
@@ -766,7 +776,7 @@ impl DnsResolver {
                     .gap_3()
                     // 单个 IP
                     .child(ui::field(
-                        "单个 IP 反向解析",
+                        t("单个 IP 反向解析"),
                         Input::new(&self.reverse_ip_input),
                         cx,
                     ))
@@ -779,9 +789,9 @@ impl DnsResolver {
                                 ui::primary_button(
                                     "dns-reverse",
                                     if self.loading {
-                                        "查询中..."
+                                        t("查询中...")
                                     } else {
-                                        "查询"
+                                        t("查询")
                                     },
                                     cx.listener(|this, _, window, cx| this.run_reverse(window, cx)),
                                 )
@@ -790,21 +800,21 @@ impl DnsResolver {
                             )
                             .child(ui::secondary_button(
                                 "dns-reverse-example",
-                                "示例",
+                                t("示例"),
                                 cx.listener(|this, _, window, cx| {
                                     this.load_reverse_example(window, cx)
                                 }),
                             ))
                             .child(ui::secondary_button(
                                 "dns-reverse-clear",
-                                "清空",
+                                t("清空"),
                                 cx.listener(|this, _, window, cx| this.clear_reverse(window, cx)),
                             )),
                     )
                     // 批量
                     .child(
                         ui::field(
-                            "批量反向解析 (每行一个 IP)",
+                            t("批量反向解析 (每行一个 IP)"),
                             ui::edit_area(&self.batch_ips, 140.),
                             cx,
                         )
@@ -816,9 +826,9 @@ impl DnsResolver {
                             ui::primary_button(
                                 "dns-batch",
                                 if self.loading {
-                                    "查询中..."
+                                    t("查询中...")
                                 } else {
-                                    "批量查询"
+                                    t("批量查询")
                                 },
                                 cx.listener(|this, _, window, cx| this.run_batch(window, cx)),
                             )
@@ -835,7 +845,7 @@ impl DnsResolver {
         let mut pane = ui::card(cx)
             .flex_1()
             .min_w_0()
-            .child(ui::card_header("查询结果", cx));
+            .child(ui::card_header(t("查询结果"), cx));
 
         if let Some(err) = &self.reverse_error {
             pane = pane.child(ui::error_banner(err, cx));
@@ -851,13 +861,13 @@ impl DnsResolver {
                         .text_size(px(13.))
                         .font_weight(gpui::FontWeight::MEDIUM)
                         .text_color(theme.colors.foreground)
-                        .child("单个 IP 查询结果"),
+                        .child(t("单个 IP 查询结果")),
                 )
                 .child(
                     div()
                         .text_size(px(13.))
                         .text_color(theme.colors.muted_foreground)
-                        .child(format!("IP 地址: {}", response.ip)),
+                        .child(format!("{}: {}", t("IP 地址"), response.ip)),
                 );
             if let Some(err) = &response.error {
                 card = card.child(
@@ -871,7 +881,7 @@ impl DnsResolver {
                     div()
                         .text_size(px(13.))
                         .text_color(theme.colors.muted_foreground)
-                        .child("未找到对应的域名记录"),
+                        .child(t("未找到对应的域名记录")),
                 );
             } else {
                 let mut list = div().flex().flex_col().gap_1();
@@ -893,7 +903,7 @@ impl DnsResolver {
                             div()
                                 .text_size(px(13.))
                                 .text_color(theme.colors.foreground)
-                                .child("对应域名:"),
+                                .child(t("对应域名:")),
                         )
                         .child(list),
                 );
@@ -908,7 +918,7 @@ impl DnsResolver {
                     .text_size(px(13.))
                     .font_weight(gpui::FontWeight::MEDIUM)
                     .text_color(theme.colors.foreground)
-                    .child("批量查询结果"),
+                    .child(t("批量查询结果")),
             );
             if let Some(err) = &batch.error {
                 card = card.child(
@@ -923,7 +933,7 @@ impl DnsResolver {
                     div()
                         .text_size(px(13.))
                         .text_color(theme.colors.muted_foreground)
-                        .child("未找到查询结果"),
+                        .child(t("未找到查询结果")),
                 );
             } else {
                 for result in &batch.results {
@@ -946,7 +956,7 @@ impl DnsResolver {
                             div()
                                 .text_size(px(12.))
                                 .text_color(theme.colors.muted_foreground)
-                                .child("未找到对应的域名记录"),
+                                .child(t("未找到对应的域名记录")),
                         );
                     } else {
                         for domain in &result.domains {
@@ -969,7 +979,7 @@ impl DnsResolver {
             && self.reverse_result.is_none()
             && self.batch_result.is_none()
         {
-            body = body.child(ui::empty_hint("输入 IP 地址后点击「查询」查看结果", cx));
+            body = body.child(ui::empty_hint(t("输入 IP 地址后点击「查询」查看结果"), cx));
         }
 
         pane.child(body)

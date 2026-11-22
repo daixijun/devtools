@@ -18,6 +18,7 @@ use gpui_component::select::{Select, SelectEvent, SelectState};
 use gpui_component::slider::{Slider, SliderEvent, SliderState};
 use gpui_component::{ActiveTheme as _, Disableable as _};
 
+use devtools::i18n::t;
 use devtools::tools::image_converter::{
     convert_image, get_image_exif_data, get_image_info_command, ExifData, ImageConversionRequest,
 };
@@ -122,7 +123,16 @@ impl ImageConverter {
     }
 
     fn new(window: &mut Window, cx: &mut gpui::Context<Self>) -> Self {
-        let source_sel = select_state(window, cx, SOURCE_FORMATS, 0);
+        // 常量 label 含中文：使用处经 t() 翻译（select_state 会拷贝 label）
+        let source_options: Vec<(String, String)> = SOURCE_FORMATS
+            .iter()
+            .map(|(value, label)| (value.to_string(), t(label).to_string()))
+            .collect();
+        let source_refs: Vec<(&str, &str)> = source_options
+            .iter()
+            .map(|(value, label)| (value.as_str(), label.as_str()))
+            .collect();
+        let source_sel = select_state(window, cx, &source_refs, 0);
         cx.subscribe(
             &source_sel,
             |this, _, ev: &SelectEvent<SimpleSelectDelegate>, cx| {
@@ -197,9 +207,9 @@ impl ImageConverter {
     /// 添加失败时的提示文案。
     fn exts_label(&self) -> String {
         if self.source_format == "auto" {
-            "所有支持的图片格式".to_string()
+            t("所有支持的图片格式").to_string()
         } else {
-            format!("{} 格式", self.source_format.to_uppercase())
+            format!("{} {}", self.source_format.to_uppercase(), t("格式"))
         }
     }
 
@@ -234,7 +244,7 @@ impl ImageConverter {
         let rx = crate::core_rt::submit(cx, async move {
             let refs: Vec<&str> = exts.iter().map(|s| s.as_str()).collect();
             rfd::FileDialog::new()
-                .add_filter("图片文件", &refs)
+                .add_filter(t("图片文件"), &refs)
                 .pick_files()
         });
         cx.spawn_in(window, async move |this, cx| {
@@ -285,7 +295,15 @@ impl ImageConverter {
             .filter(|p| has_supported_ext(p, &exts))
             .collect();
         if fresh.is_empty() {
-            self.message = Some((false, format!("没有找到 {} 的图片文件", self.exts_label())));
+            self.message = Some((
+                false,
+                format!(
+                    "{} {} {}",
+                    t("没有找到"),
+                    self.exts_label(),
+                    t("的图片文件")
+                ),
+            ));
             cx.notify();
             return;
         }
@@ -349,7 +367,7 @@ impl ImageConverter {
             return;
         }
         if self.use_custom_dir && self.custom_dir.is_empty() {
-            self.message = Some((false, "已启用自定义输出目录，但尚未选择目录".to_string()));
+            self.message = Some((false, t("已启用自定义输出目录，但尚未选择目录").to_string()));
             cx.notify();
             return;
         }
@@ -456,11 +474,21 @@ impl ImageConverter {
             this.update_in(cx, |this, _w, cx| {
                 this.converting = false;
                 this.message = Some(if failed == 0 {
-                    (true, format!("✅ 批量转换完成：成功 {} 个文件", success))
+                    (
+                        true,
+                        format!("✅ {} {} {}", t("批量转换完成：成功"), success, t("个文件")),
+                    )
                 } else {
                     (
                         false,
-                        format!("批量转换完成：成功 {} 个文件，{} 个失败", success, failed),
+                        format!(
+                            "{} {} {} {} {}",
+                            t("批量转换完成：成功"),
+                            success,
+                            t("个文件，"),
+                            failed,
+                            t("个失败")
+                        ),
                     )
                 });
                 cx.notify();
@@ -502,7 +530,7 @@ impl ImageConverter {
 
     fn copy_text(&mut self, text: String, window: &mut Window, cx: &mut gpui::Context<Self>) {
         cx.write_to_clipboard(ClipboardItem::new_string(text));
-        notify::toast_success(window, cx, "已复制到剪贴板");
+        notify::toast_success(window, cx, t("已复制到剪贴板"));
     }
 
     fn choose_dir(&mut self, window: &mut Window, cx: &mut gpui::Context<Self>) {
@@ -685,7 +713,7 @@ impl ImageConverter {
         let converting = self.converting;
 
         let card = ui::card(cx)
-            .child(ui::card_header("转换设置", cx))
+            .child(ui::card_header(t("转换设置"), cx))
             // 源格式 / 目标格式
             .child(
                 div()
@@ -694,14 +722,14 @@ impl ImageConverter {
                     .gap_4()
                     .child(
                         div().flex_1().min_w(px(220.)).child(ui::field(
-                            "源格式",
+                            t("源格式"),
                             div()
                                 .flex()
                                 .flex_col()
                                 .gap_1()
                                 .child(Select::new(&self.source_sel).disabled(converting))
                                 .child(ui::hint_text(
-                                    "选择源图片文件格式，自动检测可支持所有格式",
+                                    t("选择源图片文件格式，自动检测可支持所有格式"),
                                     cx,
                                 )),
                             cx,
@@ -709,13 +737,13 @@ impl ImageConverter {
                     )
                     .child(
                         div().flex_1().min_w(px(220.)).child(ui::field(
-                            "目标格式",
+                            t("目标格式"),
                             div()
                                 .flex()
                                 .flex_col()
                                 .gap_1()
                                 .child(Select::new(&self.target_sel).disabled(converting))
-                                .child(ui::hint_text("转换后的图片格式", cx)),
+                                .child(ui::hint_text(t("转换后的图片格式"), cx)),
                             cx,
                         )),
                     ),
@@ -725,7 +753,7 @@ impl ImageConverter {
             // 质量滑块（仅 jpg/jpeg/webp 显示）
             card.child(
                 ui::field(
-                    &format!("图片质量: {}%", self.quality),
+                    &format!("{}: {}%", t("图片质量"), self.quality),
                     div()
                         .flex()
                         .items_center()
@@ -744,7 +772,10 @@ impl ImageConverter {
                         ),
                     cx,
                 )
-                .child(ui::hint_text("质量越高文件越大，建议设置在 70-90 之间", cx)),
+                .child(ui::hint_text(
+                    t("质量越高文件越大，建议设置在 70-90 之间"),
+                    cx,
+                )),
             )
         } else {
             card
@@ -752,35 +783,35 @@ impl ImageConverter {
 
         // 尺寸调整
         let card = card.child(ui::field(
-            "尺寸调整",
+            t("尺寸调整"),
             div()
                 .flex()
                 .flex_wrap()
                 .gap_4()
                 .child(self.resize_radio(
                     "ic-resize-none",
-                    "保持原尺寸",
+                    t("保持原尺寸"),
                     ResizeMode::None,
                     converting,
                     cx,
                 ))
                 .child(self.resize_radio(
                     "ic-resize-width",
-                    "按宽度调整",
+                    t("按宽度调整"),
                     ResizeMode::Width,
                     converting,
                     cx,
                 ))
                 .child(self.resize_radio(
                     "ic-resize-height",
-                    "按高度调整",
+                    t("按高度调整"),
                     ResizeMode::Height,
                     converting,
                     cx,
                 ))
                 .child(self.resize_radio(
                     "ic-resize-both",
-                    "指定宽高",
+                    t("指定宽高"),
                     ResizeMode::Both,
                     converting,
                     cx,
@@ -799,7 +830,7 @@ impl ImageConverter {
                         div()
                             .text_size(px(13.))
                             .text_color(theme.colors.muted_foreground)
-                            .child("宽度:"),
+                            .child(t("宽度:")),
                     )
                     .child(
                         Input::new(&self.width_input)
@@ -810,7 +841,7 @@ impl ImageConverter {
                         div()
                             .text_size(px(12.))
                             .text_color(theme.colors.muted_foreground)
-                            .child("px（1-10000）"),
+                            .child(t("px（1-10000）")),
                     ),
             )
         } else {
@@ -828,7 +859,7 @@ impl ImageConverter {
                         div()
                             .text_size(px(13.))
                             .text_color(theme.colors.muted_foreground)
-                            .child("高度:"),
+                            .child(t("高度:")),
                     )
                     .child(
                         Input::new(&self.height_input)
@@ -839,7 +870,7 @@ impl ImageConverter {
                         div()
                             .text_size(px(12.))
                             .text_color(theme.colors.muted_foreground)
-                            .child("px（1-10000）"),
+                            .child(t("px（1-10000）")),
                     ),
             )
         } else {
@@ -854,7 +885,7 @@ impl ImageConverter {
                 .gap_2()
                 .child(
                     Checkbox::new("ic-opt-exif")
-                        .label("移除EXIF信息")
+                        .label(t("移除EXIF信息"))
                         .checked(self.remove_exif)
                         .disabled(converting)
                         .on_click(cx.listener(|this, checked: &bool, _w, cx| {
@@ -866,7 +897,7 @@ impl ImageConverter {
                     div()
                         .text_size(px(12.))
                         .text_color(theme.colors.danger)
-                        .child("（保护隐私）"),
+                        .child(t("（保护隐私）")),
                 ),
         )
         .child(
@@ -877,7 +908,7 @@ impl ImageConverter {
                 .gap_2()
                 .child(
                     Checkbox::new("ic-opt-delete")
-                        .label("转换成功后删除源文件")
+                        .label(t("转换成功后删除源文件"))
                         .checked(self.delete_source)
                         .disabled(converting)
                         .on_click(cx.listener(|this, checked: &bool, _w, cx| {
@@ -889,12 +920,12 @@ impl ImageConverter {
                     div()
                         .text_size(px(12.))
                         .text_color(theme.colors.danger)
-                        .child("（谨慎操作）"),
+                        .child(t("（谨慎操作）")),
                 ),
         )
         .child(
             Checkbox::new("ic-opt-custom-dir")
-                .label("指定输出目录")
+                .label(t("指定输出目录"))
                 .checked(self.use_custom_dir)
                 .disabled(converting)
                 .on_click(cx.listener(|this, checked: &bool, _w, cx| {
@@ -909,14 +940,14 @@ impl ImageConverter {
         let converting = self.converting;
         // 只读目录显示框（muted 底路径块）+ 右侧操作按钮
         let dir_text: &str = if self.custom_dir.is_empty() {
-            "选择输出目录..."
+            t("选择输出目录...")
         } else {
             &self.custom_dir
         };
         let mut dir_row = ui::file_row(dir_text, cx).child(
             ui::secondary_button(
                 "ic-choose-dir",
-                "选择目录",
+                t("选择目录"),
                 cx.listener(|this, _ev, window, cx| this.choose_dir(window, cx)),
             )
             .disabled(converting),
@@ -925,7 +956,7 @@ impl ImageConverter {
             dir_row = dir_row.child(
                 ui::secondary_button(
                     "ic-clear-dir",
-                    "清除",
+                    t("清除"),
                     cx.listener(|this, _ev, _window, cx| {
                         this.custom_dir.clear();
                         cx.notify();
@@ -940,11 +971,12 @@ impl ImageConverter {
             .gap_2()
             .pl_4()
             .child(dir_row)
-            .children(
-                (!self.custom_dir.is_empty()).then(|| {
-                    ui::hint_text(&format!("转换后的文件将保存到: {}", self.custom_dir), cx)
-                }),
-            )
+            .children((!self.custom_dir.is_empty()).then(|| {
+                ui::hint_text(
+                    &format!("{} {}", t("转换后的文件将保存到:"), self.custom_dir),
+                    cx,
+                )
+            }))
     }
 
     fn resize_radio(
@@ -978,7 +1010,12 @@ impl ImageConverter {
                         .text_size(px(14.))
                         .font_weight(gpui::FontWeight::MEDIUM)
                         .text_color(theme.colors.foreground)
-                        .child(format!("待转换文件列表 ({}个文件)", self.files.len())),
+                        .child(format!(
+                            "{} ({} {})",
+                            t("待转换文件列表"),
+                            self.files.len(),
+                            t("个文件")
+                        )),
                 )
                 .child(
                     div()
@@ -986,12 +1023,12 @@ impl ImageConverter {
                         .gap_2()
                         .child(ui::secondary_button(
                             "ic-add-files",
-                            "添加文件",
+                            t("添加文件"),
                             cx.listener(|this, _ev, window, cx| this.add_files(window, cx)),
                         ))
                         .child(ui::secondary_button(
                             "ic-add-dir",
-                            "添加目录",
+                            t("添加目录"),
                             cx.listener(|this, _ev, window, cx| this.add_dir(window, cx)),
                         )),
                 ),
@@ -999,7 +1036,7 @@ impl ImageConverter {
 
         if self.files.is_empty() {
             return card.child(ui::empty_hint(
-                "暂无待转换文件，请点击右上角按钮添加文件或目录",
+                t("暂无待转换文件，请点击右上角按钮添加文件或目录"),
                 cx,
             ));
         }
@@ -1008,13 +1045,13 @@ impl ImageConverter {
         let header = ui::table_head(cx)
             .px_2()
             .pb_1()
-            .child(ui::table_head_cell("路径信息", cx).flex_1().min_w_0())
-            .child(ui::table_head_cell("大小", cx).w(px(76.)))
-            .child(ui::table_head_cell("尺寸", cx).w(px(88.)))
+            .child(ui::table_head_cell(t("路径信息"), cx).flex_1().min_w_0())
+            .child(ui::table_head_cell(t("大小"), cx).w(px(76.)))
+            .child(ui::table_head_cell(t("尺寸"), cx).w(px(88.)))
             .child(ui::table_head_cell("EXIF", cx).w(px(56.)))
-            .child(ui::table_head_cell("状态", cx).w(px(64.)))
-            .child(ui::table_head_cell("错误信息", cx).w(px(150.)))
-            .child(ui::table_head_cell("操作", cx).w(px(52.)));
+            .child(ui::table_head_cell(t("状态"), cx).w(px(64.)))
+            .child(ui::table_head_cell(t("错误信息"), cx).w(px(150.)))
+            .child(ui::table_head_cell(t("操作"), cx).w(px(52.)));
 
         // 数据行（行间 hairline 由 table_rows 统一处理；EXIF 展开区跟随所属行）
         let mut rows = Vec::with_capacity(self.files.len());
@@ -1079,7 +1116,7 @@ impl ImageConverter {
                 .min_w_0()
                 .text_size(px(12.))
                 .text_color(theme.colors.muted_foreground)
-                .child("未转换")
+                .child(t("未转换"))
                 .into_any_element(),
         };
 
@@ -1109,7 +1146,7 @@ impl ImageConverter {
                                 div()
                                     .text_size(px(11.))
                                     .text_color(theme.colors.muted_foreground)
-                                    .child("源文件:"),
+                                    .child(t("源文件:")),
                             )
                             .child(
                                 div()
@@ -1135,7 +1172,7 @@ impl ImageConverter {
                                 div()
                                     .text_size(px(11.))
                                     .text_color(theme.colors.muted_foreground)
-                                    .child("转换后:"),
+                                    .child(t("转换后:")),
                             )
                             .child(out_line),
                     ),
@@ -1148,7 +1185,7 @@ impl ImageConverter {
                     .w(px(88.))
                     .text_size(px(12.))
                     .text_color(theme.colors.foreground)
-                    .child(row.dims.clone().unwrap_or_else(|| "未知".to_string())),
+                    .child(row.dims.clone().unwrap_or_else(|| t("未知").to_string())),
             )
             // EXIF
             .child(div().w(px(56.)).child(if row.has_exif {
@@ -1158,13 +1195,13 @@ impl ImageConverter {
                     .on_click(cx.listener(move |this, _ev, window, cx| {
                         this.toggle_exif(exif_path.clone(), window, cx);
                     }))
-                    .child(ui::badge("包含", theme.colors.warning))
+                    .child(ui::badge(t("包含"), theme.colors.warning))
                     .into_any_element()
             } else {
                 div()
                     .text_size(px(12.))
                     .text_color(theme.colors.muted_foreground)
-                    .child("无")
+                    .child(t("无"))
                     .into_any_element()
             }))
             // 状态
@@ -1189,7 +1226,7 @@ impl ImageConverter {
             .child(
                 div().w(px(52.)).flex().justify_center().child(
                     Button::new(("ic-del", index))
-                        .label("删除")
+                        .label(t("删除"))
                         .ghost()
                         .on_click(cx.listener(move |this, _ev, _window, cx| {
                             this.remove_row(index, cx);
@@ -1208,21 +1245,21 @@ impl ImageConverter {
                 .text_size(px(12.))
                 .font_weight(gpui::FontWeight::MEDIUM)
                 .text_color(theme.colors.foreground)
-                .child(format!("EXIF 信息 - {}", row.name)),
+                .child(format!("{} - {}", t("EXIF 信息"), row.name)),
         );
 
         match &row.exif {
             Some(exif) => {
                 let mut rows = Vec::new();
                 for (label, value) in [
-                    ("相机制造商", &exif.make),
-                    ("相机型号", &exif.model),
-                    ("拍摄时间", &exif.datetime),
-                    ("曝光时间", &exif.exposure_time),
-                    ("光圈值", &exif.f_number),
-                    ("ISO 感光度", &exif.iso),
-                    ("焦距", &exif.focal_length),
-                    ("处理软件", &exif.software),
+                    (t("相机制造商"), &exif.make),
+                    (t("相机型号"), &exif.model),
+                    (t("拍摄时间"), &exif.datetime),
+                    (t("曝光时间"), &exif.exposure_time),
+                    (t("光圈值"), &exif.f_number),
+                    (t("ISO 感光度"), &exif.iso),
+                    (t("焦距"), &exif.focal_length),
+                    (t("处理软件"), &exif.software),
                 ] {
                     if let Some(v) = value {
                         if !v.trim().is_empty() {
@@ -1231,13 +1268,13 @@ impl ImageConverter {
                     }
                 }
                 if rows.is_empty() {
-                    block = block.child(ui::hint_text("无详细信息", cx));
+                    block = block.child(ui::hint_text(t("无详细信息"), cx));
                 } else {
                     block = block.child(ui::info_rows(rows, cx));
                 }
             }
             None => {
-                block = block.child(ui::loading_row("正在读取 EXIF 数据...", cx));
+                block = block.child(ui::loading_row(t("正在读取 EXIF 数据..."), cx));
             }
         }
         block
@@ -1253,7 +1290,7 @@ impl ImageConverter {
             0.0
         };
 
-        let card = ui::card(cx).child(ui::card_header("转换控制", cx));
+        let card = ui::card(cx).child(ui::card_header(t("转换控制"), cx));
 
         let card = if self.converting {
             card.child(
@@ -1267,7 +1304,13 @@ impl ImageConverter {
                             .items_center()
                             .justify_between()
                             .child(ui::hint_text(
-                                &format!("总体进度: {} / {} 个文件", current, total),
+                                &format!(
+                                    "{} {} / {} {}",
+                                    t("总体进度:"),
+                                    current,
+                                    total,
+                                    t("个文件")
+                                ),
                                 cx,
                             ))
                             .child(
@@ -1295,9 +1338,9 @@ impl ImageConverter {
                     ui::primary_button(
                         "ic-start",
                         if self.converting {
-                            "转换中..."
+                            t("转换中...")
                         } else {
-                            "开始转换"
+                            t("开始转换")
                         },
                         cx.listener(|this, _ev, window, cx| this.start_convert(window, cx)),
                     )
@@ -1308,7 +1351,7 @@ impl ImageConverter {
                 .child(
                     ui::secondary_button(
                         "ic-clear",
-                        "清空列表",
+                        t("清空列表"),
                         cx.listener(|this, _ev, _window, cx| this.clear_list(cx)),
                     )
                     .disabled(self.converting)
@@ -1330,16 +1373,16 @@ fn size_cell(size: u64, cx: &gpui::Context<ImageConverter>) -> gpui::Div {
         .child(if size > 0 {
             format_file_size(size)
         } else {
-            "未知".to_string()
+            t("未知").to_string()
         })
 }
 
 fn status_badge(status: RowStatus, cx: &gpui::Context<ImageConverter>) -> gpui::Div {
     let theme = cx.theme().clone();
     match status {
-        RowStatus::Pending => ui::badge("等待中", theme.colors.warning),
-        RowStatus::Converting => ui::badge("转换中", theme.colors.info),
-        RowStatus::Completed => ui::badge("已完成", theme.colors.success),
-        RowStatus::Error => ui::badge("错误", theme.colors.danger),
+        RowStatus::Pending => ui::badge(t("等待中"), theme.colors.warning),
+        RowStatus::Converting => ui::badge(t("转换中"), theme.colors.info),
+        RowStatus::Completed => ui::badge(t("已完成"), theme.colors.success),
+        RowStatus::Error => ui::badge(t("错误"), theme.colors.danger),
     }
 }

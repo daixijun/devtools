@@ -13,6 +13,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
+use devtools::i18n::t;
 use devtools::tools::whois::{query_whois_unified, WhoisParsed};
 use futures::StreamExt as _;
 use gpui::{
@@ -320,7 +321,11 @@ impl WhoisLookup {
     fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let domains_input = ui::new_textarea(window, cx);
         domains_input.update(cx, |state, cx| {
-            state.set_placeholder("例如:\nexample.com\nopenai.com\ncloudflare.net", window, cx);
+            state.set_placeholder(
+                t("例如:\nexample.com\nopenai.com\ncloudflare.net"),
+                window,
+                cx,
+            );
         });
         // 输入变化 → 重算有效域名数（按钮 N 与禁用态）
         cx.subscribe_in(
@@ -338,7 +343,7 @@ impl WhoisLookup {
             window,
             cx,
             &[
-                ("auto", "自动（verisign → cndns → hichina）"),
+                ("auto", t("自动（verisign → cndns → hichina）")),
                 ("whois_verisign", "whois.verisign-grs.com"),
                 ("whois_cndns", "grs-whois.cndns.com"),
                 ("whois_hichina", "grs-whois.hichina.com"),
@@ -469,7 +474,7 @@ impl WhoisLookup {
             "csv" => Some(build_csv(&rows)),
             _ => build_json(&rows),
         }) else {
-            notify::toast_error(window, cx, "序列化导出数据失败");
+            notify::toast_error(window, cx, t("序列化导出数据失败"));
             return;
         };
         let name = format!("whois_results_{}.{kind}", now_millis());
@@ -477,9 +482,9 @@ impl WhoisLookup {
         let mut rx = crate::core_rt::submit(cx, async move {
             let dialog = rfd::FileDialog::new().set_file_name(name.as_str());
             let dialog = if kind == "csv" {
-                dialog.add_filter("CSV 文件", &["csv"])
+                dialog.add_filter(t("CSV 文件"), &["csv"])
             } else {
-                dialog.add_filter("JSON 文件", &["json"])
+                dialog.add_filter(t("JSON 文件"), &["json"])
             };
             let Some(path) = dialog.save_file() else {
                 return None; // 用户取消
@@ -496,11 +501,11 @@ impl WhoisLookup {
             };
             let _ = this.update_in(cx, |_this, window, cx| match outcome {
                 Some(Ok(path)) => {
-                    let msg = format!("已导出：{}", path.display());
+                    let msg = format!("{}{}", t("已导出："), path.display());
                     notify::toast_success(window, cx, msg);
                 }
                 Some(Err(e)) => {
-                    let msg = format!("导出失败：{e}");
+                    let msg = format!("{}{e}", t("导出失败："));
                     notify::toast_error(window, cx, msg);
                 }
                 None => {}
@@ -543,9 +548,9 @@ impl WhoisLookup {
         let theme = cx.theme().clone();
         let n = domains.len();
         let run_label = if self.running {
-            "查询中...".to_string()
+            t("查询中...").to_string()
         } else {
-            format!("开始查询 ({n})")
+            format!("{} ({})", t("开始查询"), n)
         };
         let running = self.running;
 
@@ -554,10 +559,13 @@ impl WhoisLookup {
         let (total, done, success, avg) = self.stats();
         let rate = (success * 100).checked_div(total).unwrap_or(0) as u64;
         for (label, value) in [
-            ("总数", total.to_string()),
-            ("已完成", done.to_string()),
-            ("成功", format!("{success}（成功率 {rate}%）")),
-            ("平均响应时间", format!("{avg} ms")),
+            (t("总数"), total.to_string()),
+            (t("已完成"), done.to_string()),
+            (
+                t("成功"),
+                format!("{}{}{}{}", success, t("（成功率 "), rate, t("%）")),
+            ),
+            (t("平均响应时间"), format!("{avg} ms")),
         ] {
             stats_card = stats_card.child(
                 div()
@@ -592,12 +600,12 @@ impl WhoisLookup {
                     .flex_1()
                     .gap_2()
                     .child(ui::field(
-                        "批量域名（每行一个或用逗号/空格分隔）",
+                        t("批量域名（每行一个或用逗号/空格分隔）"),
                         ui::edit_area(&self.domains_input, 160.),
                         cx,
                     ))
                     .child(ui::hfield(
-                        "查询源",
+                        t("查询源"),
                         Select::new(&self.source_state).w(px(280.)),
                         cx,
                     ))
@@ -621,7 +629,7 @@ impl WhoisLookup {
                             .child(
                                 ui::secondary_button(
                                     "whois-export-csv",
-                                    "导出 CSV",
+                                    t("导出 CSV"),
                                     cx.listener(|this, _ev: &gpui::ClickEvent, window, cx| {
                                         this.export("csv", window, cx);
                                     }),
@@ -632,7 +640,7 @@ impl WhoisLookup {
                             .child(
                                 ui::secondary_button(
                                     "whois-export-json",
-                                    "导出 JSON",
+                                    t("导出 JSON"),
                                     cx.listener(|this, _ev: &gpui::ClickEvent, window, cx| {
                                         this.export("json", window, cx);
                                     }),
@@ -641,7 +649,7 @@ impl WhoisLookup {
                             )
                             .child(ui::danger_button(
                                 "whois-clear-history",
-                                "清空历史",
+                                t("清空历史"),
                                 cx.listener(|this, _ev: &gpui::ClickEvent, _window, cx| {
                                     this.clear_history(cx);
                                 }),
@@ -655,7 +663,7 @@ impl WhoisLookup {
         let theme = cx.theme().clone();
         let mut header = ui::table_head(cx);
         for (i, label) in COL_LABELS.iter().enumerate() {
-            header = header.child(head_cell(COL_W[i], label, cx));
+            header = header.child(head_cell(COL_W[i], t(label), cx));
         }
 
         let mut rows = Vec::new();
@@ -716,7 +724,7 @@ impl WhoisLookup {
             );
             // 来源（查询中显示占位）
             let source_text = if !row.done {
-                "查询中…".to_string()
+                t("查询中…").to_string()
             } else {
                 p.map(|p| p.source.clone()).unwrap_or_default()
             };
@@ -763,23 +771,25 @@ impl WhoisLookup {
         let mut body = div().flex().flex_col();
         if self.rows.is_empty() {
             body = body.child(ui::empty_hint(
-                "暂无查询结果，输入域名后点击「开始查询」",
+                t("暂无查询结果，输入域名后点击「开始查询」"),
                 cx,
             ));
         } else {
             body = body.child(ui::table_rows(rows, cx));
         }
 
-        ui::card(cx).child(ui::card_header("查询结果", cx)).child(
-            div().id("whois-table").overflow_x_scroll().child(
-                div()
-                    .flex()
-                    .flex_col()
-                    .min_w(px(1470.))
-                    .child(header)
-                    .child(body),
-            ),
-        )
+        ui::card(cx)
+            .child(ui::card_header(t("查询结果"), cx))
+            .child(
+                div().id("whois-table").overflow_x_scroll().child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .min_w(px(1470.))
+                        .child(header)
+                        .child(body),
+                ),
+            )
     }
 
     /// 结果对比（勾选 ≥2 时渲染「字段 × 所选域名」矩阵）。
@@ -814,7 +824,7 @@ impl WhoisLookup {
         ];
 
         // 表头：字段 + 所选域名
-        let mut header = ui::table_head(cx).child(head_cell(90., "字段", cx));
+        let mut header = ui::table_head(cx).child(head_cell(90., t("字段"), cx));
         for row in &sel {
             header = header.child(
                 div()
@@ -837,7 +847,7 @@ impl WhoisLookup {
                     .px_1()
                     .text_size(px(12.))
                     .text_color(theme.colors.muted_foreground)
-                    .child((*label).to_string()),
+                    .child(t(label).to_string()),
             );
             for row in &sel {
                 let text = field_of(row.parsed.as_ref(), *pick);
@@ -858,7 +868,10 @@ impl WhoisLookup {
         }
 
         ui::card(cx)
-            .child(ui::card_header(&format!("结果对比（{}）", sel.len()), cx))
+            .child(ui::card_header(
+                &format!("{} ({})", t("结果对比"), sel.len()),
+                cx,
+            ))
             .child(
                 div().id("whois-compare").overflow_x_scroll().child(
                     div()
@@ -874,13 +887,13 @@ impl WhoisLookup {
     fn render_history(&self, cx: &App) -> Div {
         let theme = cx.theme().clone();
         let mut card = ui::card(cx)
-            .child(ui::card_header("查询历史", cx))
+            .child(ui::card_header(t("查询历史"), cx))
             .child(ui::hint_text(
-                "保留最近 200 条，以下展示最近 20 条（仅本会话有效）",
+                t("保留最近 200 条，以下展示最近 20 条（仅本会话有效）"),
                 cx,
             ));
         if self.history.is_empty() {
-            card = card.child(ui::empty_hint("暂无查询历史", cx));
+            card = card.child(ui::empty_hint(t("暂无查询历史"), cx));
             return card;
         }
         let mut grid = div().flex().flex_wrap().gap_2();
@@ -902,8 +915,10 @@ impl WhoisLookup {
                             .text_size(px(11.))
                             .text_color(theme.colors.muted_foreground)
                             .child(format!(
-                                "来源：{}；注册商：{}",
+                                "{}{}{}{}",
+                                t("来源："),
                                 p.source,
+                                t("；注册商："),
                                 p.registrar.as_deref().unwrap_or("—")
                             )),
                     )
@@ -912,8 +927,10 @@ impl WhoisLookup {
                             .text_size(px(11.))
                             .text_color(theme.colors.muted_foreground)
                             .child(format!(
-                                "注册：{}；过期：{}",
+                                "{}{}{}{}",
+                                t("注册："),
                                 p.created.as_deref().unwrap_or("—"),
+                                t("；过期："),
                                 p.expires.as_deref().unwrap_or("—")
                             )),
                     ),
@@ -932,7 +949,7 @@ impl gpui::Render for WhoisLookup {
             .child(self.render_compare(cx))
             .child(self.render_history(cx))
             .child(ui::hint_text(
-                "频率限制：WHOIS 每 700ms（按服务器区分）。查询历史保存在本次会话中。失败不记录历史。",
+                t("频率限制：WHOIS 每 700ms（按服务器区分）。查询历史保存在本次会话中。失败不记录历史。"),
                 cx,
             ))
     }

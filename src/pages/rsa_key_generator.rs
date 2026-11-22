@@ -20,6 +20,7 @@ use gpui_component::{
 
 use crate::components::select::{select_state, SimpleSelectDelegate};
 use crate::components::{notify, ui};
+use devtools::i18n::t;
 use devtools::tools::rsa_key_generator::{RsaGenerateRequest, RsaKeyPair};
 
 /// 密钥格式家族：私钥与公钥统一选择。
@@ -130,9 +131,9 @@ impl RsaKeyGenerator {
             window,
             cx,
             &[
-                ("2048", "2048 位（推荐）"),
-                ("3072", "3072 位"),
-                ("4096", "4096 位"),
+                ("2048", t("2048 位（推荐）")),
+                ("3072", t("3072 位")),
+                ("4096", t("4096 位")),
             ],
             0,
         );
@@ -146,8 +147,13 @@ impl RsaKeyGenerator {
         )
         .detach();
 
-        // 密钥格式家族（默认 PKCS#8 通用格式）
-        let key_format_select = select_state(window, cx, KeyFormat::OPTIONS, 0);
+        // 密钥格式家族（默认 PKCS#8 通用格式）；标签经 i18n 翻译后传入下拉
+        let format_options: Vec<(&str, &str)> = KeyFormat::OPTIONS
+            .iter()
+            .copied()
+            .map(|(value, label)| (value, t(label)))
+            .collect();
+        let key_format_select = select_state(window, cx, &format_options, 0);
         cx.subscribe_in(
             &key_format_select,
             window,
@@ -170,7 +176,7 @@ impl RsaKeyGenerator {
         .detach();
 
         let comment =
-            cx.new(|cx| InputState::new(window, cx).placeholder("如 user@host，留空使用默认值"));
+            cx.new(|cx| InputState::new(window, cx).placeholder(t("如 user@host，留空使用默认值")));
         // Enter 直接触发生成（回调里无 window，置标记后在 render 消费）
         cx.subscribe(&comment, |this, _, event: &InputEvent, _cx| {
             if matches!(event, InputEvent::PressEnter { .. }) {
@@ -299,7 +305,7 @@ impl RsaKeyGenerator {
             {
                 Some(path) => match std::fs::write(&path, content.as_bytes()) {
                     Ok(_) => Some(Ok(path.to_string_lossy().to_string())),
-                    Err(e) => Some(Err(format!("保存文件失败: {}", e))),
+                    Err(e) => Some(Err(format!("{}: {}", t("保存文件失败"), e))),
                 },
                 None => None,
             }
@@ -309,7 +315,7 @@ impl RsaKeyGenerator {
                 let _ = this.update_in(cx, |_this, window, cx| match result {
                     None => {} // 用户取消
                     Some(Ok(_)) => {
-                        notify::toast_success(window, cx, "文件保存成功");
+                        notify::toast_success(window, cx, t("文件保存成功"));
                     }
                     Some(Err(message)) => {
                         notify::toast_error(window, cx, message);
@@ -345,18 +351,18 @@ impl Render for RsaKeyGenerator {
                         .items_end()
                         .gap_4()
                         .child(ui::field(
-                            "密钥长度",
+                            t("密钥长度"),
                             Select::new(&self.key_size_select),
                             cx,
                         ))
                         .child(ui::field(
-                            "密钥格式",
+                            t("密钥格式"),
                             Select::new(&self.key_format_select),
                             cx,
                         ))
                         .when(format == KeyFormat::OpenSsh, |row| {
                             row.child(ui::field(
-                                "OpenSSH 注释（可选）",
+                                t("OpenSSH 注释（可选）"),
                                 Input::new(&self.comment).w(px(288.)),
                                 cx,
                             ))
@@ -364,9 +370,9 @@ impl Render for RsaKeyGenerator {
                         .child(
                             Button::new("generate")
                                 .label(if self.loading {
-                                    "生成中…"
+                                    t("生成中…")
                                 } else {
-                                    "生成密钥对"
+                                    t("生成密钥对")
                                 })
                                 .primary()
                                 .loading(self.loading)
@@ -386,7 +392,7 @@ impl Render for RsaKeyGenerator {
         // 空态
         if self.result.is_none() && self.error.is_none() {
             page = page.child(ui::empty_hint(
-                "选择密钥长度后点击「生成密钥对」，生成的私钥请妥善保管",
+                t("选择密钥长度后点击「生成密钥对」，生成的私钥请妥善保管"),
                 cx,
             ));
         }
@@ -416,11 +422,11 @@ impl Render for RsaKeyGenerator {
                                             .text_size(px(13.))
                                             .font_weight(gpui::FontWeight::MEDIUM)
                                             .text_color(cx.theme().colors.foreground)
-                                            .child("私钥"),
+                                            .child(t("私钥")),
                                     )
-                                    .child(ui::hint_text(format.private_hint(), cx))
+                                    .child(ui::hint_text(t(format.private_hint()), cx))
                                     .child(ui::hint_text(
-                                        "泄露私钥将危及所有依赖它的系统，切勿提交到代码仓库或聊天工具",
+                                        t("泄露私钥将危及所有依赖它的系统，切勿提交到代码仓库或聊天工具"),
                                         cx,
                                     )),
                             )
@@ -432,12 +438,12 @@ impl Render for RsaKeyGenerator {
                                     .gap_2()
                                     .child(ui::copy_result_button(
                                         "copy-private",
-                                        "复制私钥",
+                                        t("复制私钥"),
                                         private_pair_text,
                                     ))
                                     .child(
                                         Button::new("download-private")
-                                            .label("下载 .pem")
+                                            .label(t("下载 .pem"))
                                             .small()
                                             .secondary()
                                             .on_click(cx.listener(|this, _, window, cx| {
@@ -469,9 +475,9 @@ impl Render for RsaKeyGenerator {
                                             .text_size(px(13.))
                                             .font_weight(gpui::FontWeight::MEDIUM)
                                             .text_color(cx.theme().colors.foreground)
-                                            .child("公钥"),
+                                            .child(t("公钥")),
                                     )
-                                    .child(ui::hint_text(format.public_hint(), cx)),
+                                    .child(ui::hint_text(t(format.public_hint()), cx)),
                             )
                             .child(
                                 div()
@@ -481,12 +487,16 @@ impl Render for RsaKeyGenerator {
                                     .gap_2()
                                     .child(ui::copy_result_button(
                                         "copy-public",
-                                        "复制公钥",
+                                        t("复制公钥"),
                                         public_pair_text,
                                     ))
                                     .child(
                                         Button::new("download-public")
-                                            .label(format!("下载 .{}", format.public_extension().1))
+                                            .label(format!(
+                                                "{} .{}",
+                                                t("下载"),
+                                                format.public_extension().1
+                                            ))
                                             .small()
                                             .secondary()
                                             .on_click(cx.listener(|this, _, window, cx| {

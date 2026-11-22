@@ -5,6 +5,7 @@
 //! 另有「关于」「软件更新」小窗口（app 菜单打开）。
 
 use crate::{about::AboutView, main_window::MainWindow, update::UpdateView, window_ctl};
+use devtools::i18n::t;
 use devtools::registry;
 use gpui::{
     px, size, App, AppContext as _, Bounds, Entity, Global, WindowBounds, WindowHandle,
@@ -54,7 +55,7 @@ pub fn create_main_window(cx: &mut App, visible: bool) {
     let options = WindowOptions {
         window_bounds: Some(WindowBounds::Windowed(bounds)),
         titlebar: Some(gpui::TitlebarOptions {
-            title: Some("DevTools 开发者工具箱".into()),
+            title: Some(t("DevTools 开发者工具箱").into()),
             appears_transparent: false,
             traffic_light_position: None,
         }),
@@ -202,7 +203,7 @@ pub fn open_about(cx: &mut App) {
     let options = WindowOptions {
         window_bounds: Some(WindowBounds::Windowed(bounds)),
         titlebar: Some(gpui::TitlebarOptions {
-            title: Some("关于".into()),
+            title: Some(t("关于").into()),
             appears_transparent: false,
             traffic_light_position: None,
         }),
@@ -262,7 +263,7 @@ pub fn open_update(cx: &mut App) {
     let options = WindowOptions {
         window_bounds: Some(WindowBounds::Windowed(bounds)),
         titlebar: Some(gpui::TitlebarOptions {
-            title: Some("软件更新".into()),
+            title: Some(t("软件更新").into()),
             appears_transparent: false,
             traffic_light_position: None,
         }),

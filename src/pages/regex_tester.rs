@@ -6,6 +6,7 @@
 
 use std::time::Duration;
 
+use devtools::i18n::t;
 use devtools::tools::regex_tester::{
     replace_regex, test_regex, validate_regex, RegexFlags, RegexReplaceResult, RegexTestResult,
 };
@@ -69,11 +70,11 @@ impl RegexTester {
 
     fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let pattern_input =
-            cx.new(|cx| InputState::new(window, cx).placeholder("输入正则表达式..."));
+            cx.new(|cx| InputState::new(window, cx).placeholder(t("输入正则表达式...")));
         let replacement_input =
-            cx.new(|cx| InputState::new(window, cx).placeholder("输入替换文本..."));
+            cx.new(|cx| InputState::new(window, cx).placeholder(t("输入替换文本...")));
         let text_area =
-            cx.new(|cx| TextareaState::new(window, cx).placeholder("输入要测试的文本..."));
+            cx.new(|cx| TextareaState::new(window, cx).placeholder(t("输入要测试的文本...")));
 
         let this = Self {
             pattern_input,
@@ -246,7 +247,7 @@ impl RegexTester {
             .gap_2()
             .child(
                 Toggle::new("rt-mode-test")
-                    .label("测试匹配")
+                    .label(t("测试匹配"))
                     .outline()
                     .checked(self.mode == Mode::Test)
                     .on_click(cx.listener(|this, _checked: &bool, _window, cx| {
@@ -256,7 +257,7 @@ impl RegexTester {
             )
             .child(
                 Toggle::new("rt-mode-replace")
-                    .label("替换文本")
+                    .label(t("替换文本"))
                     .outline()
                     .checked(self.mode == Mode::Replace)
                     .on_click(cx.listener(|this, _checked: &bool, _window, cx| {
@@ -270,20 +271,20 @@ impl RegexTester {
             div()
                 .text_size(px(12.))
                 .text_color(theme.colors.muted_foreground)
-                .child("正则表达式"),
+                .child(t("正则表达式")),
         );
         label_row = match self.pattern_valid {
             Some(true) => label_row.child(
                 div()
                     .text_size(px(11.))
                     .text_color(theme.colors.success)
-                    .child("✓ 语法正确"),
+                    .child(t("✓ 语法正确")),
             ),
             Some(false) => label_row.child(
                 div()
                     .text_size(px(11.))
                     .text_color(theme.colors.danger)
-                    .child("✗ 语法错误"),
+                    .child(t("✗ 语法错误")),
             ),
             None => label_row,
         };
@@ -296,7 +297,7 @@ impl RegexTester {
                             .text_size(px(12.))
                             .font_weight(FontWeight::MEDIUM)
                             .text_color(theme.colors.info)
-                            .child(format!("找到 {} 个匹配", r.match_count)),
+                            .child(format!("{} {} {}", t("找到"), r.match_count, t("个匹配"))),
                     );
                 }
             }
@@ -312,35 +313,35 @@ impl RegexTester {
 
         // 正则标志 checkbox（2 列；字段为 core RegexFlags 的 snake_case 命名）
         let flag_i = Checkbox::new("rt-flag-i")
-            .label("忽略大小写 (i)")
+            .label(t("忽略大小写 (i)"))
             .checked(self.flags.case_insensitive)
             .on_click(cx.listener(|this, checked: &bool, _window, cx| {
                 this.flags.case_insensitive = *checked;
                 cx.notify();
             }));
         let flag_m = Checkbox::new("rt-flag-m")
-            .label("多行模式 (m)")
+            .label(t("多行模式 (m)"))
             .checked(self.flags.multiline)
             .on_click(cx.listener(|this, checked: &bool, _window, cx| {
                 this.flags.multiline = *checked;
                 cx.notify();
             }));
         let flag_s = Checkbox::new("rt-flag-s")
-            .label(". 匹配换行 (s)")
+            .label(t(". 匹配换行 (s)"))
             .checked(self.flags.dot_matches_new_line)
             .on_click(cx.listener(|this, checked: &bool, _window, cx| {
                 this.flags.dot_matches_new_line = *checked;
                 cx.notify();
             }));
         let flag_u = Checkbox::new("rt-flag-u")
-            .label("非贪婪模式 (U)")
+            .label(t("非贪婪模式 (U)"))
             .checked(self.flags.swap_greed)
             .on_click(cx.listener(|this, checked: &bool, _window, cx| {
                 this.flags.swap_greed = *checked;
                 cx.notify();
             }));
         let flag_unicode = Checkbox::new("rt-flag-unicode")
-            .label("Unicode 支持")
+            .label(t("Unicode 支持"))
             .checked(self.flags.unicode)
             .on_click(cx.listener(|this, checked: &bool, _window, cx| {
                 this.flags.unicode = *checked;
@@ -370,7 +371,7 @@ impl RegexTester {
                                 div()
                                     .text_size(px(12.))
                                     .text_color(theme.colors.muted_foreground)
-                                    .child("正则引擎"),
+                                    .child(t("正则引擎")),
                             )
                             .child(engine_row),
                     )
@@ -383,7 +384,7 @@ impl RegexTester {
                                 div()
                                     .text_size(px(12.))
                                     .text_color(theme.colors.muted_foreground)
-                                    .child("操作模式"),
+                                    .child(t("操作模式")),
                             )
                             .child(mode_row),
                     )
@@ -405,12 +406,12 @@ impl RegexTester {
                                     div()
                                         .text_size(px(12.))
                                         .text_color(theme.colors.muted_foreground)
-                                        .child("替换文本"),
+                                        .child(t("替换文本")),
                                 )
                                 .child(Input::new(&self.replacement_input).font_family("Menlo"))
                                 .child(
                                     Checkbox::new("rt-replace-all")
-                                        .label("替换所有匹配")
+                                        .label(t("替换所有匹配"))
                                         .checked(self.replace_all)
                                         .on_click(cx.listener(
                                             |this, checked: &bool, _window, cx| {
@@ -430,7 +431,7 @@ impl RegexTester {
                                 div()
                                     .text_size(px(12.))
                                     .text_color(theme.colors.muted_foreground)
-                                    .child("正则标志"),
+                                    .child(t("正则标志")),
                             )
                             .child(
                                 div()
@@ -445,8 +446,8 @@ impl RegexTester {
                             ),
                     )
                     .child(
-                        ui::primary_button("rt-run", run_label, on_run)
-                            .when(self.loading, |b| b.label(running_label).loading(true))
+                        ui::primary_button("rt-run", t(run_label), on_run)
+                            .when(self.loading, |b| b.label(t(running_label)).loading(true))
                             .disabled(disabled),
                     )
                     .children(self.error.clone().map(|e| ui::error_banner(&e, cx))),
@@ -461,7 +462,7 @@ impl RegexTester {
                     div()
                         .text_size(px(12.))
                         .text_color(theme.colors.muted_foreground)
-                        .child("测试文本"),
+                        .child(t("测试文本")),
                 )
                 .child(ui::edit_area(&self.text_area, text_height)),
         );
@@ -491,7 +492,7 @@ impl RegexTester {
                     .text_size(px(14.))
                     .font_weight(FontWeight::MEDIUM)
                     .text_color(theme.colors.foreground)
-                    .child(title),
+                    .child(t(title)),
             )
             // 结果区：分组卡（无边框，popover 底），滚动承载匹配明细
             .child(
@@ -507,7 +508,7 @@ impl RegexTester {
     fn render_test_result(&self, cx: &App) -> Div {
         let theme = cx.theme().clone();
         match &self.test_result {
-            None => ui::empty_hint("输入正则表达式与测试文本后点击「测试匹配」查看结果", cx),
+            None => ui::empty_hint(t("输入正则表达式与测试文本后点击「测试匹配」查看结果"), cx),
             Some(r) if !r.is_valid => invalid_card(r.error_message.as_deref(), cx),
             Some(r) if r.matches.is_empty() => div()
                 .flex()
@@ -517,7 +518,7 @@ impl RegexTester {
                 .py_6()
                 .text_size(px(13.))
                 .text_color(theme.colors.muted_foreground)
-                .child("没有找到匹配项"),
+                .child(t("没有找到匹配项")),
             Some(r) => {
                 // 匹配明细列表：行间 hairline 分隔（末行无线）走容器 helper
                 let mut items: Vec<Div> = Vec::with_capacity(r.matches.len());
@@ -544,7 +545,7 @@ impl RegexTester {
                                     div()
                                         .text_size(px(12.))
                                         .text_color(theme.colors.muted_foreground)
-                                        .child(format!("匹配 {}:", idx + 1)),
+                                        .child(format!("{}{}:", t("匹配 "), idx + 1)),
                                 )
                                 .child(
                                     div()
@@ -561,7 +562,7 @@ impl RegexTester {
                                     div()
                                         .text_size(px(12.))
                                         .text_color(theme.colors.muted_foreground)
-                                        .child(format!("位置: {}-{}", m.start, m.end)),
+                                        .child(format!("{}: {}-{}", t("位置"), m.start, m.end)),
                                 ),
                         )
                         // 编号捕获组
@@ -574,14 +575,16 @@ impl RegexTester {
                                     div()
                                         .text_size(px(12.))
                                         .text_color(theme.colors.muted_foreground)
-                                        .child(format!("组 {}:", gi + 1)),
+                                        .child(format!("{} {}:", t("组"), gi + 1)),
                                 )
                                 .child(
                                     div()
                                         .text_size(px(13.))
                                         .font_family("Menlo")
                                         .text_color(theme.colors.foreground)
-                                        .child(g.clone().unwrap_or_else(|| "(未匹配)".to_string())),
+                                        .child(
+                                            g.clone().unwrap_or_else(|| t("(未匹配)").to_string()),
+                                        ),
                                 )
                         }))
                         // 命名捕获组
@@ -602,7 +605,9 @@ impl RegexTester {
                                         .font_family("Menlo")
                                         .text_color(theme.colors.foreground)
                                         .child(
-                                            value.clone().unwrap_or_else(|| "(未匹配)".to_string()),
+                                            value
+                                                .clone()
+                                                .unwrap_or_else(|| t("(未匹配)").to_string()),
                                         ),
                                 )
                         }));
@@ -617,7 +622,7 @@ impl RegexTester {
                             .text_size(px(13.))
                             .font_weight(FontWeight::MEDIUM)
                             .text_color(theme.colors.foreground)
-                            .child("匹配详情："),
+                            .child(t("匹配详情：")),
                     )
                     .child(ui::table_rows(items, cx))
             }
@@ -627,14 +632,14 @@ impl RegexTester {
     fn render_replace_result(&self, cx: &App) -> Div {
         let theme = cx.theme().clone();
         match &self.replace_result {
-            None => ui::empty_hint("输入正则表达式与替换文本后点击「执行替换」查看结果", cx),
+            None => ui::empty_hint(t("输入正则表达式与替换文本后点击「执行替换」查看结果"), cx),
             Some(r) if !r.is_valid => invalid_card(r.error_message.as_deref(), cx),
             Some(r) => div()
                 .flex()
                 .flex_col()
                 .gap_2()
                 .child(ui::success_banner(
-                    &format!("完成 {} 个替换", r.replacement_count),
+                    &format!("{} {} {}", t("完成"), r.replacement_count, t("个替换")),
                     cx,
                 ))
                 .child(
@@ -642,7 +647,7 @@ impl RegexTester {
                         .text_size(px(13.))
                         .font_weight(FontWeight::MEDIUM)
                         .text_color(theme.colors.foreground)
-                        .child("替换结果:"),
+                        .child(t("替换结果:")),
                 )
                 .child(
                     ui::mono_block(
@@ -659,7 +664,7 @@ impl RegexTester {
 /// 「正则表达式无效」提示（test / replace 共用；浅底同色文字，无边框）。
 fn invalid_card(error_message: Option<&str>, cx: &App) -> Div {
     let theme = cx.theme().clone();
-    let mut banner = ui::rich_banner("正则表达式无效", theme.colors.danger, cx)
+    let mut banner = ui::rich_banner(t("正则表达式无效"), theme.colors.danger, cx)
         .flex_col()
         .items_start()
         .gap_1();

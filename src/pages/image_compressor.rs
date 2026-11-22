@@ -20,6 +20,7 @@ use gpui_component::select::{Select, SelectEvent, SelectState};
 use gpui_component::slider::{Slider, SliderEvent, SliderState};
 use gpui_component::{ActiveTheme as _, Disableable as _};
 
+use devtools::i18n::t;
 use devtools::tools::image_compressor::{compress_image, CompressRequest};
 use devtools::tools::image_converter::get_image_info_command;
 
@@ -102,7 +103,16 @@ impl ImageCompressor {
     }
 
     fn new(window: &mut Window, cx: &mut gpui::Context<Self>) -> Self {
-        let output_sel = select_state(window, cx, OUTPUT_FORMATS, 0);
+        // 常量 label 含中文：使用处经 t() 翻译（select_state 会拷贝 label）
+        let output_options: Vec<(String, String)> = OUTPUT_FORMATS
+            .iter()
+            .map(|(value, label)| (value.to_string(), t(label).to_string()))
+            .collect();
+        let output_refs: Vec<(&str, &str)> = output_options
+            .iter()
+            .map(|(value, label)| (value.as_str(), label.as_str()))
+            .collect();
+        let output_sel = select_state(window, cx, &output_refs, 0);
         cx.subscribe(
             &output_sel,
             |this, _, ev: &SelectEvent<SimpleSelectDelegate>, cx| {
@@ -122,7 +132,15 @@ impl ImageCompressor {
         })
         .detach();
 
-        let png_sel = select_state(window, cx, PNG_LEVELS, 2); // 默认 3
+        let png_options: Vec<(String, String)> = PNG_LEVELS
+            .iter()
+            .map(|(value, label)| (value.to_string(), t(label).to_string()))
+            .collect();
+        let png_refs: Vec<(&str, &str)> = png_options
+            .iter()
+            .map(|(value, label)| (value.as_str(), label.as_str()))
+            .collect();
+        let png_sel = select_state(window, cx, &png_refs, 2); // 默认 3
         cx.subscribe(
             &png_sel,
             |this, _, ev: &SelectEvent<SimpleSelectDelegate>, cx| {
@@ -135,8 +153,8 @@ impl ImageCompressor {
         .detach();
 
         // placeholder 挂在 InputState 上（gpui-component 0.10 的 Input 元素无 placeholder 方法）
-        let max_width_input = cx.new(|cx| InputState::new(window, cx).placeholder("如 1920"));
-        let max_height_input = cx.new(|cx| InputState::new(window, cx).placeholder("如 1080"));
+        let max_width_input = cx.new(|cx| InputState::new(window, cx).placeholder(t("如 1920")));
+        let max_height_input = cx.new(|cx| InputState::new(window, cx).placeholder(t("如 1080")));
 
         Self {
             mode: "quality".to_string(),
@@ -190,7 +208,7 @@ impl ImageCompressor {
         let rx = crate::core_rt::submit(cx, async move {
             let refs: Vec<&str> = exts.iter().map(|s| s.as_str()).collect();
             rfd::FileDialog::new()
-                .add_filter("图片文件", &refs)
+                .add_filter(t("图片文件"), &refs)
                 .pick_files()
         });
         cx.spawn_in(window, async move |this, cx| {
@@ -242,7 +260,7 @@ impl ImageCompressor {
         if fresh.is_empty() {
             self.message = Some((
                 false,
-                "未找到支持的图片文件 (jpg/jpeg/png/gif/bmp/tiff/tif/webp)".to_string(),
+                t("未找到支持的图片文件 (jpg/jpeg/png/gif/bmp/tiff/tif/webp)").to_string(),
             ));
             cx.notify();
             return;
@@ -307,7 +325,7 @@ impl ImageCompressor {
             return;
         }
         if self.custom_output && self.custom_dir.is_empty() {
-            self.message = Some((false, "已启用自定义输出目录, 但未选择目录".to_string()));
+            self.message = Some((false, t("已启用自定义输出目录, 但未选择目录").to_string()));
             cx.notify();
             return;
         }
@@ -422,11 +440,21 @@ impl ImageCompressor {
             this.update_in(cx, |this, _w, cx| {
                 this.converting = false;
                 this.message = Some(if failed == 0 {
-                    (true, format!("✅ 批量压缩完成: 成功 {} 个文件", success))
+                    (
+                        true,
+                        format!("✅ {} {} {}", t("批量压缩完成: 成功"), success, t("个文件")),
+                    )
                 } else {
                     (
                         false,
-                        format!("批量压缩完成: 成功 {} 个, 失败 {} 个", success, failed),
+                        format!(
+                            "{} {} {} {} {}",
+                            t("批量压缩完成: 成功"),
+                            success,
+                            t("个, 失败"),
+                            failed,
+                            t("个")
+                        ),
                     )
                 });
                 cx.notify();
@@ -464,7 +492,7 @@ impl ImageCompressor {
 
     fn copy_text(&mut self, text: String, window: &mut Window, cx: &mut gpui::Context<Self>) {
         cx.write_to_clipboard(ClipboardItem::new_string(text));
-        notify::toast_success(window, cx, "已复制到剪贴板");
+        notify::toast_success(window, cx, t("已复制到剪贴板"));
     }
 
     fn choose_dir(&mut self, window: &mut Window, cx: &mut gpui::Context<Self>) {
@@ -625,7 +653,7 @@ impl ImageCompressor {
         let converting = self.converting;
 
         let card = ui::card(cx)
-            .child(ui::card_header("压缩设置", cx))
+            .child(ui::card_header(t("压缩设置"), cx))
             // 压缩模式 + 输出格式
             .child(
                 div()
@@ -635,7 +663,7 @@ impl ImageCompressor {
                     .child(
                         div().flex_1().min_w(px(300.)).child(
                             ui::field(
-                                "压缩模式",
+                                t("压缩模式"),
                                 div()
                                     .flex()
                                     .flex_col()
@@ -647,7 +675,7 @@ impl ImageCompressor {
                                             .gap_4()
                                             .child(
                                                 Radio::new("ic-mode-lossless")
-                                                    .label("无损优化")
+                                                    .label(t("无损优化"))
                                                     .checked(self.mode == "lossless")
                                                     .disabled(converting)
                                                     .on_click(cx.listener(
@@ -659,7 +687,7 @@ impl ImageCompressor {
                                             )
                                             .child(
                                                 Radio::new("ic-mode-quality")
-                                                    .label("质量压缩")
+                                                    .label(t("质量压缩"))
                                                     .checked(self.mode == "quality")
                                                     .disabled(converting)
                                                     .on_click(cx.listener(
@@ -672,9 +700,9 @@ impl ImageCompressor {
                                     )
                                     .child(ui::hint_text(
                                         if self.mode == "lossless" {
-                                            "PNG 由 oxipng 真无损优化(对已优化的 PNG 效果有限); JPEG 以最高质量重编码(近似无损)"
+                                            t("PNG 由 oxipng 真无损优化(对已优化的 PNG 效果有限); JPEG 以最高质量重编码(近似无损)")
                                         } else {
-                                            "PNG 走色彩量化(视觉无损, 类 TinyPNG); JPEG/WebP 通过降低质量换取更小体积"
+                                            t("PNG 走色彩量化(视觉无损, 类 TinyPNG); JPEG/WebP 通过降低质量换取更小体积")
                                         },
                                         cx,
                                     )),
@@ -685,13 +713,13 @@ impl ImageCompressor {
                     .child(
                         div().flex_1().min_w(px(220.)).child(
                             ui::field(
-                                "输出格式",
+                                t("输出格式"),
                                 div()
                                     .flex()
                                     .flex_col()
                                     .gap_1()
                                     .child(Select::new(&self.output_sel).disabled(converting))
-                                    .child(ui::hint_text("WebP 仅支持无损编码", cx)),
+                                    .child(ui::hint_text(t("WebP 仅支持无损编码"), cx)),
                                 cx,
                             ),
                         ),
@@ -702,7 +730,7 @@ impl ImageCompressor {
         let card = if self.quality_visible() {
             card.child(
                 ui::field(
-                    &format!("图片质量: {}%", self.quality),
+                    &format!("{}: {}%", t("图片质量"), self.quality),
                     div()
                         .flex()
                         .items_center()
@@ -722,7 +750,7 @@ impl ImageCompressor {
                     cx,
                 )
                 .child(ui::hint_text(
-                    "质量越低文件越小(PNG 为色彩数, JPEG/WebP 为编码质量), 建议 70-90",
+                    t("质量越低文件越小(PNG 为色彩数, JPEG/WebP 为编码质量), 建议 70-90"),
                     cx,
                 )),
             )
@@ -733,13 +761,13 @@ impl ImageCompressor {
         // PNG 无损级别（输出含 png 时显示）
         let card = if self.png_level_applies() {
             card.child(ui::field(
-                "PNG 无损优化级别",
+                t("PNG 无损优化级别"),
                 div()
                     .flex()
                     .flex_col()
                     .gap_1()
                     .child(Select::new(&self.png_sel).disabled(converting))
-                    .child(ui::hint_text("级别越高压缩率越好, 但耗时增加", cx)),
+                    .child(ui::hint_text(t("级别越高压缩率越好, 但耗时增加"), cx)),
                 cx,
             ))
         } else {
@@ -749,7 +777,7 @@ impl ImageCompressor {
         // 等比缩放
         let card = card.child(
             ui::field(
-                "等比缩放 (可选, 留空则保持原尺寸)",
+                t("等比缩放 (可选, 留空则保持原尺寸)"),
                 div()
                     .flex()
                     .flex_wrap()
@@ -764,7 +792,7 @@ impl ImageCompressor {
                                 div()
                                     .text_size(px(12.))
                                     .text_color(theme.colors.muted_foreground)
-                                    .child("最大宽度"),
+                                    .child(t("最大宽度")),
                             )
                             .child(
                                 Input::new(&self.max_width_input)
@@ -787,7 +815,7 @@ impl ImageCompressor {
                                 div()
                                     .text_size(px(12.))
                                     .text_color(theme.colors.muted_foreground)
-                                    .child("最大高度"),
+                                    .child(t("最大高度")),
                             )
                             .child(
                                 Input::new(&self.max_height_input)
@@ -804,7 +832,7 @@ impl ImageCompressor {
                 cx,
             )
             .child(ui::hint_text(
-                "同时填写时按约束框等比缩放; 只填一项则仅约束该方向",
+                t("同时填写时按约束框等比缩放; 只填一项则仅约束该方向"),
                 cx,
             )),
         );
@@ -812,7 +840,7 @@ impl ImageCompressor {
         // 移除 EXIF（默认勾选）
         card.child(
             Checkbox::new("ic-opt-exif")
-                .label("移除 EXIF 等元数据 (保护隐私且进一步减小体积)")
+                .label(t("移除 EXIF 等元数据 (保护隐私且进一步减小体积)"))
                 .checked(self.remove_exif)
                 .disabled(converting)
                 .on_click(cx.listener(|this, checked: &bool, _w, cx| {
@@ -822,14 +850,14 @@ impl ImageCompressor {
         )
         // 输出位置
         .child(ui::field(
-            "输出位置",
+            t("输出位置"),
             div()
                 .flex()
                 .flex_wrap()
                 .gap_4()
                 .child(
                     Radio::new("ic-out-auto")
-                        .label("自动创建 compressed 子目录")
+                        .label(t("自动创建 compressed 子目录"))
                         .checked(!self.custom_output)
                         .disabled(converting)
                         .on_click(cx.listener(|this, _c: &bool, _w, cx| {
@@ -839,7 +867,7 @@ impl ImageCompressor {
                 )
                 .child(
                     Radio::new("ic-out-custom")
-                        .label("自定义输出目录")
+                        .label(t("自定义输出目录"))
                         .checked(self.custom_output)
                         .disabled(converting)
                         .on_click(cx.listener(|this, _c: &bool, _w, cx| {
@@ -853,7 +881,7 @@ impl ImageCompressor {
             Some(self.render_custom_dir(cx))
         } else {
             Some(ui::hint_text(
-                "压缩结果将写入每个源文件同级的 compressed/ 子目录",
+                t("压缩结果将写入每个源文件同级的 compressed/ 子目录"),
                 cx,
             ))
         })
@@ -863,14 +891,14 @@ impl ImageCompressor {
         let converting = self.converting;
         // 只读目录显示框（muted 底路径块）+ 右侧操作按钮
         let dir_text: &str = if self.custom_dir.is_empty() {
-            "选择输出目录..."
+            t("选择输出目录...")
         } else {
             &self.custom_dir
         };
         let mut dir_row = ui::file_row(dir_text, cx).child(
             ui::secondary_button(
                 "ic-choose-dir",
-                "选择目录",
+                t("选择目录"),
                 cx.listener(|this, _ev, window, cx| this.choose_dir(window, cx)),
             )
             .disabled(converting),
@@ -879,7 +907,7 @@ impl ImageCompressor {
             dir_row = dir_row.child(
                 ui::secondary_button(
                     "ic-clear-dir",
-                    "清除",
+                    t("清除"),
                     cx.listener(|this, _ev, _window, cx| {
                         this.custom_dir.clear();
                         cx.notify();
@@ -894,11 +922,12 @@ impl ImageCompressor {
             .gap_2()
             .pl_4()
             .child(dir_row)
-            .children(
-                (!self.custom_dir.is_empty()).then(|| {
-                    ui::hint_text(&format!("压缩后的文件将保存到: {}", self.custom_dir), cx)
-                }),
-            )
+            .children((!self.custom_dir.is_empty()).then(|| {
+                ui::hint_text(
+                    &format!("{} {}", t("压缩后的文件将保存到:"), self.custom_dir),
+                    cx,
+                )
+            }))
     }
 
     fn render_file_list(&self, cx: &gpui::Context<Self>) -> gpui::Div {
@@ -914,7 +943,7 @@ impl ImageCompressor {
                         .text_size(px(14.))
                         .font_weight(gpui::FontWeight::MEDIUM)
                         .text_color(theme.colors.foreground)
-                        .child(format!("待压缩文件 ({})", self.files.len())),
+                        .child(format!("{} ({})", t("待压缩文件"), self.files.len())),
                 )
                 .child(
                     div()
@@ -922,12 +951,12 @@ impl ImageCompressor {
                         .gap_2()
                         .child(ui::secondary_button(
                             "ic-add-files",
-                            "添加文件",
+                            t("添加文件"),
                             cx.listener(|this, _ev, window, cx| this.add_files(window, cx)),
                         ))
                         .child(ui::secondary_button(
                             "ic-add-dir",
-                            "添加目录",
+                            t("添加目录"),
                             cx.listener(|this, _ev, window, cx| this.add_dir(window, cx)),
                         )),
                 ),
@@ -935,7 +964,7 @@ impl ImageCompressor {
 
         if self.files.is_empty() {
             return card.child(ui::empty_hint(
-                "暂无文件, 点击右上角「添加文件」或「添加目录」",
+                t("暂无文件, 点击右上角「添加文件」或「添加目录」"),
                 cx,
             ));
         }
@@ -944,13 +973,13 @@ impl ImageCompressor {
         let header = ui::table_head(cx)
             .px_2()
             .pb_1()
-            .child(ui::table_head_cell("预览", cx).w(px(56.)))
-            .child(ui::table_head_cell("文件名", cx).flex_1().min_w_0())
-            .child(ui::table_head_cell("原始大小", cx).w(px(84.)))
-            .child(ui::table_head_cell("压缩后", cx).w(px(140.)))
-            .child(ui::table_head_cell("尺寸", cx).w(px(170.)))
-            .child(ui::table_head_cell("状态", cx).w(px(76.)))
-            .child(ui::table_head_cell("操作", cx).w(px(52.)));
+            .child(ui::table_head_cell(t("预览"), cx).w(px(56.)))
+            .child(ui::table_head_cell(t("文件名"), cx).flex_1().min_w_0())
+            .child(ui::table_head_cell(t("原始大小"), cx).w(px(84.)))
+            .child(ui::table_head_cell(t("压缩后"), cx).w(px(140.)))
+            .child(ui::table_head_cell(t("尺寸"), cx).w(px(170.)))
+            .child(ui::table_head_cell(t("状态"), cx).w(px(76.)))
+            .child(ui::table_head_cell(t("操作"), cx).w(px(52.)));
 
         // 数据行（行间 hairline 由 table_rows 统一处理）
         let rows: Vec<gpui::Div> = self
@@ -1074,10 +1103,10 @@ impl ImageCompressor {
         let dims_text = match &row.out_dims {
             Some(out_dims) => format!(
                 "{} → {}",
-                row.dims.clone().unwrap_or_else(|| "未知".to_string()),
+                row.dims.clone().unwrap_or_else(|| t("未知").to_string()),
                 out_dims
             ),
-            None => row.dims.clone().unwrap_or_else(|| "未知".to_string()),
+            None => row.dims.clone().unwrap_or_else(|| t("未知").to_string()),
         };
 
         div()
@@ -1101,7 +1130,7 @@ impl ImageCompressor {
                     .child(if row.size > 0 {
                         format_file_size(row.size)
                     } else {
-                        "未知".to_string()
+                        t("未知").to_string()
                     }),
             )
             // 压缩后（行内对比信息）
@@ -1121,7 +1150,7 @@ impl ImageCompressor {
             .child(
                 div().w(px(52.)).flex().justify_center().child(
                     Button::new(("ic-del", index))
-                        .label("删除")
+                        .label(t("删除"))
                         .ghost()
                         .on_click(cx.listener(move |this, _ev, _window, cx| {
                             this.remove_row(index, cx);
@@ -1186,17 +1215,17 @@ impl ImageCompressor {
                     .gap_4()
                     .pb_1()
                     .child(
-                        ui::stat_tile(&count.to_string(), "已压缩", cx)
+                        ui::stat_tile(&count.to_string(), t("已压缩"), cx)
                             .flex_1()
                             .min_w(px(140.)),
                     )
                     .child(
-                        ui::stat_tile(&format_file_size(total_original), "原始合计", cx)
+                        ui::stat_tile(&format_file_size(total_original), t("原始合计"), cx)
                             .flex_1()
                             .min_w(px(140.)),
                     )
                     .child(
-                        ui::stat_tile(&format_file_size(total_compressed), "压缩后", cx)
+                        ui::stat_tile(&format_file_size(total_compressed), t("压缩后"), cx)
                             .flex_1()
                             .min_w(px(140.)),
                     )
@@ -1226,7 +1255,7 @@ impl ImageCompressor {
                                 div()
                                     .text_size(px(11.))
                                     .text_color(theme.colors.success)
-                                    .child("节省空间"),
+                                    .child(t("节省空间")),
                             ),
                     ),
             );
@@ -1244,7 +1273,13 @@ impl ImageCompressor {
                             .items_center()
                             .justify_between()
                             .child(ui::hint_text(
-                                &format!("总体进度: {} / {} 个文件", current, total),
+                                &format!(
+                                    "{} {} / {} {}",
+                                    t("总体进度:"),
+                                    current,
+                                    total,
+                                    t("个文件")
+                                ),
                                 cx,
                             ))
                             .child(
@@ -1268,9 +1303,9 @@ impl ImageCompressor {
                     ui::primary_button(
                         "ic-start",
                         if self.converting {
-                            "压缩中..."
+                            t("压缩中...")
                         } else {
-                            "开始压缩"
+                            t("开始压缩")
                         },
                         cx.listener(|this, _ev, window, cx| this.start_compress(window, cx)),
                     )
@@ -1281,7 +1316,7 @@ impl ImageCompressor {
                 .child(
                     ui::secondary_button(
                         "ic-clear",
-                        "清空列表",
+                        t("清空列表"),
                         cx.listener(|this, _ev, _window, cx| this.clear_list(cx)),
                     )
                     .disabled(self.converting)
@@ -1298,9 +1333,9 @@ impl ImageCompressor {
 fn status_badge(status: RowStatus, cx: &gpui::Context<ImageCompressor>) -> gpui::Div {
     let theme = cx.theme().clone();
     match status {
-        RowStatus::Pending => ui::badge("等待中", theme.colors.warning),
-        RowStatus::Compressing => ui::badge("压缩中...", theme.colors.info),
-        RowStatus::Completed => ui::badge("已完成", theme.colors.success),
-        RowStatus::Error => ui::badge("失败", theme.colors.danger),
+        RowStatus::Pending => ui::badge(t("等待中"), theme.colors.warning),
+        RowStatus::Compressing => ui::badge(t("压缩中..."), theme.colors.info),
+        RowStatus::Completed => ui::badge(t("已完成"), theme.colors.success),
+        RowStatus::Error => ui::badge(t("失败"), theme.colors.danger),
     }
 }

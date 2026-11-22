@@ -7,6 +7,7 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
+use devtools::i18n::t;
 use devtools::tools::sql_to_go::{convert_sql_to_go, GoStructOutput, SqlToGoOptions};
 use futures::StreamExt as _;
 use gpui::{
@@ -81,7 +82,7 @@ impl SqlToGo {
         let sql_input = cx.new(|cx| {
             EditorState::new(window, cx)
                 .language("sql")
-                .placeholder("输入 CREATE TABLE SQL 语句…")
+                .placeholder(t("输入 CREATE TABLE SQL 语句…"))
         });
         let go_output = cx.new(|cx| EditorState::new(window, cx).language("go"));
         let json_select = select_state(window, cx, &Self::json_options(true), 1);
@@ -126,12 +127,12 @@ impl SqlToGo {
     fn json_options(go124: bool) -> Vec<(&'static str, &'static str)> {
         if go124 {
             vec![
-                ("none", "无"),
+                ("none", t("无")),
                 ("omitempty", "omitempty"),
                 ("omitzero", "omitzero"),
             ]
         } else {
-            vec![("none", "无"), ("omitempty", "omitempty")]
+            vec![("none", t("无")), ("omitempty", "omitempty")]
         }
     }
 
@@ -273,7 +274,7 @@ impl Render for SqlToGo {
         let config_row = ui::toolbar()
             .child(
                 Checkbox::new("sqltogo-plural")
-                    .label("复数表名")
+                    .label(t("复数表名"))
                     .checked(self.enable_pluralization)
                     .on_click(cx.listener(|this, checked: &bool, window, cx| {
                         this.enable_pluralization = *checked;
@@ -282,7 +283,7 @@ impl Render for SqlToGo {
             )
             .child(
                 Checkbox::new("sqltogo-exported")
-                    .label("导出字段")
+                    .label(t("导出字段"))
                     .checked(self.exported_fields)
                     .on_click(cx.listener(|this, checked: &bool, window, cx| {
                         this.exported_fields = *checked;
@@ -301,7 +302,7 @@ impl Render for SqlToGo {
                     })),
             )
             .child(ui::hfield(
-                "JSON 处理:",
+                t("JSON 处理:"),
                 Select::new(&self.json_select).w(px(160.)),
                 cx,
             ));
@@ -321,7 +322,7 @@ impl Render for SqlToGo {
                     })),
             );
         }
-        let tags_row = ui::toolbar().child(ui::hfield("标签:", tag_checkboxes, cx));
+        let tags_row = ui::toolbar().child(ui::hfield(t("标签:"), tag_checkboxes, cx));
 
         // 左右分栏（共享行结构，与 json_to_go 一致）：标题一行、编辑器一行，
         // 两侧编辑器起始 Y 天然对齐
@@ -346,7 +347,7 @@ impl Render for SqlToGo {
                                     .text_size(px(13.))
                                     .font_weight(FontWeight::MEDIUM)
                                     .text_color(theme.colors.foreground)
-                                    .child("SQL 输入"),
+                                    .child(t("SQL 输入")),
                             )
                             .child(
                                 div()
@@ -355,14 +356,14 @@ impl Render for SqlToGo {
                                     .gap_2()
                                     .child(ui::secondary_button(
                                         "sqltogo-example",
-                                        "示例",
+                                        t("示例"),
                                         cx.listener(|this, _, window, cx| {
                                             this.load_example(window, cx)
                                         }),
                                     ))
                                     .child(ui::secondary_button(
                                         "sqltogo-clear",
-                                        "清空",
+                                        t("清空"),
                                         cx.listener(|this, _, window, cx| {
                                             this.clear_all(window, cx)
                                         }),
@@ -375,7 +376,7 @@ impl Render for SqlToGo {
                                 .text_size(px(13.))
                                 .font_weight(FontWeight::MEDIUM)
                                 .text_color(theme.colors.foreground)
-                                .child("Go 结构体输出"),
+                                .child(t("Go 结构体输出")),
                         ),
                     ),
             )

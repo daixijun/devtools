@@ -17,6 +17,7 @@ use gpui_component::ActiveTheme as _;
 
 use crate::components::select::{select_state, SimpleSelectDelegate};
 use crate::components::ui;
+use devtools::i18n::t;
 use devtools::text_tools::timestamp;
 
 /// 转换类型选项（value 为历史契约值）。
@@ -74,10 +75,11 @@ impl TimestampConverter {
     }
 
     fn new(window: &mut Window, cx: &mut gpui::Context<Self>) -> Self {
-        let input = cx.new(|cx| InputState::new(window, cx).placeholder("输入时间戳或日期时间"));
-        let output = cx.new(|cx| InputState::new(window, cx).placeholder("转换结果"));
+        let input = cx.new(|cx| InputState::new(window, cx).placeholder(t("输入时间戳或日期时间")));
+        let output = cx.new(|cx| InputState::new(window, cx).placeholder(t("转换结果")));
 
-        let type_select = select_state(window, cx, &TYPE_OPTIONS, 0);
+        // 转换类型下拉：定义处保持中文常量，使用处经 t 翻译。
+        let type_select = select_state(window, cx, &TYPE_OPTIONS.map(|(v, l)| (v, t(l))), 0);
         cx.subscribe(
             &type_select,
             |this, _, event: &SelectEvent<SimpleSelectDelegate>, cx| {
@@ -202,7 +204,7 @@ impl Render for TimestampConverter {
             .child(gpui::div().flex_1().child(Input::new(&self.input)))
             .child(ui::secondary_button(
                 "ts-use-now",
-                "当前时间",
+                t("当前时间"),
                 cx.listener(|this, _, window, cx| {
                     this.use_current_time(window, cx);
                 }),
@@ -220,27 +222,35 @@ impl Render for TimestampConverter {
                         cx.notify();
                     })),
             )
-            .child(if self.is_millis { "开启" } else { "关闭" });
+            .child(if self.is_millis {
+                t("开启")
+            } else {
+                t("关闭")
+            });
 
         ui::tool_page("timestamp")
             .child(
                 ui::card(cx)
-                    .child(ui::card_header("当前时间", cx))
-                    .child(Self::now_line("时间戳（秒）: ", now_sec.to_string(), cx))
-                    .child(Self::now_line("时间戳（毫秒）: ", now_ms.to_string(), cx))
-                    .child(Self::now_line("当前时间: ", localized_now, cx)),
+                    .child(ui::card_header(t("当前时间"), cx))
+                    .child(Self::now_line(t("时间戳（秒）: "), now_sec.to_string(), cx))
+                    .child(Self::now_line(
+                        t("时间戳（毫秒）: "),
+                        now_ms.to_string(),
+                        cx,
+                    ))
+                    .child(Self::now_line(t("当前时间: "), localized_now, cx)),
             )
             .child(
                 ui::card(cx)
-                    .child(ui::field("输入", input_row, cx))
-                    .child(ui::field("转换类型", Select::new(&self.type_select), cx))
-                    .child(ui::field("时区选择", Select::new(&self.tz_select), cx))
+                    .child(ui::field(t("输入"), input_row, cx))
+                    .child(ui::field(t("转换类型"), Select::new(&self.type_select), cx))
+                    .child(ui::field(t("时区选择"), Select::new(&self.tz_select), cx))
                     .when(self.to_datetime, |card| {
-                        card.child(ui::hfield("毫秒单位", millis_row, cx))
+                        card.child(ui::hfield(t("毫秒单位"), millis_row, cx))
                     })
                     .child(ui::primary_button(
                         "ts-convert",
-                        "转换",
+                        t("转换"),
                         cx.listener(|this, _, window, cx| {
                             this.convert(window, cx);
                         }),
@@ -249,7 +259,7 @@ impl Render for TimestampConverter {
                         card.child(ui::error_banner(&message, cx))
                     })
                     .child(ui::field(
-                        "转换结果",
+                        t("转换结果"),
                         Input::new(&self.output).readonly(true),
                         cx,
                     )),

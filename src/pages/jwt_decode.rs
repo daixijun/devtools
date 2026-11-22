@@ -8,6 +8,7 @@
 
 use std::time::Duration;
 
+use devtools::i18n::t;
 use gpui::div;
 use gpui::prelude::*;
 use gpui::{px, App, ClickEvent, Context, Entity, IntoElement, Window};
@@ -64,14 +65,14 @@ fn validate_pem(pem: &str, label: &str) -> bool {
 fn decode_token(token: &str) -> Result<(String, String, String, String), String> {
     let parts: Vec<&str> = token.split('.').collect();
     if parts.len() != 3 {
-        return Err("无效的JWT格式：JWT应该包含3个部分，用点号分隔".to_string());
+        return Err(t("无效的JWT格式：JWT应该包含3个部分，用点号分隔").to_string());
     }
     let header_raw = devtools::crypto::decode_jwt_segment(parts[0])?;
-    let header: Value =
-        serde_json::from_str(&header_raw).map_err(|e| format!("Header 不是有效的 JSON: {e}"))?;
+    let header: Value = serde_json::from_str(&header_raw)
+        .map_err(|e| format!("{}: {e}", t("Header 不是有效的 JSON")))?;
     let payload_raw = devtools::crypto::decode_jwt_segment(parts[1])?;
-    let payload: Value =
-        serde_json::from_str(&payload_raw).map_err(|e| format!("Payload 不是有效的 JSON: {e}"))?;
+    let payload: Value = serde_json::from_str(&payload_raw)
+        .map_err(|e| format!("{}: {e}", t("Payload 不是有效的 JSON")))?;
     let algorithm = header
         .get("alg")
         .and_then(Value::as_str)
@@ -144,22 +145,22 @@ impl JwtDecode {
         let signature_out = ui::new_textarea(window, cx);
 
         token_input.update(cx, |s, cx| {
-            s.set_placeholder("请输入JWT令牌...", window, cx)
+            s.set_placeholder(t("请输入JWT令牌..."), window, cx)
         });
         secret_key.update(cx, |s, cx| {
-            s.set_placeholder("请输入用于签名的Secret Key...", window, cx)
+            s.set_placeholder(t("请输入用于签名的Secret Key..."), window, cx)
         });
         public_key.update(cx, |s, cx| {
-            s.set_placeholder("请输入RSA公钥内容...", window, cx)
+            s.set_placeholder(t("请输入RSA公钥内容..."), window, cx)
         });
         header_out.update(cx, |s, cx| {
-            s.set_placeholder("Header 信息将在这里显示...", window, cx)
+            s.set_placeholder(t("Header 信息将在这里显示..."), window, cx)
         });
         payload_out.update(cx, |s, cx| {
-            s.set_placeholder("Payload 信息将在这里显示...", window, cx)
+            s.set_placeholder(t("Payload 信息将在这里显示..."), window, cx)
         });
         signature_out.update(cx, |s, cx| {
-            s.set_placeholder("Signature 信息将在这里显示...", window, cx)
+            s.set_placeholder(t("Signature 信息将在这里显示..."), window, cx)
         });
 
         // Token 输入：长度实时刷新 + 300ms 防抖解码。
@@ -181,7 +182,7 @@ impl JwtDecode {
             this.public_key_error = if text.trim().is_empty() || validate_pem(&text, "PUBLIC KEY") {
                 None
             } else {
-                Some("RSA公钥格式无效，请检查或重新选择文件".to_string())
+                Some(t("RSA公钥格式无效，请检查或重新选择文件").to_string())
             };
             cx.notify();
         })
@@ -255,7 +256,7 @@ impl JwtDecode {
             }
             Err(msg) => {
                 self.clear_results(window, cx);
-                self.decode_error = Some(format!("JWT解码失败: {msg}"));
+                self.decode_error = Some(format!("{}: {msg}", t("JWT解码失败")));
             }
         }
         cx.notify();
@@ -285,7 +286,7 @@ impl JwtDecode {
     ) {
         let mut rx = crate::core_rt::submit(cx, async move {
             rfd::FileDialog::new()
-                .add_filter("密钥文件", &["pem", "key", "pub"])
+                .add_filter(t("密钥文件"), &["pem", "key", "pub"])
                 .pick_file()
                 .and_then(|path| std::fs::read_to_string(path).ok())
         });
@@ -310,7 +311,7 @@ impl JwtDecode {
         self.public_key_error = if validate_pem(&text, "PUBLIC KEY") {
             None
         } else {
-            Some("RSA公钥格式无效，请检查或重新选择文件".to_string())
+            Some(t("RSA公钥格式无效，请检查或重新选择文件").to_string())
         };
         cx.notify();
     }
@@ -320,40 +321,44 @@ impl JwtDecode {
     fn verify(&mut self, _ev: &ClickEvent, _window: &mut Window, cx: &mut Context<Self>) {
         let token = self.token_input.read(cx).value().to_string();
         self.verify_result = Some(if token.trim().is_empty() {
-            VerifyBanner::Warning("请先输入JWT令牌".to_string())
+            VerifyBanner::Warning(t("请先输入JWT令牌").to_string())
         } else if self.algorithm.is_empty() {
-            VerifyBanner::Error("无法获取JWT签名算法".to_string())
+            VerifyBanner::Error(t("无法获取JWT签名算法").to_string())
         } else {
             let alg = self.algorithm.clone();
             if alg.starts_with("HS") {
                 let key = self.secret_key.read(cx).value().trim().to_string();
                 if key.is_empty() {
-                    VerifyBanner::Warning("请输入Secret Key".to_string())
+                    VerifyBanner::Warning(t("请输入Secret Key").to_string())
                 } else {
                     match devtools::crypto::verify_jwt(token.trim(), &alg, &key) {
-                        Ok(true) => VerifyBanner::Success("JWT签名验证成功".to_string()),
-                        Ok(false) => VerifyBanner::Error("JWT签名验证失败：签名不匹配".to_string()),
+                        Ok(true) => VerifyBanner::Success(t("JWT签名验证成功").to_string()),
+                        Ok(false) => {
+                            VerifyBanner::Error(t("JWT签名验证失败：签名不匹配").to_string())
+                        }
                         // 此分支异常以错误横幅兜底展示。
-                        Err(e) => VerifyBanner::Error(format!("JWT签名验证出错: {e}")),
+                        Err(e) => VerifyBanner::Error(format!("{}: {e}", t("JWT签名验证出错"))),
                     }
                 }
             } else if alg.starts_with("RS") {
                 let key = self.public_key.read(cx).value().trim().to_string();
                 if key.is_empty() {
-                    VerifyBanner::Warning("请输入RSA公钥".to_string())
+                    VerifyBanner::Warning(t("请输入RSA公钥").to_string())
                 } else if !validate_pem(&key, "PUBLIC KEY") {
-                    VerifyBanner::Error("RSA公钥格式无效，请检查公钥内容".to_string())
+                    VerifyBanner::Error(t("RSA公钥格式无效，请检查公钥内容").to_string())
                 } else {
                     match devtools::crypto::verify_jwt(token.trim(), &alg, &key) {
-                        Ok(true) => VerifyBanner::Success("JWT签名验证成功".to_string()),
-                        Ok(false) => VerifyBanner::Error("JWT签名验证失败：签名不匹配".to_string()),
+                        Ok(true) => VerifyBanner::Success(t("JWT签名验证成功").to_string()),
+                        Ok(false) => {
+                            VerifyBanner::Error(t("JWT签名验证失败：签名不匹配").to_string())
+                        }
                         Err(_) => {
-                            VerifyBanner::Error("RSA公钥解析失败，请检查公钥格式".to_string())
+                            VerifyBanner::Error(t("RSA公钥解析失败，请检查公钥格式").to_string())
                         }
                     }
                 }
             } else {
-                VerifyBanner::Warning(format!("不支持的签名算法：{alg}"))
+                VerifyBanner::Warning(format!("{}{alg}", t("不支持的签名算法：")))
             }
         });
         cx.notify();
@@ -379,7 +384,7 @@ impl JwtDecode {
                         .child("Secret Key"),
                 )
                 .child(Input::new(&self.secret_key))
-                .child(ui::hint_text("💡 输入生成JWT时使用的密钥", cx))
+                .child(ui::hint_text(t("💡 输入生成JWT时使用的密钥"), cx))
                 .into_any_element()
         } else if is_rs {
             div()
@@ -400,13 +405,13 @@ impl JwtDecode {
                         .child(
                             ui::secondary_button(
                                 "jwt-pick-public-key",
-                                "选择文件",
+                                t("选择文件"),
                                 cx.listener(Self::pick_public_key_file),
                             )
                             .small(),
                         )
                         .child(ui::hint_text(
-                            "支持 .pem / .key / .pub 文件，或直接粘贴 PEM 内容",
+                            t("支持 .pem / .key / .pub 文件，或直接粘贴 PEM 内容"),
                             cx,
                         )),
                 )
@@ -419,7 +424,7 @@ impl JwtDecode {
                             .child(e),
                     )
                 })
-                .child(ui::hint_text("💡 输入与签名私钥对应的RSA公钥", cx))
+                .child(ui::hint_text(t("💡 输入与签名私钥对应的RSA公钥"), cx))
                 .into_any_element()
         } else {
             div().into_any_element()
@@ -439,7 +444,7 @@ impl JwtDecode {
             .gap_1()
             .text_size(px(13.))
             .text_color(theme.colors.warning)
-            .child("算法:")
+            .child(t("算法:"))
             .child(
                 div()
                     .font_weight(gpui::FontWeight::MEDIUM)
@@ -448,14 +453,14 @@ impl JwtDecode {
 
         // 验证区横条：warning 浅底无框，标题行内嵌算法行、安全提醒子横条、
         // 密钥输入与验证按钮（原双层彩框收敛为横条语言）。
-        ui::rich_banner("⚠️ JWT签名验证", theme.colors.warning, cx)
+        ui::rich_banner(t("⚠️ JWT签名验证"), theme.colors.warning, cx)
             .flex_col()
             .items_start()
             .gap_2()
             .child(algorithm_row)
             // 固定安全提醒。
             .child(
-                ui::rich_banner("安全提醒", theme.colors.warning, cx)
+                ui::rich_banner(t("安全提醒"), theme.colors.warning, cx)
                     .flex_col()
                     .items_start()
                     .gap_1()
@@ -463,9 +468,9 @@ impl JwtDecode {
                         div()
                             .text_size(px(12.))
                             .text_color(theme.colors.warning)
-                            .child(
+                            .child(t(
                                 "JWT签名验证通常在服务端进行。在客户端验证仅用于调试目的，请勿在生产环境中依赖客户端验证结果。",
-                            ),
+                            )),
                     ),
             )
             .child(key_area)
@@ -474,8 +479,12 @@ impl JwtDecode {
                     .flex()
                     .justify_center()
                     .child(
-                        ui::primary_button("jwt-verify", "验证JWT签名", cx.listener(Self::verify))
-                            .disabled(verify_disabled),
+                        ui::primary_button(
+                            "jwt-verify",
+                            t("验证JWT签名"),
+                            cx.listener(Self::verify),
+                        )
+                        .disabled(verify_disabled),
                     ),
             )
     }
@@ -487,7 +496,7 @@ impl gpui::Render for JwtDecode {
 
         let mut page = ui::tool_page("jwtdecode")
             .child(ui::hint_text(
-                "输入JWT令牌以查看其结构化内容，包括算法、有效期等信息",
+                t("输入JWT令牌以查看其结构化内容，包括算法、有效期等信息"),
                 cx,
             ))
             // Token 输入区。
@@ -510,13 +519,13 @@ impl gpui::Render for JwtDecode {
                                     .items_center()
                                     .gap_3()
                                     .child(ui::hint_text(
-                                        &format!("输入长度: {}", self.input_len),
+                                        &format!("{}: {}", t("输入长度"), self.input_len),
                                         cx,
                                     ))
                                     .child(
                                         ui::secondary_button(
                                             "jwt-clear-input",
-                                            "清空输入",
+                                            t("清空输入"),
                                             cx.listener(Self::clear_input),
                                         )
                                         .small()
@@ -544,7 +553,7 @@ impl gpui::Render for JwtDecode {
 
         // 解码错误红条（错误: JWT解码失败: ...）。
         if let Some(error) = &self.decode_error {
-            page = page.child(ui::error_banner(&format!("错误: {error}"), cx));
+            page = page.child(ui::error_banner(&format!("{}: {error}", t("错误")), cx));
         }
 
         // 解码输出：Header/Payload 并排 + Signature。

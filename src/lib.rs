@@ -6,6 +6,7 @@
 pub mod config;
 pub mod crypto;
 pub mod error;
+pub mod i18n;
 pub mod registry;
 pub mod text_tools;
 pub mod tools;

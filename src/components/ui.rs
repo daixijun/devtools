@@ -22,6 +22,7 @@ use gpui_component::{
 };
 
 use super::notify;
+use devtools::i18n::t;
 
 // ---------------------------------------------------------------------------
 // 输入状态构造（单行 / 多行 / 代码编辑器）
@@ -401,7 +402,7 @@ pub fn loading_row(text: &str, cx: &App) -> Div {
 
 /// 一键复制按钮（「复制/已复制 ✓」两态）。
 pub fn copy_button(id: &'static str, value: impl Into<SharedString>) -> Clipboard {
-    Clipboard::new(id).value(value).label("复制")
+    Clipboard::new(id).value(value).label(t("复制"))
 }
 
 /// 主结果复制按钮（结果卡头部）：primary 蓝色，与 base64 等工具页一致；
@@ -413,7 +414,7 @@ pub fn copy_result_button(id: &'static str, label: &str, value: impl Into<Shared
         .primary()
         .on_click(move |_, window, cx| {
             cx.write_to_clipboard(ClipboardItem::new_string(value.to_string()));
-            notify::toast_success(window, cx, "已复制");
+            notify::toast_success(window, cx, t("已复制"));
         })
 }
 

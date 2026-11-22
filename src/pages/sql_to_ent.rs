@@ -7,6 +7,7 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
+use devtools::i18n::t;
 use devtools::tools::sql_to_ent::{convert_sql_to_ent, EntSchemaOutput, SqlToEntOptions};
 use futures::StreamExt as _;
 use gpui::{
@@ -77,7 +78,7 @@ impl SqlToEnt {
         let sql_input = cx.new(|cx| {
             EditorState::new(window, cx)
                 .language("sql")
-                .placeholder("输入 CREATE TABLE SQL 语句…")
+                .placeholder(t("输入 CREATE TABLE SQL 语句…"))
         });
         let ent_output = cx.new(|cx| EditorState::new(window, cx).language("go"));
         let package_input = cx.new(|cx| InputState::new(window, cx).placeholder("schema"));
@@ -214,7 +215,7 @@ impl SqlToEnt {
             Err(err) => {
                 // 出错：清空结果，红条显示 err（空则回退「转换失败」）
                 self.error = Some(if err.trim().is_empty() {
-                    "转换失败".to_string()
+                    t("转换失败").to_string()
                 } else {
                     err
                 });
@@ -291,7 +292,7 @@ impl Render for SqlToEnt {
         ];
         for (id, label, checked) in toggles {
             config_row =
-                config_row.child(Checkbox::new(id).label(label).checked(checked).on_click(
+                config_row.child(Checkbox::new(id).label(t(label)).checked(checked).on_click(
                     cx.listener(move |this, checked: &bool, window, cx| {
                         match id {
                             "ent-plural" => this.enable_pluralization = *checked,
@@ -307,7 +308,7 @@ impl Render for SqlToEnt {
                 ));
         }
         let config_row = config_row.child(ui::hfield(
-            "包名:",
+            t("包名:"),
             Input::new(&self.package_input).w(px(160.)),
             cx,
         ));
@@ -348,7 +349,7 @@ impl Render for SqlToEnt {
                                 .text_size(px(13.))
                                 .font_weight(FontWeight::MEDIUM)
                                 .text_color(theme.colors.foreground)
-                                .child("SQL 输入"),
+                                .child(t("SQL 输入")),
                         )
                         .child(
                             div()
@@ -357,14 +358,14 @@ impl Render for SqlToEnt {
                                 .gap_2()
                                 .child(ui::secondary_button(
                                     "ent-example",
-                                    "示例",
+                                    t("示例"),
                                     cx.listener(|this, _, window, cx| {
                                         this.load_example(window, cx)
                                     }),
                                 ))
                                 .child(ui::secondary_button(
                                     "ent-clear",
-                                    "清空",
+                                    t("清空"),
                                     cx.listener(|this, _, window, cx| this.clear_all(window, cx)),
                                 )),
                         ),
@@ -375,7 +376,7 @@ impl Render for SqlToEnt {
                             .text_size(px(13.))
                             .font_weight(FontWeight::MEDIUM)
                             .text_color(theme.colors.foreground)
-                            .child("Go Ent Schema 输出"),
+                            .child(t("Go Ent Schema 输出")),
                     ),
                 ),
         );

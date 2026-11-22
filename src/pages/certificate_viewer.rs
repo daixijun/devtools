@@ -11,6 +11,7 @@
 
 use std::collections::HashMap;
 
+use devtools::i18n::t;
 use devtools::tools::certificate_viewer::{
     parse_pem_certificate, parse_pfx_certificate, CertificateChainInfo, CertificateInfo,
     ChainOrderCheck, ChainOrderEntry, MissingCertificateInfo,
@@ -101,9 +102,9 @@ fn expiry_state(days_until_expiry: i64) -> ExpiryState {
 
 fn expiry_text(state: &ExpiryState) -> String {
     match state {
-        ExpiryState::Expired(days) => format!("已过期 {} 天", days),
-        ExpiryState::Warning(days) => format!("还有 {} 天到期", days),
-        ExpiryState::Valid => "有效".to_string(),
+        ExpiryState::Expired(days) => format!("{} {} {}", t("已过期"), days, t("天")),
+        ExpiryState::Warning(days) => format!("{} {} {}", t("还有"), days, t("天到期")),
+        ExpiryState::Valid => t("有效").to_string(),
     }
 }
 
@@ -136,12 +137,12 @@ fn base64_decode(input: &str) -> Result<Vec<u8>, String> {
             '+' | '-' => 62,
             '/' | '_' => 63,
             '=' | '\n' | '\r' | ' ' | '\t' => continue,
-            other => return Err(format!("Base64解码失败：存在无效字符 '{}'", other)),
+            other => return Err(format!("{} '{}'", t("Base64解码失败：存在无效字符"), other)),
         };
         values.push(value);
     }
     if values.is_empty() {
-        return Err("Base64解码失败：内容为空".to_string());
+        return Err(t("Base64解码失败：内容为空").to_string());
     }
 
     let mut out = Vec::with_capacity(values.len() / 4 * 3 + 3);
@@ -201,13 +202,14 @@ impl CertificateViewer {
 
     fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let pem_input = cx.new(|cx| {
-            TextareaState::new(window, cx)
-                .placeholder("请输入PEM证书内容或上传证书文件…\n\n支持格式：\n- PEM文本格式 (.pem, .crt, .cer)\n- PFX二进制格式 (.pfx, .p12)")
+            TextareaState::new(window, cx).placeholder(t(
+                "请输入PEM证书内容或上传证书文件…\n\n支持格式：\n- PEM文本格式 (.pem, .crt, .cer)\n- PFX二进制格式 (.pfx, .p12)",
+            ))
         });
         let pfx_password = cx.new(|cx| {
             InputState::new(window, cx)
                 .masked(true)
-                .placeholder("请输入PFX文件密码，如无密码请留空")
+                .placeholder(t("请输入PFX文件密码，如无密码请留空"))
         });
 
         // 文本输入联动：有文本时清除已上传文件；输入与文件均空时重置全部
@@ -313,13 +315,13 @@ impl CertificateViewer {
 
         let rx = crate::core_rt::submit(cx, async move {
             let path = rfd::FileDialog::new()
-                .set_title("选择证书文件")
-                .add_filter("证书文件", &["pem", "crt", "cer", "pfx", "p12"])
+                .set_title(t("选择证书文件"))
+                .add_filter(t("证书文件"), &["pem", "crt", "cer", "pfx", "p12"])
                 .pick_file();
             match path {
                 Some(path) => match std::fs::read(&path) {
                     Ok(data) => Ok(Some((path.to_string_lossy().to_string(), data))),
-                    Err(e) => Err(format!("读取文件失败: {}", e)),
+                    Err(e) => Err(format!("{}: {}", t("读取文件失败"), e)),
                 },
                 None => Ok(None),
             }
@@ -459,7 +461,7 @@ impl CertificateViewer {
         // 输入模式切换（macOS 分段控件）
         let mode_bar = ui::tab_bar(
             "cert-input-mode",
-            &["选择文件", "粘贴文本"],
+            &[t("选择文件"), t("粘贴文本")],
             match self.input_mode {
                 InputMode::File => 0,
                 InputMode::Text => 1,
@@ -485,7 +487,7 @@ impl CertificateViewer {
         } else {
             card = card
                 .child(ui::field(
-                    "证书内容",
+                    t("证书内容"),
                     ui::edit_area(&self.pem_input, 200.),
                     cx,
                 ))
@@ -496,9 +498,9 @@ impl CertificateViewer {
         let parse_button = ui::primary_button(
             "parse-cert",
             if self.loading {
-                "解析中..."
+                t("解析中...")
             } else {
-                "解析证书"
+                t("解析证书")
             },
             cx.listener(|this, _: &ClickEvent, _, cx| this.parse(cx)),
         )
@@ -522,11 +524,11 @@ impl CertificateViewer {
             page = page.child(
                 ui::card(cx)
                     .child(ui::empty_hint(
-                        "支持 PEM / PFX 格式证书：选择文件或粘贴 PEM 文本后点击「解析证书」",
+                        t("支持 PEM / PFX 格式证书：选择文件或粘贴 PEM 文本后点击「解析证书」"),
                         cx,
                     ))
                     .child(ui::hint_text(
-                        "支持多证书：自动检测证书链完整性、顺序与缺失的CA证书",
+                        t("支持多证书：自动检测证书链完整性、顺序与缺失的CA证书"),
                         cx,
                     )),
             );
@@ -541,9 +543,9 @@ impl CertificateViewer {
         let pick_button = ui::secondary_button(
             "pick-cert-file",
             if self.picking_file {
-                "选择文件…"
+                t("选择文件…")
             } else {
-                "选择证书文件"
+                t("选择证书文件")
             },
             cx.listener(|this, _: &ClickEvent, _, cx| this.pick_file(cx)),
         )
@@ -560,8 +562,12 @@ impl CertificateViewer {
             };
             let file_type = if self.file_is_pfx { "PFX" } else { "PEM" };
             container = container.child(
-                ui::rich_banner(&format!("已上传文件： {}", name), theme.colors.info, cx)
-                    .child(ui::badge(file_type, badge_color)),
+                ui::rich_banner(
+                    &format!("{} {}", t("已上传文件："), name),
+                    theme.colors.info,
+                    cx,
+                )
+                .child(ui::badge(file_type, badge_color)),
             );
         }
 
@@ -570,14 +576,14 @@ impl CertificateViewer {
 
     fn render_pfx_password(&self, cx: &Context<Self>) -> gpui::Div {
         ui::field(
-            "PFX文件密码（可选）",
+            t("PFX文件密码（可选）"),
             div()
                 .flex()
                 .flex_col()
                 .gap_1()
                 .child(Input::new(&self.pfx_password))
                 .child(ui::hint_text(
-                    "如果PFX文件没有密码保护，请留空此字段；输入后按 Enter 直接解析",
+                    t("如果PFX文件没有密码保护，请留空此字段；输入后按 Enter 直接解析"),
                     cx,
                 )),
             cx,
@@ -592,7 +598,7 @@ impl CertificateViewer {
             .gap_1()
             .child(
                 Checkbox::new("base64-decode")
-                    .label("Base64解码")
+                    .label(t("Base64解码"))
                     .checked(self.base64_decode)
                     .on_click(cx.listener(|this, checked: &bool, _, cx| {
                         this.base64_decode = *checked;
@@ -603,7 +609,9 @@ impl CertificateViewer {
                 div()
                     .text_size(px(12.))
                     .text_color(theme.colors.muted_foreground)
-                    .child("如果输入的证书内容是Base64编码的，请勾选此选项进行解码后再解析"),
+                    .child(t(
+                        "如果输入的证书内容是Base64编码的，请勾选此选项进行解码后再解析",
+                    )),
             )
     }
 
@@ -627,7 +635,7 @@ impl CertificateViewer {
                     .gap_2()
                     .child(ui::secondary_button(
                         "back-to-input",
-                        "← 重新解析",
+                        t("← 重新解析"),
                         cx.listener(|this, _: &ClickEvent, _, cx| {
                             this.result_view = false;
                             cx.notify();
@@ -638,10 +646,10 @@ impl CertificateViewer {
                             .text_size(px(14.))
                             .font_weight(gpui::FontWeight::MEDIUM)
                             .text_color(cx.theme().colors.foreground)
-                            .child("证书详细信息"),
+                            .child(t("证书详细信息")),
                     ),
             )
-            .child(ui::hint_text("全屏模式", cx));
+            .child(ui::hint_text(t("全屏模式"), cx));
 
         let mut page = div()
             .flex()
@@ -665,11 +673,11 @@ impl CertificateViewer {
     fn render_chain_status(&self, chain: &CertificateChainInfo, cx: &Context<Self>) -> gpui::Div {
         let theme = cx.theme().clone();
         let (dot_color, title, title_color) = if chain.is_full_chain {
-            (theme.colors.success, "完整证书链", theme.colors.success)
+            (theme.colors.success, t("完整证书链"), theme.colors.success)
         } else {
             (
                 theme.colors.danger,
-                "证书链不完整 - 缺少CA证书",
+                t("证书链不完整 - 缺少CA证书"),
                 theme.colors.danger,
             )
         };
@@ -723,10 +731,10 @@ impl CertificateViewer {
         let corrected_copy = check
             .corrected_pem
             .clone()
-            .map(|pem| ui::copy_result_button("copy-corrected-pem", "复制正确顺序的证书", pem));
+            .map(|pem| ui::copy_result_button("copy-corrected-pem", t("复制正确顺序的证书"), pem));
 
         ui::card(cx).child(
-            ui::rich_banner("证书链顺序错误", theme.colors.warning, cx)
+            ui::rich_banner(t("证书链顺序错误"), theme.colors.warning, cx)
                 .flex_col()
                 .items_start()
                 .gap_2()
@@ -737,13 +745,13 @@ impl CertificateViewer {
                         .child(check.message.clone()),
                 )
                 .child(self.render_order_sequence(
-                    "当前顺序",
+                    t("当前顺序"),
                     &check.actual_order,
                     theme.colors.danger,
                     cx,
                 ))
                 .child(self.render_order_sequence(
-                    "正确顺序",
+                    t("正确顺序"),
                     &check.expected_order,
                     theme.colors.success,
                     cx,
@@ -789,12 +797,13 @@ impl CertificateViewer {
         chain: &CertificateChainInfo,
         cx: &Context<Self>,
     ) -> gpui_component::tab::TabBar {
-        let mut labels: Vec<String> = vec!["证书链概览".to_string()];
+        let mut labels: Vec<String> = vec![t("证书链概览").to_string()];
         for (index, cert) in chain.certificates.iter().enumerate() {
             labels.push(format!(
-                "证书 {} - {}",
+                "{} {} - {}",
+                t("证书"),
                 index + 1,
-                cert_role_name(cert.chain_level)
+                t(cert_role_name(cert.chain_level))
             ));
         }
         let items: Vec<&str> = labels.iter().map(String::as_str).collect();
@@ -824,7 +833,7 @@ impl CertificateViewer {
     /// 概览页：颁发关系图（含缺失证书红卡 + 箭头 + 图例）+ 链级信息（下载建议/缺失CA信息）
     fn render_overview(&self, chain: &CertificateChainInfo, cx: &Context<Self>) -> gpui::Div {
         let mut card = ui::card(cx)
-            .child(ui::card_header("证书颁发关系图", cx))
+            .child(ui::card_header(t("证书颁发关系图"), cx))
             .child(self.render_chain_graph(chain, cx))
             .child(self.render_graph_legend(cx));
 
@@ -840,11 +849,11 @@ impl CertificateViewer {
                     .text_size(px(13.))
                     .font_weight(gpui::FontWeight::MEDIUM)
                     .text_color(cx.theme().colors.foreground)
-                    .child("CA证书下载建议"),
+                    .child(t("CA证书下载建议")),
             );
             for (index, url) in chain.ca_download_urls.iter().enumerate() {
                 download = download.child(ui::info_row(
-                    &format!("下载链接 {}", index + 1),
+                    &format!("{} {}", t("下载链接"), index + 1),
                     url.clone(),
                     cx,
                 ));
@@ -898,8 +907,8 @@ impl CertificateViewer {
             // 节点间箭头：下一节点缺失时用红色「应该颁发给 ↓」
             if index + 1 < total {
                 let (arrow, color) = match &nodes[index + 1] {
-                    ChainNode::Missing(_) => ("应该颁发给 ↓", cx.theme().colors.danger),
-                    ChainNode::Cert(_) => ("颁发给 ↓", cx.theme().colors.muted_foreground),
+                    ChainNode::Missing(_) => (t("应该颁发给 ↓"), cx.theme().colors.danger),
+                    ChainNode::Cert(_) => (t("颁发给 ↓"), cx.theme().colors.muted_foreground),
                 };
                 graph = graph.child(
                     div()
@@ -954,14 +963,14 @@ impl CertificateViewer {
                     .child(
                         div()
                             .text_color(theme.colors.muted_foreground)
-                            .child("颁发给:"),
+                            .child(t("颁发给:")),
                     )
                     .child(
                         div()
                             .flex_1()
                             .overflow_hidden()
                             .text_color(theme.colors.foreground)
-                            .child(common_name(&cert.subject, "未知")),
+                            .child(common_name(&cert.subject, t("未知"))),
                     ),
             )
             .child(
@@ -972,14 +981,14 @@ impl CertificateViewer {
                     .child(
                         div()
                             .text_color(theme.colors.muted_foreground)
-                            .child("颁发者:"),
+                            .child(t("颁发者:")),
                     )
                     .child(
                         div()
                             .flex_1()
                             .overflow_hidden()
                             .text_color(theme.colors.muted_foreground)
-                            .child(common_name(&cert.issuer, "未知颁发者")),
+                            .child(common_name(&cert.issuer, t("未知颁发者"))),
                     ),
             )
             .child(
@@ -987,7 +996,7 @@ impl CertificateViewer {
                     .text_size(px(11.))
                     .font_family("Menlo")
                     .text_color(theme.colors.muted_foreground)
-                    .child(format!("序列号: {}", cert.serial_number)),
+                    .child(format!("{} {}", t("序列号:"), cert.serial_number)),
             )
             .child(
                 div()
@@ -1007,7 +1016,7 @@ impl CertificateViewer {
                                         div()
                                             .text_size(px(11.))
                                             .text_color(theme.colors.muted_foreground)
-                                            .child("开始时间"),
+                                            .child(t("开始时间")),
                                     )
                                     .child(
                                         div()
@@ -1024,7 +1033,7 @@ impl CertificateViewer {
                                         div()
                                             .text_size(px(11.))
                                             .text_color(theme.colors.muted_foreground)
-                                            .child("结束时间"),
+                                            .child(t("结束时间")),
                                     )
                                     .child(
                                         div()
@@ -1042,7 +1051,7 @@ impl CertificateViewer {
                                 div()
                                     .text_size(px(11.))
                                     .text_color(theme.colors.muted_foreground)
-                                    .child("证书状态"),
+                                    .child(t("证书状态")),
                             )
                             .child(
                                 div()
@@ -1065,7 +1074,7 @@ impl CertificateViewer {
         let color = theme.colors.danger;
 
         ui::rich_banner(
-            &format!("{} (缺失)", cert_role_name(missing.chain_level)),
+            &format!("{} ({})", t(cert_role_name(missing.chain_level)), t("缺失")),
             color,
             cx,
         )
@@ -1079,7 +1088,7 @@ impl CertificateViewer {
                 .flex()
                 .gap_2()
                 .text_size(px(13.))
-                .child(div().child("缺失证书:"))
+                .child(div().child(t("缺失证书:")))
                 .child(
                     div()
                         .flex_1()
@@ -1089,7 +1098,7 @@ impl CertificateViewer {
                 ),
         )
         .child(div().text_size(px(12.)).child(missing.description.clone()))
-        .child(ui::badge("此证书缺失可能导致证书链验证失败", color))
+        .child(ui::badge(t("此证书缺失可能导致证书链验证失败"), color))
     }
 
     /// 图例：根CA / 中间CA / 终端 / 缺失证书
@@ -1118,11 +1127,11 @@ impl CertificateViewer {
                         div()
                             .text_size(px(12.))
                             .text_color(theme.colors.muted_foreground)
-                            .child(label),
+                            .child(t(label)),
                     ),
             );
         }
-        legend = legend.child(ui::badge("缺失证书", theme.colors.danger));
+        legend = legend.child(ui::badge(t("缺失证书"), theme.colors.danger));
         legend
     }
 
@@ -1139,7 +1148,7 @@ impl CertificateViewer {
             .map(|(key, value)| ui::info_row(key, value.clone(), cx))
             .collect();
         card = card
-            .child(ui::card_header("主题信息", cx))
+            .child(ui::card_header(t("主题信息"), cx))
             .child(ui::info_rows(subject_rows, cx));
 
         // 颁发者信息
@@ -1148,13 +1157,13 @@ impl CertificateViewer {
             .map(|(key, value)| ui::info_row(key, value.clone(), cx))
             .collect();
         card = card
-            .child(ui::card_header("颁发者信息", cx))
+            .child(ui::card_header(t("颁发者信息"), cx))
             .child(ui::info_rows(issuer_rows, cx));
 
         // 有效期信息
         let validity_rows = vec![
-            ui::info_row("开始时间", cert.validity.not_before.clone(), cx),
-            ui::info_row("结束时间", cert.validity.not_after.clone(), cx),
+            ui::info_row(t("开始时间"), cert.validity.not_before.clone(), cx),
+            ui::info_row(t("结束时间"), cert.validity.not_after.clone(), cx),
             // 状态行需要着色，info_row 不支持自定义颜色，这里手写同结构行
             div()
                 .flex()
@@ -1166,7 +1175,7 @@ impl CertificateViewer {
                         .min_w(px(120.))
                         .text_size(px(12.))
                         .text_color(theme.colors.muted_foreground)
-                        .child("证书状态"),
+                        .child(t("证书状态")),
                 )
                 .child(
                     div()
@@ -1178,51 +1187,55 @@ impl CertificateViewer {
                 ),
         ];
         card = card
-            .child(ui::card_header("有效期信息", cx))
+            .child(ui::card_header(t("有效期信息"), cx))
             .child(ui::info_rows(validity_rows, cx));
 
         // 证书详细信息
         let mut detail_rows: Vec<gpui::Div> = Vec::new();
         if cert.chain_level == 0 {
             if let Some(cert_type) = &cert.certificate_type {
-                detail_rows.push(ui::info_row("证书类型", cert_type.clone(), cx));
+                detail_rows.push(ui::info_row(t("证书类型"), cert_type.clone(), cx));
             }
             if let Some(brand) = &cert.brand {
-                detail_rows.push(ui::info_row("证书品牌", brand.clone(), cx));
+                detail_rows.push(ui::info_row(t("证书品牌"), brand.clone(), cx));
             }
         }
-        detail_rows.push(ui::info_row("序列号", cert.serial_number.clone(), cx));
+        detail_rows.push(ui::info_row(t("序列号"), cert.serial_number.clone(), cx));
         detail_rows.push(ui::info_row(
-            "签名算法",
+            t("签名算法"),
             cert.signature_algorithm.clone(),
             cx,
         ));
         if let Some(sha1) = &cert.sha1_fingerprint {
-            detail_rows.push(ui::info_row("SHA1指纹", sha1.clone(), cx));
+            detail_rows.push(ui::info_row(t("SHA1指纹"), sha1.clone(), cx));
         }
         if let Some(sha256) = &cert.sha256_fingerprint {
-            detail_rows.push(ui::info_row("SHA256指纹", sha256.clone(), cx));
+            detail_rows.push(ui::info_row(t("SHA256指纹"), sha256.clone(), cx));
         }
         card = card
-            .child(ui::card_header("证书详细信息", cx))
+            .child(ui::card_header(t("证书详细信息"), cx))
             .child(ui::info_rows(detail_rows, cx));
 
         // 公钥信息
         let mut pubkey_rows: Vec<gpui::Div> = vec![ui::info_row(
-            "类型",
+            t("类型"),
             cert.public_key_info.key_type.clone(),
             cx,
         )];
         if let Some(key_size) = cert.public_key_info.key_size {
-            pubkey_rows.push(ui::info_row("密钥长度", format!("{} bits", key_size), cx));
+            pubkey_rows.push(ui::info_row(
+                t("密钥长度"),
+                format!("{} bits", key_size),
+                cx,
+            ));
         }
         pubkey_rows.push(ui::info_row(
-            "算法",
+            t("算法"),
             cert.public_key_info.algorithm.clone(),
             cx,
         ));
         card = card
-            .child(ui::card_header("公钥信息", cx))
+            .child(ui::card_header(t("公钥信息"), cx))
             .child(ui::info_rows(pubkey_rows, cx));
 
         // SAN（仅终端证书）
@@ -1231,10 +1244,12 @@ impl CertificateViewer {
                 .sans
                 .iter()
                 .enumerate()
-                .map(|(index, san)| ui::info_row(&format!("域名 {}", index + 1), san.clone(), cx))
+                .map(|(index, san)| {
+                    ui::info_row(&format!("{} {}", t("域名"), index + 1), san.clone(), cx)
+                })
                 .collect();
             card = card
-                .child(ui::card_header("域名清单 (SAN)", cx))
+                .child(ui::card_header(t("域名清单 (SAN)"), cx))
                 .child(ui::info_rows(san_rows, cx));
         }
 

@@ -2,6 +2,7 @@
 //!
 //! PFX 二进制文件选择 + 可选密码 + OpenSSL 参考命令 + 转换结果复制/下载。
 
+use devtools::i18n::t;
 use futures::StreamExt;
 use gpui::{
     div, px, App, AppContext as _, Context, Entity, IntoElement, ParentElement as _, Render,
@@ -61,7 +62,7 @@ impl PfxToPemConverter {
     fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let password = cx.new(|cx| {
             InputState::new(window, cx)
-                .placeholder("输入PFX文件密码（如果有的话）")
+                .placeholder(t("输入PFX文件密码（如果有的话）"))
                 .masked(true)
         });
         let result = ui::new_textarea(window, cx);
@@ -80,7 +81,7 @@ impl PfxToPemConverter {
     fn pick_file(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let mut rx = crate::core_rt::submit(cx, async move {
             match rfd::FileDialog::new()
-                .add_filter("PFX/P12文件", &["pfx", "p12"])
+                .add_filter(t("PFX/P12文件"), &["pfx", "p12"])
                 .pick_file()
             {
                 Some(path) => match std::fs::read(&path) {
@@ -91,7 +92,7 @@ impl PfxToPemConverter {
                             .unwrap_or_default();
                         Some(Ok((name, data)))
                     }
-                    Err(e) => Some(Err(format!("读取文件失败：{}", e))),
+                    Err(e) => Some(Err(format!("{}{}", t("读取文件失败："), e))),
                 },
                 None => None,
             }
@@ -118,7 +119,7 @@ impl PfxToPemConverter {
             Some(Ok((name, data))) => {
                 let lower = name.to_lowercase();
                 if !lower.ends_with(".pfx") && !lower.ends_with(".p12") {
-                    self.error = Some("请选择PFX或P12格式的文件".to_string());
+                    self.error = Some(t("请选择PFX或P12格式的文件").to_string());
                     self.file_name = None;
                     self.file_data = None;
                 } else {
@@ -147,7 +148,7 @@ impl PfxToPemConverter {
     /// 执行转换。
     fn convert(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let Some(data) = self.file_data.clone() else {
-            self.error = Some("请选择PFX文件".to_string());
+            self.error = Some(t("请选择PFX文件").to_string());
             cx.notify();
             return;
         };
@@ -194,16 +195,16 @@ impl PfxToPemConverter {
                     .update(cx, |out, cx| out.set_value(&combined, window, cx));
             }
             Ok(_) => {
-                self.error = Some("转换失败".to_string());
+                self.error = Some(t("转换失败").to_string());
             }
             Err(message) => {
-                // 按关键词映射为友好文案
+                // 按关键词映射为友好文案（关键词匹配后端中文原文，映射结果取译名）
                 let mapped = if message.contains("密码") || message.contains("password") {
-                    "密码错误或文件损坏。请检查密码是否正确，或尝试使用其他工具验证文件完整性。"
+                    t("密码错误或文件损坏。请检查密码是否正确，或尝试使用其他工具验证文件完整性。")
                 } else if message.contains("格式") || message.contains("format") {
-                    "文件格式错误，可能不是有效的PFX文件。请确认文件未损坏且为正确的PFX/P12格式。"
+                    t("文件格式错误，可能不是有效的PFX文件。请确认文件未损坏且为正确的PFX/P12格式。")
                 } else if message.contains("未找到") || message.contains("not found") {
-                    "未在PFX文件中找到证书和私钥。请检查以下几点：\n1. 确保选择的文件是有效的PFX/P12文件\n2. 如果文件有密码保护，请输入正确的密码\n3. 确认文件中确实包含证书和私钥内容"
+                    t("未在PFX文件中找到证书和私钥。请检查以下几点：\n1. 确保选择的文件是有效的PFX/P12文件\n2. 如果文件有密码保护，请输入正确的密码\n3. 确认文件中确实包含证书和私钥内容")
                 } else {
                     message.as_str()
                 };
@@ -240,7 +241,7 @@ impl PfxToPemConverter {
             {
                 Some(path) => match std::fs::write(&path, content.as_bytes()) {
                     Ok(_) => Some(Ok(path.to_string_lossy().to_string())),
-                    Err(e) => Some(Err(format!("保存文件失败: {}", e))),
+                    Err(e) => Some(Err(format!("{}: {}", t("保存文件失败"), e))),
                 },
                 None => None,
             }
@@ -251,7 +252,7 @@ impl PfxToPemConverter {
                     None => {} // 用户取消
                     Some(Ok(_)) => {
                         this.error = None;
-                        notify::toast_success(window, cx, "文件保存成功");
+                        notify::toast_success(window, cx, t("文件保存成功"));
                     }
                     Some(Err(message)) => this.error = Some(message),
                 });
@@ -265,9 +266,9 @@ impl Render for PfxToPemConverter {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let has_result = !self.result.read(cx).value().trim().is_empty();
         let openssl_button_label = if self.show_openssl {
-            "隐藏OpenSSL命令"
+            t("隐藏OpenSSL命令")
         } else {
-            "查看OpenSSL命令"
+            t("查看OpenSSL命令")
         };
 
         let mut page = ui::tool_page("pfxtopem")
@@ -293,7 +294,7 @@ impl Render for PfxToPemConverter {
                         div()
                             .text_size(px(13.))
                             .font_weight(gpui::FontWeight::MEDIUM)
-                            .child("📋 OpenSSL命令参考"),
+                            .child(t("📋 OpenSSL命令参考")),
                     )
                     .child(
                         div()
@@ -302,14 +303,14 @@ impl Render for PfxToPemConverter {
                             .gap_2()
                             .children(OPENSSL_COMMANDS.map(|(title, command)| {
                                 ui::field(
-                                    title,
+                                    t(title),
                                     ui::mono_block(format!("mono-pfx-{title}"), command, cx),
                                     cx,
                                 )
                             })),
                     )
                     .child(ui::hint_text(
-                        "💡 此工具为可视化版本，上述命令仅供参考。转换结果与命令行工具完全一致。",
+                        t("💡 此工具为可视化版本，上述命令仅供参考。转换结果与命令行工具完全一致。"),
                         cx,
                     )),
             );
@@ -322,33 +323,33 @@ impl Render for PfxToPemConverter {
                     div()
                         .text_size(px(13.))
                         .font_weight(gpui::FontWeight::MEDIUM)
-                        .child("💡 使用提示"),
+                        .child(t("💡 使用提示")),
                 )
                 .child(
                     div()
                         .flex()
                         .flex_col()
                         .gap_1()
-                        .children(TIPS.map(|tip| ui::hint_text(tip, cx))),
+                        .children(TIPS.map(|tip| ui::hint_text(t(tip), cx))),
                 ),
         );
 
         // PFX 文件选择
-        let mut file_card = ui::card(cx).child(ui::card_header("PFX文件", cx)).child(
+        let mut file_card = ui::card(cx).child(ui::card_header(t("PFX文件"), cx)).child(
             div()
                 .flex()
                 .items_center()
                 .gap_2()
                 .child(
                     Button::new("pick-file")
-                        .label("选择文件")
+                        .label(t("选择文件"))
                         .small()
                         .secondary()
                         .on_click(cx.listener(|this, _, window, cx| {
                             this.pick_file(window, cx);
                         })),
                 )
-                .child(ui::hint_text("支持 .pfx / .p12 格式", cx)),
+                .child(ui::hint_text(t("支持 .pfx / .p12 格式"), cx)),
         );
         if let Some(name) = &self.file_name {
             file_card = file_card.child(
@@ -356,10 +357,10 @@ impl Render for PfxToPemConverter {
                     .flex()
                     .items_center()
                     .justify_between()
-                    .child(ui::hint_text(&format!("已选择： {}", name), cx))
+                    .child(ui::hint_text(&format!("{} {}", t("已选择："), name), cx))
                     .child(
                         Button::new("clear-file")
-                            .label("清除")
+                            .label(t("清除"))
                             .small()
                             .ghost()
                             .text_color(cx.theme().colors.danger)
@@ -373,7 +374,7 @@ impl Render for PfxToPemConverter {
 
         // PFX 密码（可选）
         page = page.child(ui::hfield(
-            "PFX 密码 (可选):",
+            t("PFX 密码 (可选):"),
             Input::new(&self.password).mask_toggle().w_full(),
             cx,
         ));
@@ -383,9 +384,9 @@ impl Render for PfxToPemConverter {
             div().w_full().child(
                 Button::new("convert")
                     .label(if self.loading {
-                        "转换中..."
+                        t("转换中...")
                     } else {
-                        "开始转换"
+                        t("开始转换")
                     })
                     .primary()
                     .large()
@@ -414,7 +415,7 @@ impl Render for PfxToPemConverter {
                             .items_center()
                             .justify_between()
                             .gap_2()
-                            .child(ui::card_header("转换结果:", cx))
+                            .child(ui::card_header(t("转换结果:"), cx))
                             .child(
                                 div()
                                     .flex()
@@ -422,12 +423,12 @@ impl Render for PfxToPemConverter {
                                     .gap_2()
                                     .child(ui::copy_result_button(
                                         "copy-result",
-                                        "复制结果",
+                                        t("复制结果"),
                                         result_text,
                                     ))
                                     .child(
                                         Button::new("download-pem")
-                                            .label("下载PEM")
+                                            .label(t("下载PEM"))
                                             .small()
                                             .secondary()
                                             .on_click(cx.listener(|this, _, window, cx| {

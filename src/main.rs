@@ -34,6 +34,7 @@ fn main() {
     }
 
     let config = AppConfig::load();
+    devtools::i18n::init(&config.language);
     let autostarted = std::env::args().any(|arg| arg == "--autostart");
     let start_minimized = config.start_minimized || autostarted;
 

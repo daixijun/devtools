@@ -2,6 +2,7 @@
 //!
 //! 证书区/私钥区/密码区 + 格式校验横条 + OpenSSL 参考命令展开 + 转换下载。
 
+use devtools::i18n::t;
 use futures::StreamExt;
 use gpui::{
     div, px, App, AppContext as _, Context, Entity, IntoElement, ParentElement as _, Render,
@@ -131,12 +132,12 @@ impl PemToPfxConverter {
         let key_area = ui::new_textarea(window, cx);
         let key_password = cx.new(|cx| {
             InputState::new(window, cx)
-                .placeholder("如果私钥需要密码...")
+                .placeholder(t("如果私钥需要密码..."))
                 .masked(true)
         });
         let pfx_password = cx.new(|cx| {
             InputState::new(window, cx)
-                .placeholder("设置PFX文件密码...")
+                .placeholder(t("设置PFX文件密码..."))
                 .masked(true)
         });
 
@@ -224,18 +225,18 @@ impl PemToPfxConverter {
         self.pfx_data = None;
 
         if cert_text.is_empty() {
-            self.cert_error = Some("请提供PEM证书内容".to_string());
+            self.cert_error = Some(t("请提供PEM证书内容").to_string());
             cx.notify();
             return;
         }
         if pfx_password.is_empty() {
-            self.form_error = Some("请设置PFX密码".to_string());
+            self.form_error = Some(t("请设置PFX密码").to_string());
             cx.notify();
             return;
         }
         // 证书不含私钥块时，手输私钥为必填
         if !self.has_private_key_in_cert && manual_key.is_empty() {
-            self.key_error = Some("请提供私钥内容".to_string());
+            self.key_error = Some(t("请提供私钥内容").to_string());
             cx.notify();
             return;
         }
@@ -251,13 +252,13 @@ impl PemToPfxConverter {
             && is_encrypted_private_key(&final_private_key)
             && key_password.is_empty()
         {
-            self.key_error = Some("检测到加密私钥，请填写私钥密码".to_string());
+            self.key_error = Some(t("检测到加密私钥，请填写私钥密码").to_string());
             cx.notify();
             return;
         }
 
         if self.cert_only.trim().is_empty() {
-            self.form_error = Some("无法提取有效的证书内容".to_string());
+            self.form_error = Some(t("无法提取有效的证书内容").to_string());
             cx.notify();
             return;
         }
@@ -313,38 +314,41 @@ impl PemToPfxConverter {
                 self.pfx_data = Some(res.pfx_data);
             }
             Ok(_) => {
-                self.form_error = Some("转换失败：请检查证书和私钥内容是否匹配".to_string());
+                self.form_error = Some(t("转换失败：请检查证书和私钥内容是否匹配").to_string());
                 self.pfx_data = None;
             }
             Err(err) => {
-                // 关键词分派字段级错误
+                // 关键词分派字段级错误：先按后端原文关键词归类，再取译名展示
+                // （后端错误随中文，避免英文译名影响证书/私钥字段的分派）
                 let mut message = err;
+                let cert_scope = message.contains("证书");
+                let key_scope = !cert_scope && message.contains("私钥");
                 if message.contains("证书内容不能为空") {
-                    message = "证书内容不能为空，请提供有效的证书内容".to_string();
+                    message = t("证书内容不能为空，请提供有效的证书内容").to_string();
                 } else if message.contains("证书格式不正确") {
-                    message =
-                        "证书格式不正确，请确保证书以-----BEGIN CERTIFICATE-----开头".to_string();
+                    message = t("证书格式不正确，请确保证书以-----BEGIN CERTIFICATE-----开头")
+                        .to_string();
                 } else if message.contains("私钥内容不能为空") {
-                    message = "私钥内容不能为空，请提供有效的私钥内容".to_string();
+                    message = t("私钥内容不能为空，请提供有效的私钥内容").to_string();
                 } else if message.contains("私钥格式不正确") {
-                    message = "私钥格式不正确，请确保私钥包含正确的BEGIN和END标记".to_string();
+                    message = t("私钥格式不正确，请确保私钥包含正确的BEGIN和END标记").to_string();
                 } else if message.contains("私钥密码错误") {
-                    message = "私钥密码错误或私钥格式不正确".to_string();
+                    message = t("私钥密码错误或私钥格式不正确").to_string();
                 } else if message.contains("PFX密码不能为空") {
-                    message = "PFX密码不能为空，请设置PFX文件密码".to_string();
+                    message = t("PFX密码不能为空，请设置PFX文件密码").to_string();
                 } else if message.contains("PKCS12构建失败") {
-                    message = "PFX文件构建失败：证书和私钥可能不匹配".to_string();
+                    message = t("PFX文件构建失败：证书和私钥可能不匹配").to_string();
                 } else if message.contains("证书解析失败") {
-                    message = "证书解析失败：请检查证书格式是否正确".to_string();
+                    message = t("证书解析失败：请检查证书格式是否正确").to_string();
                 } else if message.contains("私钥解析失败") {
-                    message = "私钥解析失败：请检查私钥格式和密码是否正确".to_string();
+                    message = t("私钥解析失败：请检查私钥格式和密码是否正确").to_string();
                 } else if message == "转换失败" || message.contains("未知错误") {
-                    message = "转换失败：请检查证书和私钥内容是否匹配".to_string();
+                    message = t("转换失败：请检查证书和私钥内容是否匹配").to_string();
                 }
 
-                if message.contains("证书") {
+                if cert_scope {
                     self.cert_error = Some(message);
-                } else if message.contains("私钥") {
+                } else if key_scope {
                     self.key_error = Some(message);
                 } else {
                     self.form_error = Some(message);
@@ -362,13 +366,13 @@ impl PemToPfxConverter {
         };
         let mut rx = crate::core_rt::submit(cx, async move {
             match rfd::FileDialog::new()
-                .add_filter("PFX文件", &["pfx", "p12"])
+                .add_filter(t("PFX文件"), &["pfx", "p12"])
                 .set_file_name("certificate.pfx")
                 .save_file()
             {
                 Some(path) => match std::fs::write(&path, &data) {
                     Ok(_) => Some(Ok(path.to_string_lossy().to_string())),
-                    Err(e) => Some(Err(format!("保存文件失败：{}", e))),
+                    Err(e) => Some(Err(format!("{}{}", t("保存文件失败："), e))),
                 },
                 None => None,
             }
@@ -379,7 +383,7 @@ impl PemToPfxConverter {
                     None => {} // 用户取消保存
                     Some(Ok(_)) => {
                         this.form_error = None;
-                        notify::toast_success(window, cx, "PFX文件已成功保存！");
+                        notify::toast_success(window, cx, t("PFX文件已成功保存！"));
                     }
                     Some(Err(message)) => {
                         this.form_error = Some(message);
@@ -419,7 +423,7 @@ impl PemToPfxConverter {
                 div()
                     .text_size(px(13.))
                     .font_weight(gpui::FontWeight::MEDIUM)
-                    .child("📋 OpenSSL命令参考"),
+                    .child(t("📋 OpenSSL命令参考")),
             )
             .child(
                 div()
@@ -428,14 +432,14 @@ impl PemToPfxConverter {
                     .gap_2()
                     .children(commands.map(|(title, command)| {
                         ui::field(
-                            title,
+                            t(title),
                             ui::mono_block(format!("mono-pem-{title}"), command, cx),
                             cx,
                         )
                     })),
             )
             .child(ui::hint_text(
-                "💡 此工具为可视化版本，上述命令仅供参考。转换结果与命令行工具完全一致。",
+                t("💡 此工具为可视化版本，上述命令仅供参考。转换结果与命令行工具完全一致。"),
                 cx,
             ))
     }
@@ -462,9 +466,9 @@ impl Render for PemToPfxConverter {
             || (!self.has_private_key_in_cert && self.key_area.read(cx).value().trim().is_empty());
 
         let openssl_button_label = if self.show_openssl {
-            "隐藏OpenSSL命令"
+            t("隐藏OpenSSL命令")
         } else {
-            "查看OpenSSL命令"
+            t("查看OpenSSL命令")
         };
 
         let mut page = ui::tool_page("pemtopfx")
@@ -488,16 +492,16 @@ impl Render for PemToPfxConverter {
 
         // PEM 证书输入
         let mut cert_card = ui::card(cx)
-            .child(ui::card_header("PEM证书", cx))
+            .child(ui::card_header(t("PEM证书"), cx))
             .child(ui::edit_area(&self.cert_area, 140.))
             .child(ui::hint_text(
-                "粘贴PEM格式的证书内容，或以-----BEGIN CERTIFICATE-----开头...",
+                t("粘贴PEM格式的证书内容，或以-----BEGIN CERTIFICATE-----开头..."),
                 cx,
             ));
         if self.has_cert {
-            cert_card = cert_card.child(ui::success_banner("证书格式有效", cx));
+            cert_card = cert_card.child(ui::success_banner(t("证书格式有效"), cx));
             if self.has_private_key_in_cert {
-                cert_card = cert_card.child(ui::info_banner("证书已包含私钥，无需额外输入", cx));
+                cert_card = cert_card.child(ui::info_banner(t("证书已包含私钥，无需额外输入"), cx));
             }
         }
         if let Some(message) = &self.cert_error {
@@ -508,14 +512,14 @@ impl Render for PemToPfxConverter {
         // 私钥输入（仅当证书不含私钥块时显示）
         if show_key_section {
             let mut key_card = ui::card(cx)
-                .child(ui::card_header("私钥 *", cx))
+                .child(ui::card_header(t("私钥 *"), cx))
                 .child(ui::edit_area(&self.key_area, 120.))
                 .child(ui::hint_text(
-                    "请粘贴PEM格式的私钥内容，或以-----BEGIN PRIVATE KEY-----开头...",
+                    t("请粘贴PEM格式的私钥内容，或以-----BEGIN PRIVATE KEY-----开头..."),
                     cx,
                 ));
             if key_format_valid {
-                key_card = key_card.child(ui::success_banner("私钥格式有效", cx));
+                key_card = key_card.child(ui::success_banner(t("私钥格式有效"), cx));
             }
             if let Some(message) = &self.key_error {
                 key_card = key_card.child(ui::error_banner(message, cx));
@@ -524,21 +528,21 @@ impl Render for PemToPfxConverter {
         }
 
         // 密码设置
-        let mut password_card = ui::card(cx).child(ui::card_header("密码设置", cx));
+        let mut password_card = ui::card(cx).child(ui::card_header(t("密码设置"), cx));
         if needs_key_password {
             password_card = password_card.child(ui::field(
-                "私钥密码 *",
+                t("私钥密码 *"),
                 Input::new(&self.key_password).mask_toggle().w_full(),
                 cx,
             ));
         }
         password_card = password_card
             .child(ui::field(
-                "PFX密码 *",
+                t("PFX密码 *"),
                 Input::new(&self.pfx_password).mask_toggle().w_full(),
                 cx,
             ))
-            .child(ui::hint_text("用于保护生成的PFX文件", cx));
+            .child(ui::hint_text(t("用于保护生成的PFX文件"), cx));
         page = page.child(password_card);
 
         // 转换按钮（通栏）
@@ -546,9 +550,9 @@ impl Render for PemToPfxConverter {
             div().w_full().child(
                 Button::new("convert")
                     .label(if self.processing {
-                        "转换中..."
+                        t("转换中...")
                     } else {
-                        "转换为PFX"
+                        t("转换为PFX")
                     })
                     .primary()
                     .large()
@@ -571,15 +575,15 @@ impl Render for PemToPfxConverter {
             let size_kb = data.len() as f64 / 1024.0;
             page = page.child(
                 ui::card(cx)
-                    .child(ui::card_header("转换结果", cx))
+                    .child(ui::card_header(t("转换结果"), cx))
                     .child(ui::success_banner(
-                        &format!("转换成功！文件大小：{:.2} KB", size_kb),
+                        &format!("{}{:.2} KB", t("转换成功！文件大小："), size_kb),
                         cx,
                     ))
                     .child(
                         div().w_full().child(
                             Button::new("download-pfx")
-                                .label("下载PFX文件")
+                                .label(t("下载PFX文件"))
                                 .small()
                                 .secondary()
                                 .w_full()

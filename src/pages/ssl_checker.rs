@@ -8,6 +8,7 @@
 //! 最近记录保存为会话内存（不落盘）；
 //! 参考资料链接仅展示为文本。
 
+use devtools::i18n::t;
 use devtools::tools::ssl_checker::{CertificateChainNode, SecurityVulnerability, SslInfo};
 use futures::StreamExt as _;
 use gpui::{
@@ -84,12 +85,12 @@ impl ResultTab {
 
     fn label(self) -> &'static str {
         match self {
-            ResultTab::Overview => "概览",
-            ResultTab::Certificate => "证书信息",
-            ResultTab::Chain => "证书链",
-            ResultTab::Cipher => "加密套件",
-            ResultTab::Cve => "CVE 漏洞",
-            ResultTab::Security => "安全评估",
+            ResultTab::Overview => t("概览"),
+            ResultTab::Certificate => t("证书信息"),
+            ResultTab::Chain => t("证书链"),
+            ResultTab::Cipher => t("加密套件"),
+            ResultTab::Cve => t("CVE 漏洞"),
+            ResultTab::Security => t("安全评估"),
         }
     }
 }
@@ -114,11 +115,11 @@ impl SeverityFilter {
 
     fn label(self) -> &'static str {
         match self {
-            SeverityFilter::All => "全部",
-            SeverityFilter::Critical => "严重",
-            SeverityFilter::High => "高危",
-            SeverityFilter::Medium => "中危",
-            SeverityFilter::Low => "低危",
+            SeverityFilter::All => t("全部"),
+            SeverityFilter::Critical => t("严重"),
+            SeverityFilter::High => t("高危"),
+            SeverityFilter::Medium => t("中危"),
+            SeverityFilter::Low => t("低危"),
         }
     }
 
@@ -207,12 +208,12 @@ impl SslChecker {
     fn start_check(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let domain = self.domain_input.read(cx).value().trim().to_string();
         if domain.is_empty() {
-            self.error = Some("请输入域名".to_string());
+            self.error = Some(t("请输入域名").to_string());
             cx.notify();
             return;
         }
         if !is_valid_domain(&domain) {
-            self.error = Some("请输入有效的域名格式".to_string());
+            self.error = Some(t("请输入有效的域名格式").to_string());
             cx.notify();
             return;
         }
@@ -255,11 +256,11 @@ impl SslChecker {
                 self.active_tab = ResultTab::Overview;
                 self.info = Some(info);
                 self.show_results = true;
-                notify::toast_success(window, cx, "SSL 检测完成");
+                notify::toast_success(window, cx, t("SSL 检测完成"));
             }
             Err(e) => {
                 // 照规格：错误红条「检测失败: <msg>」（留在输入页）
-                self.error = Some(format!("检测失败: {e}"));
+                self.error = Some(format!("{} {}", t("检测失败:"), e));
             }
         }
         cx.notify();
@@ -294,9 +295,9 @@ impl SslChecker {
 
         let check_button = Button::new("ssl-check-btn")
             .label(if self.loading {
-                "检测中..."
+                t("检测中...")
             } else {
-                "开始检测"
+                t("开始检测")
             })
             .primary()
             .loading(self.loading)
@@ -314,7 +315,7 @@ impl SslChecker {
                     .flex_none()
                     .text_size(px(14.))
                     .text_color(theme.colors.foreground)
-                    .child("域名:"),
+                    .child(t("域名:")),
             )
             .child(
                 div()
@@ -340,7 +341,7 @@ impl SslChecker {
             .flex_col()
             .gap_1()
             .child(ui::hint_text(
-                "检测域名的 SSL 证书信息、支持的协议版本、加密套件和安全配置，包括 HTTP/2 和 HTTP/3 支持性检测。",
+                t("检测域名的 SSL 证书信息、支持的协议版本、加密套件和安全配置，包括 HTTP/2 和 HTTP/3 支持性检测。"),
                 cx,
             ))
             .child(
@@ -349,11 +350,11 @@ impl SslChecker {
                     .flex_wrap()
                     .items_center()
                     .gap_1()
-                    .child(ui::hint_text("格式示例:", cx))
+                    .child(ui::hint_text(t("格式示例:"), cx))
                     .child(self.example_chip("example.com", cx))
-                    .child("、")
+                    .child(t("、"))
                     .child(self.example_chip("www.example.com", cx))
-                    .child("、")
+                    .child(t("、"))
                     .child(self.example_chip("api.example.com", cx)),
             );
 
@@ -364,14 +365,14 @@ impl SslChecker {
                 card.child(ui::error_banner(&err, cx))
             })
             .when(self.loading, |card| {
-                card.child(ui::loading_row("正在检测，请稍候…", cx))
+                card.child(ui::loading_row(t("正在检测，请稍候…"), cx))
             });
 
         // 最近记录（会话内存 chips：点击直接检测、× 删除）
         if !self.recent_domains.is_empty() {
-            let header = ui::card_header("最近检测的域名", cx).child(ui::ghost_button(
+            let header = ui::card_header(t("最近检测的域名"), cx).child(ui::ghost_button(
                 "ssl-clear-recent",
-                "清除历史",
+                t("清除历史"),
                 cx.listener(|this, _ev, _window, cx| this.clear_recent(cx)),
             ));
 
@@ -422,7 +423,7 @@ impl SslChecker {
             }
 
             input_card = input_card.child(header).child(chips).child(ui::hint_text(
-                "💡 点击域名可直接检测，最多保存 10 个最近检测的域名（仅本次会话内有效）",
+                t("💡 点击域名可直接检测，最多保存 10 个最近检测的域名（仅本次会话内有效）"),
                 cx,
             ));
         }
@@ -444,7 +445,7 @@ impl SslChecker {
             .gap_3()
             .child(ui::ghost_button(
                 "ssl-back",
-                "← 返回",
+                t("← 返回"),
                 cx.listener(|this, _ev, _window, cx| {
                     this.show_results = false;
                     this.active_tab = ResultTab::Overview;
@@ -499,27 +500,27 @@ impl SslChecker {
     fn render_overview(&self, cx: &mut Context<Self>) -> Div {
         let info = match self.info.as_ref() {
             Some(info) => info,
-            None => return ui::card(cx).child(ui::empty_hint("暂无检测结果", cx)),
+            None => return ui::card(cx).child(ui::empty_hint(t("暂无检测结果"), cx)),
         };
         let theme = cx.theme().clone();
 
         // ---- 左列：基本信息 ----
-        let mut left_rows: Vec<Div> = vec![ui::info_row("域名", info.domain.clone(), cx)
+        let mut left_rows: Vec<Div> = vec![ui::info_row(t("域名"), info.domain.clone(), cx)
             .child(ui::copy_button("ssl-ov-domain", info.domain.clone()))];
 
         if let Some(ip) = &info.server_ip {
             left_rows.push(
-                ui::info_row("服务器 IP", ip.clone(), cx)
+                ui::info_row(t("服务器 IP"), ip.clone(), cx)
                     .child(ui::copy_button("ssl-ov-ip", ip.clone())),
             );
         }
         if let Some(server_info) = &info.server_info {
-            left_rows.push(ui::info_row("服务器版本", server_info.clone(), cx));
+            left_rows.push(ui::info_row(t("服务器版本"), server_info.clone(), cx));
         }
         if let Some(score) = info.security_score {
             let color = tone_color(score_tone(score), cx);
             left_rows.push(kv_row_value(
-                "安全评分",
+                t("安全评分"),
                 div()
                     .flex()
                     .items_center()
@@ -531,26 +532,26 @@ impl SslChecker {
                             .text_color(color)
                             .child(format!("{score}/100")),
                     )
-                    .child(
-                        div()
-                            .text_size(px(12.))
-                            .text_color(color)
-                            .child(format!("（{}）", score_label(score))),
-                    ),
+                    .child(div().text_size(px(12.)).text_color(color).child(format!(
+                        "{}{}{}",
+                        t("（"),
+                        score_label(score),
+                        t("）")
+                    ))),
                 cx,
             ));
         }
         if let Some(rating) = &info.ssl_labs_rating {
             let grade_color = tone_color(grade_tone(&rating.grade), cx);
             let state_text = if rating.has_errors {
-                "有错误"
+                t("有错误")
             } else if rating.has_warnings {
-                "有警告"
+                t("有警告")
             } else {
-                "无问题"
+                t("无问题")
             };
             left_rows.push(kv_row_value(
-                "SSL Labs 评级",
+                t("SSL Labs 评级"),
                 div()
                     .flex()
                     .items_center()
@@ -592,15 +593,18 @@ impl SslChecker {
                     Tone::Warning
                 };
                 left_rows.push(kv_row_value(
-                    "安全发现",
-                    ui::badge(&format!("{} 项待处理", vulns.len()), tone_color(tone, cx)),
+                    t("安全发现"),
+                    ui::badge(
+                        &format!("{} {}", vulns.len(), t("项待处理")),
+                        tone_color(tone, cx),
+                    ),
                     cx,
                 ));
             }
         }
 
         let left = ui::card(cx)
-            .child(ui::card_header("基本信息", cx))
+            .child(ui::card_header(t("基本信息"), cx))
             .child(ui::info_rows(left_rows, cx));
 
         // ---- 右列：协议与特性 ----
@@ -628,13 +632,13 @@ impl SslChecker {
                         ),
                     ));
                 }
-                right_rows.push(kv_row_value("支持的 SSL/TLS 版本", badges, cx));
+                right_rows.push(kv_row_value(t("支持的 SSL/TLS 版本"), badges, cx));
             }
         }
 
-        right_rows.push(support_row("HTTP/2 支持", info.http2_support, cx));
-        right_rows.push(support_row("HTTP/3 支持", info.http3_support, cx));
-        right_rows.push(support_row("SPDY 支持", info.spdy_support, cx));
+        right_rows.push(support_row(t("HTTP/2 支持"), info.http2_support, cx));
+        right_rows.push(support_row(t("HTTP/3 支持"), info.http3_support, cx));
+        right_rows.push(support_row(t("SPDY 支持"), info.spdy_support, cx));
 
         if let Some(alpn) = &info.alpn_protocols {
             if !alpn.is_empty() {
@@ -642,17 +646,21 @@ impl SslChecker {
                 for p in alpn {
                     badges = badges.child(ui::badge(p, tone_color(Tone::Purple, cx)));
                 }
-                right_rows.push(kv_row_value("ALPN 协议", badges, cx));
+                right_rows.push(kv_row_value(t("ALPN 协议"), badges, cx));
             }
         }
 
         if let Some(cert) = &info.certificate {
-            right_rows.push(ui::info_row("证书有效期", format_date(&cert.valid_to), cx));
-            right_rows.push(ui::info_row("证书颁发者", extract_cn(&cert.issuer), cx));
+            right_rows.push(ui::info_row(
+                t("证书有效期"),
+                format_date(&cert.valid_to),
+                cx,
+            ));
+            right_rows.push(ui::info_row(t("证书颁发者"), extract_cn(&cert.issuer), cx));
         }
 
         let right = ui::card(cx)
-            .child(ui::card_header("协议与特性", cx))
+            .child(ui::card_header(t("协议与特性"), cx))
             .child(ui::info_rows(right_rows, cx));
 
         div()
@@ -670,29 +678,29 @@ impl SslChecker {
         let cert = match self.info.as_ref().and_then(|i| i.certificate.as_ref()) {
             Some(cert) => cert,
             None => {
-                return ui::card(cx).child(ui::empty_hint("未获取到证书信息", cx));
+                return ui::card(cx).child(ui::empty_hint(t("未获取到证书信息"), cx));
             }
         };
 
         let key_size_text = cert
             .key_size
-            .map(|k| format!("{k} 位"))
+            .map(|k| format!("{} {}", k, t("位")))
             .unwrap_or_else(|| "-".to_string());
 
         // 前 5 项可复制：主题 / 颁发者 / 有效期开始 / 有效期结束 / 序列号
         let rows = vec![
-            kv_row("主题", cert.subject.clone(), true, cx),
-            kv_row("颁发者", cert.issuer.clone(), true, cx),
-            kv_row("有效期开始", format_date(&cert.valid_from), true, cx),
-            kv_row("有效期结束", format_date(&cert.valid_to), true, cx),
-            kv_row("序列号", cert.serial_number.clone(), true, cx),
-            kv_row("指纹", cert.fingerprint.clone(), false, cx),
-            kv_row("签名算法", cert.signature_algorithm.clone(), false, cx),
-            kv_row("公钥算法", cert.public_key_algorithm.clone(), false, cx),
-            kv_row("密钥长度", key_size_text, false, cx),
+            kv_row(t("主题"), cert.subject.clone(), true, cx),
+            kv_row(t("颁发者"), cert.issuer.clone(), true, cx),
+            kv_row(t("有效期开始"), format_date(&cert.valid_from), true, cx),
+            kv_row(t("有效期结束"), format_date(&cert.valid_to), true, cx),
+            kv_row(t("序列号"), cert.serial_number.clone(), true, cx),
+            kv_row(t("指纹"), cert.fingerprint.clone(), false, cx),
+            kv_row(t("签名算法"), cert.signature_algorithm.clone(), false, cx),
+            kv_row(t("公钥算法"), cert.public_key_algorithm.clone(), false, cx),
+            kv_row(t("密钥长度"), key_size_text, false, cx),
         ];
         let mut card = ui::card(cx)
-            .child(ui::card_header("证书信息", cx))
+            .child(ui::card_header(t("证书信息"), cx))
             .child(ui::info_rows(rows, cx));
 
         if let Some(san) = &cert.san_domains {
@@ -706,7 +714,7 @@ impl SslChecker {
                         .flex()
                         .flex_col()
                         .gap_1()
-                        .child(ui::hint_text("SAN 域名", cx))
+                        .child(ui::hint_text(t("SAN 域名"), cx))
                         .child(badges),
                 );
             }
@@ -722,14 +730,17 @@ impl SslChecker {
     fn render_chain(&self, cx: &mut Context<Self>) -> Div {
         let info = match self.info.as_ref() {
             Some(info) => info,
-            None => return ui::card(cx).child(ui::empty_hint("未获取到证书链信息", cx)),
+            None => return ui::card(cx).child(ui::empty_hint(t("未获取到证书链信息"), cx)),
         };
         let chain = match info.certificate_chain.as_ref() {
             Some(chain) => chain,
             None => {
                 return ui::card(cx)
-                    .child(ui::empty_hint("未获取到证书链信息", cx))
-                    .child(ui::hint_text("请先运行 SSL 检测以获取完整的证书链信息", cx));
+                    .child(ui::empty_hint(t("未获取到证书链信息"), cx))
+                    .child(ui::hint_text(
+                        t("请先运行 SSL 检测以获取完整的证书链信息"),
+                        cx,
+                    ));
             }
         };
 
@@ -740,19 +751,19 @@ impl SslChecker {
             _ => Tone::Danger,
         };
         let status_text = match chain.chain_validation_status.as_str() {
-            "valid" => "有效",
-            "valid-with-warnings" => "有效(有警告)",
-            _ => "无效",
+            "valid" => t("有效"),
+            "valid-with-warnings" => t("有效(有警告)"),
+            _ => t("无效"),
         };
         let status_rows = vec![
-            ui::info_row("证书链长度", chain.chain_length.to_string(), cx),
+            ui::info_row(t("证书链长度"), chain.chain_length.to_string(), cx),
             kv_row_value(
-                "链锚定",
+                t("链锚定"),
                 ui::badge(
                     if chain.is_complete {
-                        "完整"
+                        t("完整")
                     } else {
-                        "不完整"
+                        t("不完整")
                     },
                     tone_color(
                         if chain.is_complete {
@@ -766,17 +777,17 @@ impl SslChecker {
                 cx,
             ),
             ui::info_row(
-                "根CA",
+                t("根CA"),
                 chain
                     .root_ca_info
                     .clone()
-                    .unwrap_or_else(|| "未知".to_string()),
+                    .unwrap_or_else(|| t("未知").to_string()),
                 cx,
             ),
         ];
         let mut status_card = ui::card(cx)
             .child(
-                ui::card_header("证书链状态", cx)
+                ui::card_header(t("证书链状态"), cx)
                     .child(ui::badge(status_text, tone_color(status_tone, cx))),
             )
             .child(ui::info_rows(status_rows, cx));
@@ -787,7 +798,7 @@ impl SslChecker {
                 errors = errors.child(div().text_size(px(12.)).child(format!("• {e}")));
             }
             status_card = status_card.child(
-                ui::rich_banner("链错误", tone_color(Tone::Danger, cx), cx)
+                ui::rich_banner(t("链错误"), tone_color(Tone::Danger, cx), cx)
                     .flex_col()
                     .items_start()
                     .gap_1()
@@ -828,32 +839,36 @@ impl SslChecker {
                         div()
                             .text_size(px(11.))
                             .text_color(cx.theme().colors.muted_foreground)
-                            .child(label),
+                            .child(t(label)),
                     ),
             );
         }
 
         let diagram_card = ui::card(cx)
-            .child(ui::card_header("证书链关系图", cx))
+            .child(ui::card_header(t("证书链关系图"), cx))
             .child(diagram)
             .child(legend);
 
         // ---- 分析总结 ----
         let anchor_line = chain.trust_anchor_info.as_ref().map(|anchor| {
             let detail = if chain.root_in_chain {
-                "服务器已发送"
+                t("服务器已发送")
             } else {
-                "由客户端信任库提供，属标准配置"
+                t("由客户端信任库提供，属标准配置")
             };
-            div()
-                .flex()
-                .gap_1()
-                .text_size(px(12.))
-                .child(format!("✓ 受信任根 CA：{anchor}（{detail}）"))
+            div().flex().gap_1().text_size(px(12.)).child(format!(
+                "✓ {}{}{}{}{}{}",
+                t("受信任根 CA"),
+                t("："),
+                anchor,
+                t("（"),
+                detail,
+                t("）")
+            ))
         });
 
         let summary_card = ui::card(cx)
-            .child(ui::card_header("证书链分析总结", cx))
+            .child(ui::card_header(t("证书链分析总结"), cx))
             .child(
                 div()
                     .flex()
@@ -871,14 +886,15 @@ impl SslChecker {
                                 tone_color(Tone::Danger, cx)
                             })
                             .child(format!(
-                                "{} 证书链{}，共包含 {} 个证书",
-                                if chain.is_complete { "✓" } else { "✗" },
+                                "{}{} {} {}",
                                 if chain.is_complete {
-                                    "可验证至受信任的根 CA"
+                                    t("✓ 证书链可验证至受信任的根 CA，")
                                 } else {
-                                    "无法验证到受信任的根 CA"
+                                    t("✗ 证书链无法验证到受信任的根 CA，")
                                 },
-                                chain.chain_length
+                                t("共包含"),
+                                chain.chain_length,
+                                t("个证书")
                             )),
                     )
                     .when_some(anchor_line, |col, line| col.child(line))
@@ -892,18 +908,19 @@ impl SslChecker {
                                 _ => tone_color(Tone::Danger, cx),
                             })
                             .child(format!(
-                                "证书链验证状态: {}",
+                                "{} {}",
+                                t("证书链验证状态:"),
                                 match chain.chain_validation_status.as_str() {
-                                    "valid" => "有效",
-                                    "valid-with-warnings" => "有效但有警告",
-                                    _ => "无效",
+                                    "valid" => t("有效"),
+                                    "valid-with-warnings" => t("有效但有警告"),
+                                    _ => t("无效"),
                                 }
                             )),
                     )
                     .child(
                         div()
                             .text_color(cx.theme().colors.muted_foreground)
-                            .child("建议定期监控证书链完整性和各证书的有效期"),
+                            .child(t("建议定期监控证书链完整性和各证书的有效期")),
                     ),
             );
 
@@ -931,23 +948,23 @@ impl SslChecker {
 
         // 类型徽章（叶子/中间/根/交叉签名根）
         let type_text = if node.chain_level == 0 {
-            "叶子证书 (服务器)"
+            t("叶子证书 (服务器)")
         } else if node.chain_level == 2 {
             if node.trust_status == "root-ca" {
-                "根证书（交叉签名形式）"
+                t("根证书（交叉签名形式）")
             } else {
-                "根证书"
+                t("根证书")
             }
         } else {
-            "中间CA证书"
+            t("中间CA证书")
         };
 
         // 信任状态徽章
         let (trust_text, trust_tone) = match node.trust_status.as_str() {
-            "end-entity" => ("服务器证书", Tone::Primary),
-            "self-signed" => ("自签名", Tone::Orange),
-            "root-ca" => ("根CA", Tone::Success),
-            "intermediate" => ("中间CA", Tone::Purple),
+            "end-entity" => (t("服务器证书"), Tone::Primary),
+            "self-signed" => (t("自签名"), Tone::Orange),
+            "root-ca" => (t("根CA"), Tone::Success),
+            "intermediate" => (t("中间CA"), Tone::Purple),
             other => (other, Tone::Muted),
         };
 
@@ -973,7 +990,7 @@ impl SslChecker {
                     div()
                         .text_size(px(11.))
                         .text_color(theme.colors.muted_foreground)
-                        .child("主题"),
+                        .child(t("主题")),
                 )
                 .child(
                     div()
@@ -993,7 +1010,7 @@ impl SslChecker {
                         div()
                             .text_size(px(11.))
                             .text_color(theme.colors.muted_foreground)
-                            .child("颁发者"),
+                            .child(t("颁发者")),
                     )
                     .child(div().text_size(px(13.)).child(extract_cn(&cert.issuer))),
             );
@@ -1008,7 +1025,7 @@ impl SslChecker {
                     div()
                         .text_size(px(11.))
                         .text_color(theme.colors.muted_foreground)
-                        .child("有效期至"),
+                        .child(t("有效期至")),
                 )
                 .child(div().text_size(px(12.)).child(format_date(&cert.valid_to))),
         );
@@ -1020,7 +1037,7 @@ impl SslChecker {
                     div()
                         .text_size(px(11.))
                         .text_color(theme.colors.muted_foreground)
-                        .child("签名算法"),
+                        .child(t("签名算法")),
                 )
                 .child(
                     div()
@@ -1037,13 +1054,14 @@ impl SslChecker {
                         div()
                             .text_size(px(11.))
                             .text_color(theme.colors.muted_foreground)
-                            .child("密钥"),
+                            .child(t("密钥")),
                     )
-                    .child(
-                        div()
-                            .text_size(px(12.))
-                            .child(format!("{} {} 位", cert.public_key_algorithm, key_size)),
-                    ),
+                    .child(div().text_size(px(12.)).child(format!(
+                        "{} {} {}",
+                        cert.public_key_algorithm,
+                        key_size,
+                        t("位")
+                    ))),
             );
         }
         col = col.child(details);
@@ -1055,7 +1073,7 @@ impl SslChecker {
                 errs = errs.child(div().text_size(px(11.)).child(format!("• {e}")));
             }
             col = col.child(
-                ui::rich_banner("验证错误", tone_color(Tone::Danger, cx), cx)
+                ui::rich_banner(t("验证错误"), tone_color(Tone::Danger, cx), cx)
                     .flex_col()
                     .items_start()
                     .gap_1()
@@ -1072,13 +1090,13 @@ impl SslChecker {
                 .child(
                     Clipboard::new(SharedString::from(format!("ssl-chain-{index}-subject")))
                         .value(cert.subject.clone())
-                        .label("复制主题")
+                        .label(t("复制主题"))
                         .small(),
                 )
                 .child(
                     Clipboard::new(SharedString::from(format!("ssl-chain-{index}-fp")))
                         .value(cert.fingerprint.clone())
-                        .label("复制指纹")
+                        .label(t("复制指纹"))
                         .small(),
                 ),
         );
@@ -1093,12 +1111,12 @@ impl SslChecker {
     fn render_cipher(&self, cx: &mut Context<Self>) -> Div {
         let info = match self.info.as_ref() {
             Some(info) => info,
-            None => return ui::card(cx).child(ui::empty_hint("未获取到加密套件信息", cx)),
+            None => return ui::card(cx).child(ui::empty_hint(t("未获取到加密套件信息"), cx)),
         };
         let protocols = match info.protocol_support.as_ref() {
             Some(protocols) => protocols,
             None => {
-                return ui::card(cx).child(ui::empty_hint("未获取到加密套件信息", cx));
+                return ui::card(cx).child(ui::empty_hint(t("未获取到加密套件信息"), cx));
             }
         };
 
@@ -1106,7 +1124,7 @@ impl SslChecker {
             .iter()
             .any(|p| p.supported && !p.cipher_suites.is_empty());
         if !has_groups {
-            return ui::card(cx).child(ui::empty_hint("未获取到加密套件信息", cx));
+            return ui::card(cx).child(ui::empty_hint(t("未获取到加密套件信息"), cx));
         }
 
         let mut page = div().flex().flex_col().gap_3();
@@ -1121,20 +1139,20 @@ impl SslChecker {
             page = page.child(
                 ui::card(cx)
                     .child(
-                        ui::card_header("服务器加密套件顺序偏好", cx).child(ui::badge(
+                        ui::card_header(t("服务器加密套件顺序偏好"), cx).child(ui::badge(
                             if server_order {
-                                "服务器优先"
+                                t("服务器优先")
                             } else {
-                                "客户端优先"
+                                t("客户端优先")
                             },
                             tone_color(tone, cx),
                         )),
                     )
                     .child(ui::hint_text(
                         if server_order {
-                            "服务器按照自己的配置选择加密套件，忽略客户端的偏好。"
+                            t("服务器按照自己的配置选择加密套件，忽略客户端的偏好。")
                         } else {
-                            "服务器会尊重客户端提供的加密套件顺序。"
+                            t("服务器会尊重客户端提供的加密套件顺序。")
                         },
                         cx,
                     )),
@@ -1148,13 +1166,13 @@ impl SslChecker {
             .enumerate()
         {
             let (proto_text, proto_tone) = if protocol.version.contains("1.3") {
-                ("推荐", Tone::Success)
+                (t("推荐"), Tone::Success)
             } else if protocol.version.contains("1.2") {
-                ("安全", Tone::Primary)
+                (t("安全"), Tone::Primary)
             } else if is_deprecated_version(&protocol.version) {
-                ("过时", Tone::Warning)
+                (t("过时"), Tone::Warning)
             } else {
-                ("不安全", Tone::Danger)
+                (t("不安全"), Tone::Danger)
             };
 
             let mut header_badges = div().flex().flex_wrap().items_center().gap_1();
@@ -1180,8 +1198,9 @@ impl SslChecker {
 
             let mut section = ui::card(cx).child(ui::card_header(
                 &format!(
-                    "{} 加密套件 ({})",
+                    "{} {} ({})",
                     protocol.version,
+                    t("加密套件"),
                     protocol.cipher_suites.len()
                 ),
                 cx,
@@ -1207,9 +1226,9 @@ impl SslChecker {
 
             for (ci, cipher) in protocol.cipher_suites.iter().enumerate() {
                 let (strength_text, strength_tone) = match cipher.strength.as_str() {
-                    "HIGH" => ("高强度", Tone::Success),
-                    "MEDIUM" => ("中等强度", Tone::Warning),
-                    "WEAK" => ("弱加密", Tone::Danger),
+                    "HIGH" => (t("高强度"), Tone::Success),
+                    "MEDIUM" => (t("中等强度"), Tone::Warning),
+                    "WEAK" => (t("弱加密"), Tone::Danger),
                     other => (other, Tone::Muted),
                 };
                 let mut cipher_meta = div().flex().flex_wrap().items_center().gap_2();
@@ -1217,7 +1236,7 @@ impl SslChecker {
                     cipher_meta.child(ui::badge(strength_text, tone_color(strength_tone, cx)));
                 if cipher.server_order {
                     cipher_meta =
-                        cipher_meta.child(ui::badge("服务器优先", tone_color(Tone::Purple, cx)));
+                        cipher_meta.child(ui::badge(t("服务器优先"), tone_color(Tone::Purple, cx)));
                 }
 
                 section = section.child(
@@ -1244,7 +1263,7 @@ impl SslChecker {
                             .child(
                                 Clipboard::new(SharedString::from(format!("ssl-cipher-{pi}-{ci}")))
                                     .value(cipher.name.clone())
-                                    .label("复制")
+                                    .label(t("复制"))
                                     .small(),
                             ),
                     ),
@@ -1270,9 +1289,9 @@ impl SslChecker {
             Some(vulns) => vulns,
             None => {
                 return ui::card(cx)
-                    .child(ui::empty_hint("未进行漏洞检测", cx))
+                    .child(ui::empty_hint(t("未进行漏洞检测"), cx))
                     .child(ui::hint_text(
-                        "请先运行 SSL 检测以获取完整的安全检测报告",
+                        t("请先运行 SSL 检测以获取完整的安全检测报告"),
                         cx,
                     ));
             }
@@ -1290,10 +1309,10 @@ impl SslChecker {
                             .text_size(px(14.))
                             .font_weight(FontWeight::MEDIUM)
                             .text_color(tone_color(Tone::Success, cx))
-                            .child("✓ 未发现可确认的安全问题"),
+                            .child(t("✓ 未发现可确认的安全问题")),
                     )
                     .child(ui::hint_text(
-                        "基于真实握手探测，未发现协议、加密套件或证书层面的安全问题",
+                        t("基于真实握手探测，未发现协议、加密套件或证书层面的安全问题"),
                         cx,
                     )),
             );
@@ -1304,7 +1323,7 @@ impl SslChecker {
         // 严重等级过滤按钮组
         let muted_bg = cx.theme().colors.muted;
         let muted_fg = cx.theme().colors.muted_foreground;
-        let mut filter_bar = ui::toolbar().child(ui::hint_text("严重等级过滤:", cx));
+        let mut filter_bar = ui::toolbar().child(ui::hint_text(t("严重等级过滤:"), cx));
         for f in SeverityFilter::ALL {
             let selected = self.severity_filter == f;
             let tone = f.tone();
@@ -1350,7 +1369,7 @@ impl SslChecker {
                     .text_size(px(12.))
                     .font_weight(FontWeight::MEDIUM)
                     .text_color(tone_color(f.tone(), cx))
-                    .child(format!("{}: {}", label, count(f))),
+                    .child(format!("{}: {}", t(label), count(f))),
             );
         }
         summary_grid = summary_grid.child(
@@ -1358,14 +1377,18 @@ impl SslChecker {
                 .text_size(px(12.))
                 .font_weight(FontWeight::MEDIUM)
                 .text_color(tone_color(Tone::Primary, cx))
-                .child(format!("当前显示: {}", count(self.severity_filter))),
+                .child(format!(
+                    "{} {}",
+                    t("当前显示:"),
+                    count(self.severity_filter)
+                )),
         );
 
         let summary_card = ui::card(cx)
-            .child(ui::card_header("检测总结", cx))
+            .child(ui::card_header(t("检测总结"), cx))
             .child(summary_grid)
             .child(ui::hint_text(
-                "ℹ️ 本列表仅包含可通过远程握手证据确认的安全发现。依赖服务器软件版本的漏洞（如 Heartbleed/CVE-2014-0160）无法远程可靠判定，不在列表中，请以服务器软件补丁状态为准。",
+                t("ℹ️ 本列表仅包含可通过远程握手证据确认的安全发现。依赖服务器软件版本的漏洞（如 Heartbleed/CVE-2014-0160）无法远程可靠判定，不在列表中，请以服务器软件补丁状态为准。"),
                 cx,
             ));
 
@@ -1375,8 +1398,10 @@ impl SslChecker {
             .gap_3()
             .child(ui::hint_text(
                 &format!(
-                    "基于真实握手探测确认的安全发现共 {} 项，每项均附观测证据",
-                    vulns.len()
+                    "{} {} {}",
+                    t("基于真实握手探测确认的安全发现共"),
+                    vulns.len(),
+                    t("项，每项均附观测证据")
                 ),
                 cx,
             ))
@@ -1402,7 +1427,7 @@ impl SslChecker {
             ))
             .when(!v.grade_cap.is_empty(), |h| {
                 h.child(ui::badge(
-                    &format!("等级封顶 {}", v.grade_cap),
+                    &format!("{} {}", t("等级封顶"), v.grade_cap),
                     tone_color(Tone::Foreground, cx),
                 ))
             });
@@ -1428,7 +1453,11 @@ impl SslChecker {
                 div()
                     .text_size(px(11.))
                     .text_color(theme.colors.muted_foreground)
-                    .child(format!("影响组件: {}", v.affected_components.join(", "))),
+                    .child(format!(
+                        "{} {}",
+                        t("影响组件:"),
+                        v.affected_components.join(", ")
+                    )),
             );
         }
         header = header.child(title_col);
@@ -1442,7 +1471,7 @@ impl SslChecker {
                     .child(v.description.clone()),
             )
             .child(ui::warning_banner(
-                &format!("🔍 观测证据: {}", v.evidence),
+                &format!("🔍 {} {}", t("观测证据:"), v.evidence),
                 cx,
             ))
             .child(
@@ -1454,7 +1483,7 @@ impl SslChecker {
                         div()
                             .text_size(px(12.))
                             .font_weight(FontWeight::MEDIUM)
-                            .child("修复建议"),
+                            .child(t("修复建议")),
                     )
                     .child(
                         div()
@@ -1485,7 +1514,7 @@ impl SslChecker {
                         div()
                             .text_size(px(12.))
                             .font_weight(FontWeight::MEDIUM)
-                            .child("参考资料"),
+                            .child(t("参考资料")),
                     )
                     .child(refs),
             );
@@ -1501,7 +1530,7 @@ impl SslChecker {
     fn render_security(&self, cx: &mut Context<Self>) -> Div {
         let info = match self.info.as_ref() {
             Some(info) => info,
-            None => return ui::card(cx).child(ui::empty_hint("暂无安全评估信息", cx)),
+            None => return ui::card(cx).child(ui::empty_hint(t("暂无安全评估信息"), cx)),
         };
 
         let mut page = div().flex().flex_col().gap_3();
@@ -1509,7 +1538,7 @@ impl SslChecker {
         // 总分 + 四类分项（证书/协议/密钥交换/套件强度）+ 加权说明
         if let Some(score) = info.security_score {
             let grade_label = match &info.ssl_labs_rating {
-                Some(rating) => format!("等级 {} · {}", rating.grade, score_label(score)),
+                Some(rating) => format!("{} {} · {}", t("等级"), rating.grade, score_label(score)),
                 None => score_label(score).to_string(),
             };
             let mut total = div().flex().flex_col().gap_2().py_2().child(ui::stat_tile(
@@ -1539,7 +1568,7 @@ impl SslChecker {
                                 div()
                                     .text_size(px(11.))
                                     .text_color(cx.theme().colors.muted_foreground)
-                                    .child(label),
+                                    .child(t(label)),
                             )
                             .child(
                                 div()
@@ -1552,7 +1581,7 @@ impl SslChecker {
                 }
                 total = total.child(cells);
                 total = total.child(ui::hint_text(
-                    "加权权重：证书 30% / 协议 30% / 密钥交换 30% / 套件强度 10%；总分取各类别加权分与封顶上限中的较小值，每个问题只封顶一次。",
+                    t("加权权重：证书 30% / 协议 30% / 密钥交换 30% / 套件强度 10%；总分取各类别加权分与封顶上限中的较小值，每个问题只封顶一次。"),
                     cx,
                 ));
             }
@@ -1567,7 +1596,7 @@ impl SslChecker {
                 for cap in &rating.applied_caps {
                     caps = caps.child(
                         ui::rich_banner(
-                            &format!("{} → 等级上限 {}", cap.finding, cap.cap),
+                            &format!("{} {} {}", cap.finding, t("→ 等级上限"), cap.cap),
                             tone_color(Tone::Orange, cx),
                             cx,
                         )
@@ -1578,14 +1607,14 @@ impl SslChecker {
                             div()
                                 .text_size(px(11.))
                                 .text_color(cx.theme().colors.muted_foreground)
-                                .child(format!("证据：{}", cap.reason)),
+                                .child(format!("{}{}", t("证据："), cap.reason)),
                         ),
                     );
                 }
                 page = page.child(
                     ui::card(cx)
                         .child(ui::card_header(
-                            &format!("等级封顶原因 ({})", rating.applied_caps.len()),
+                            &format!("{} ({})", t("等级封顶原因"), rating.applied_caps.len()),
                             cx,
                         ))
                         .child(caps),
@@ -1603,7 +1632,7 @@ impl SslChecker {
                 page = page.child(
                     ui::card(cx)
                         .child(ui::card_header(
-                            &format!("发现的安全问题 ({})", vulns.len()),
+                            &format!("{} ({})", t("发现的安全问题"), vulns.len()),
                             cx,
                         ))
                         .child(items),
@@ -1621,7 +1650,7 @@ impl SslChecker {
                 page = page.child(
                     ui::card(cx)
                         .child(ui::card_header(
-                            &format!("安全配置建议 ({})", recs.len()),
+                            &format!("{} ({})", t("安全配置建议"), recs.len()),
                             cx,
                         ))
                         .child(items),
@@ -1634,7 +1663,7 @@ impl SslChecker {
             || info.vulnerabilities.as_ref().is_some_and(|v| !v.is_empty())
             || info.recommendations.as_ref().is_some_and(|r| !r.is_empty());
         if !has_content {
-            return ui::card(cx).child(ui::empty_hint("暂无安全评估信息", cx));
+            return ui::card(cx).child(ui::empty_hint(t("暂无安全评估信息"), cx));
         }
 
         page
@@ -1670,7 +1699,7 @@ fn kv_row(label: &str, value: String, copy: bool, cx: &App) -> Div {
         row = row.child(
             Clipboard::new(SharedString::from(format!("ssl-kv-{label}")))
                 .value(value)
-                .label("复制")
+                .label(t("复制"))
                 .small(),
         );
     }
@@ -1700,7 +1729,7 @@ fn support_row(label: &str, supported: Option<bool>, cx: &App) -> Div {
     let theme = cx.theme().clone();
     let value = match supported {
         Some(ok) => ui::badge(
-            if ok { "支持" } else { "不支持" },
+            if ok { t("支持") } else { t("不支持") },
             tone_color(if ok { Tone::Success } else { Tone::Danger }, cx),
         )
         .into_any_element(),
@@ -1794,13 +1823,13 @@ fn extract_cn(dn: &str) -> String {
 
 fn score_label(score: u32) -> &'static str {
     if score >= 90 {
-        "优秀"
+        t("优秀")
     } else if score >= 70 {
-        "良好"
+        t("良好")
     } else if score >= 50 {
-        "一般"
+        t("一般")
     } else {
-        "较差"
+        t("较差")
     }
 }
 
@@ -1838,10 +1867,10 @@ fn severity_tone(severity: &str) -> Tone {
 
 fn category_label(category: &str) -> String {
     match category {
-        "protocol" => "协议".to_string(),
-        "cipher" => "加密套件".to_string(),
-        "certificate" => "证书".to_string(),
-        "key-exchange" => "密钥交换".to_string(),
+        "protocol" => t("协议").to_string(),
+        "cipher" => t("加密套件").to_string(),
+        "certificate" => t("证书").to_string(),
+        "key-exchange" => t("密钥交换").to_string(),
         other => other.to_string(),
     }
 }

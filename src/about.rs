@@ -1,5 +1,6 @@
 //! 「关于」窗口（app 菜单 → 关于 DevTools）。
 
+use devtools::i18n::t;
 use gpui::{div, prelude::*, px, Context, FontWeight, IntoElement, Render, Window};
 use gpui_component::ActiveTheme as _;
 
@@ -29,20 +30,20 @@ impl Render for AboutView {
                 div()
                     .text_size(px(20.))
                     .font_weight(FontWeight::SEMIBOLD)
-                    .child("DevTools 开发者工具箱"),
+                    .child(t("DevTools 开发者工具箱")),
             )
             .child(
                 div()
                     .text_size(px(12.5))
                     .text_color(theme.colors.muted_foreground)
-                    .child(format!("版本 {version} (DevTools)")),
+                    .child(format!("{} {version} (DevTools)", t("版本"))),
             )
             .child(
                 div()
                     .mt_2()
                     .text_size(px(12.5))
                     .text_color(theme.colors.muted_foreground)
-                    .child("面向开发者的 macOS 效率工具箱，内置 31 个常用工具"),
+                    .child(t("面向开发者的效率工具箱，内置 31 个常用工具")),
             )
             .child(
                 div()

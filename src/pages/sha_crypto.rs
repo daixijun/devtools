@@ -12,6 +12,7 @@ use devtools::crypto::{
     sha256_file_hex, sha384_bytes_hex, sha384_file_hex, sha3_bytes_hex, sha3_file_hex,
     sha512_bytes_hex, sha512_file_hex,
 };
+use devtools::i18n::t;
 use futures::StreamExt as _;
 use gpui::{div, prelude::*, px, App, Context, Div, Entity, IntoElement, Render, Window};
 
@@ -101,7 +102,7 @@ impl ShaCrypto {
 
     fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let text_input =
-            cx.new(|cx| TextareaState::new(window, cx).placeholder("请输入要加密的文本..."));
+            cx.new(|cx| TextareaState::new(window, cx).placeholder(t("请输入要加密的文本...")));
         // 输入即算（无防抖）：Change 直接调 core 同步哈希
         cx.subscribe(&text_input, |this, _, event: &InputEvent, cx| {
             if matches!(event, InputEvent::Change) {
@@ -111,7 +112,7 @@ impl ShaCrypto {
         .detach();
 
         let file_path_input =
-            cx.new(|cx| InputState::new(window, cx).placeholder("点击右边按钮选择文件..."));
+            cx.new(|cx| InputState::new(window, cx).placeholder(t("点击右边按钮选择文件...")));
 
         let algo_select = select_state(window, cx, &ALGORITHMS, 2);
         // 算法切换立即重算文本页 + 文件页
@@ -171,7 +172,7 @@ impl ShaCrypto {
             }
             Err(msg) => {
                 self.text_hash.clear();
-                self.text_error = Some(format!("加密过程中发生错误: {msg}"));
+                self.text_error = Some(format!("{}: {msg}", t("哈希过程中发生错误")));
             }
         }
         cx.notify();
@@ -214,7 +215,7 @@ impl ShaCrypto {
     /// 后台读取文件并按当前算法计算哈希（完成回调无需 window，普通 spawn 即可）。
     fn start_file_hash(&mut self, cx: &mut Context<Self>) {
         let Some(path) = self.file_path.clone() else {
-            self.file_error = Some("请先选择一个文件".to_string());
+            self.file_error = Some(t("请先选择一个文件").to_string());
             cx.notify();
             return;
         };
@@ -230,14 +231,14 @@ impl ShaCrypto {
             // 文件流式哈希（core 统一实现；PDF/DOCX 等二进制文件直接按字节计算）
             match hash_file(&path, &algorithm) {
                 Ok(hash) => Ok(hash),
-                Err(msg) => Err(format!("处理文件时发生错误: {msg}")),
+                Err(msg) => Err(format!("{}: {msg}", t("处理文件时发生错误"))),
             }
         });
         cx.spawn(async move |this, cx| {
             let result = rx
                 .next()
                 .await
-                .unwrap_or_else(|| Err("任务已取消".to_string()));
+                .unwrap_or_else(|| Err(t("任务已取消").to_string()));
             let _ = this.update(cx, |this, cx| this.on_file_hashed(task, result, cx));
         })
         .detach();
@@ -334,7 +335,7 @@ impl ShaCrypto {
                 });
                 let result = match rx.next().await {
                     Some(result) => result,
-                    None => Err("任务已取消".to_string()),
+                    None => Err(t("任务已取消").to_string()),
                 };
                 let _ = this.update(cx, |this, cx| {
                     if generation != this.batch_generation {
@@ -397,7 +398,7 @@ impl ShaCrypto {
         }
         let mut rx = crate::core_rt::submit(cx, async move {
             let Some(path) = rfd::FileDialog::new()
-                .add_filter("文本文件", &["txt"])
+                .add_filter(t("文本文件"), &["txt"])
                 .save_file()
             else {
                 return Ok(None); // 用户取消
@@ -411,11 +412,15 @@ impl ShaCrypto {
                 return;
             };
             let _ = this.update_in(cx, |_this, window, cx| match result {
-                Ok(Some(path)) => {
-                    notify::toast_success(window, cx, format!("结果已导出到 {}", path.display()))
-                }
+                Ok(Some(path)) => notify::toast_success(
+                    window,
+                    cx,
+                    format!("{} {}", t("结果已导出到"), path.display()),
+                ),
                 Ok(None) => {}
-                Err(err) => notify::toast_error(window, cx, format!("导出结果失败: {err}")),
+                Err(err) => {
+                    notify::toast_error(window, cx, format!("{}: {err}", t("导出结果失败")))
+                }
             });
         })
         .detach();
@@ -428,7 +433,7 @@ impl ShaCrypto {
     /// 顶部全局算法 select。
     fn render_algorithm_bar(&self, cx: &Context<Self>) -> Div {
         ui::card(cx).child(ui::hfield(
-            "选择哈希算法:",
+            t("选择哈希算法:"),
             Select::new(&self.algo_select),
             cx,
         ))
@@ -443,7 +448,7 @@ impl ShaCrypto {
         };
         ui::tab_bar(
             "sha-tabs",
-            &["文本加密", "文件加密", "批量加密"],
+            &[t("文本加密"), t("文件加密"), t("批量加密")],
             selected,
             cx.listener(move |this, ix: &usize, _window, cx| {
                 this.tab = match ix {
@@ -460,7 +465,7 @@ impl ShaCrypto {
         let theme = cx.theme().colors;
         let name = algorithm_name(&self.algorithm);
         let hash_display = if self.text_hash.is_empty() {
-            format!("{name} 哈希值将在这里显示...")
+            format!("{name} {}", t("哈希值将在这里显示..."))
         } else {
             self.text_hash.clone()
         };
@@ -481,7 +486,7 @@ impl ShaCrypto {
                                 div()
                                     .text_size(px(12.))
                                     .text_color(theme.muted_foreground)
-                                    .child(format!("输入长度: {}", self.text_len)),
+                                    .child(format!("{}: {}", t("输入长度"), self.text_len)),
                             )
                             .child(
                                 div()
@@ -490,7 +495,7 @@ impl ShaCrypto {
                                     .gap_2()
                                     .child(ui::secondary_button(
                                         "sha-example",
-                                        "示例",
+                                        t("示例"),
                                         cx.listener(|this, _, window, cx| {
                                             this.set_text_input(EXAMPLE_TEXT, window, cx);
                                         }),
@@ -498,7 +503,7 @@ impl ShaCrypto {
                                     .child(
                                         ui::secondary_button(
                                             "sha-clear-text",
-                                            "清空",
+                                            t("清空"),
                                             cx.listener(|this, _, window, cx| {
                                                 this.set_text_input("", window, cx);
                                             }),
@@ -518,11 +523,11 @@ impl ShaCrypto {
                             .flex()
                             .items_center()
                             .justify_between()
-                            .child(ui::card_header(&format!("{name} 哈希值"), cx))
+                            .child(ui::card_header(&format!("{name} {}", t("哈希值")), cx))
                             .children((!self.text_hash.is_empty()).then(|| {
                                 ui::copy_result_button(
                                     "sha-copy-text",
-                                    "复制结果",
+                                    t("复制结果"),
                                     self.text_hash.clone(),
                                 )
                             })),
@@ -534,7 +539,7 @@ impl ShaCrypto {
     fn render_file_tab(&self, cx: &Context<Self>) -> Div {
         let name = algorithm_name(&self.algorithm);
         let hash_display = if self.file_hash.is_empty() {
-            format!("{name} 哈希值将在这里显示...")
+            format!("{name} {}", t("哈希值将在这里显示..."))
         } else {
             self.file_hash.clone()
         };
@@ -551,11 +556,11 @@ impl ShaCrypto {
                             .flex()
                             .items_center()
                             .justify_between()
-                            .child(ui::card_header("选择文件", cx))
+                            .child(ui::card_header(t("选择文件"), cx))
                             .child(
                                 ui::secondary_button(
                                     "sha-file-clear",
-                                    "清空",
+                                    t("清空"),
                                     cx.listener(|this, _, window, cx| {
                                         this.clear_file(window, cx);
                                     }),
@@ -576,7 +581,7 @@ impl ShaCrypto {
                             )
                             .child(ui::secondary_button(
                                 "sha-file-pick",
-                                "选择文件",
+                                t("选择文件"),
                                 cx.listener(|this, _, window, cx| {
                                     this.pick_file(window, cx);
                                 }),
@@ -592,7 +597,7 @@ impl ShaCrypto {
                             .flex()
                             .items_center()
                             .justify_between()
-                            .child(ui::card_header(&format!("{name} 哈希值"), cx))
+                            .child(ui::card_header(&format!("{name} {}", t("哈希值")), cx))
                             .children(
                                 (!self.file_loading
                                     && self.file_error.is_none()
@@ -600,14 +605,14 @@ impl ShaCrypto {
                                 .then(|| {
                                     ui::copy_result_button(
                                         "sha-copy-file",
-                                        "复制结果",
+                                        t("复制结果"),
                                         self.file_hash.clone(),
                                     )
                                 }),
                             ),
                     )
                     .child(if self.file_loading {
-                        ui::loading_row("正在处理文件...", cx).into_any_element()
+                        ui::loading_row(t("正在处理文件..."), cx).into_any_element()
                     } else {
                         ui::mono_block("mono-sha-file", hash_display, cx)
                             .min_h(px(96.))
@@ -631,7 +636,7 @@ impl ShaCrypto {
                     .items_center()
                     .justify_between()
                     .child(ui::card_header(
-                        &format!("选择多个文件 ({})", self.batch_files.len()),
+                        &format!("{} ({})", t("选择多个文件"), self.batch_files.len()),
                         cx,
                     ))
                     .child(
@@ -642,7 +647,7 @@ impl ShaCrypto {
                             .child(
                                 ui::secondary_button(
                                     "sha-batch-clear",
-                                    "清空",
+                                    t("清空"),
                                     cx.listener(|this, _, _, cx| {
                                         this.clear_batch(cx);
                                     }),
@@ -651,7 +656,7 @@ impl ShaCrypto {
                             )
                             .child(ui::secondary_button(
                                 "sha-batch-pick",
-                                "选择文件",
+                                t("选择文件"),
                                 cx.listener(|this, _, window, cx| {
                                     this.pick_batch_files(window, cx);
                                 }),
@@ -662,7 +667,12 @@ impl ShaCrypto {
 
         if self.batch_files.is_empty() {
             container = container.child(ui::empty_hint(
-                &format!("点击\"选择文件\"按钮选择多个文件进行批量{name}加密"),
+                &format!(
+                    "{} {} {}",
+                    t("点击\"选择文件\"按钮选择多个文件进行"),
+                    name,
+                    t("批量加密")
+                ),
                 cx,
             ));
         } else {
@@ -678,10 +688,10 @@ impl ShaCrypto {
                                 .flex()
                                 .items_center()
                                 .gap_2()
-                                .child(ui::card_header("文件列表", cx))
+                                .child(ui::card_header(t("文件列表"), cx))
                                 .children(
                                     self.batch_processing
-                                        .then(|| ui::badge("处理中...", theme.info)),
+                                        .then(|| ui::badge(t("处理中..."), theme.info)),
                                 ),
                         )
                         .child(
@@ -690,12 +700,12 @@ impl ShaCrypto {
                                 .items_center()
                                 .gap_2()
                                 .children(has_completed.then(|| {
-                                    ui::copy_result_button("sha-copy-batch", "复制结果", results)
+                                    ui::copy_result_button("sha-copy-batch", t("复制结果"), results)
                                 }))
                                 .child(
                                     ui::secondary_button(
                                         "sha-batch-export",
-                                        "导出结果",
+                                        t("导出结果"),
                                         cx.listener(|this, _, window, cx| {
                                             this.export_results(window, cx);
                                         }),
@@ -704,7 +714,7 @@ impl ShaCrypto {
                                 ),
                         ),
                 )
-                .child(self.render_batch_table(&format!("{name} 哈希值"), cx));
+                .child(self.render_batch_table(&format!("{name} {}", t("哈希值")), cx));
             container = container.child(list_card);
         }
         container
@@ -713,8 +723,8 @@ impl ShaCrypto {
     /// 批量表格：文件名 / 状态 / 哈希值（列标题随算法）。
     fn render_batch_table(&self, hash_label: &str, cx: &Context<Self>) -> Div {
         let header = ui::table_head(cx)
-            .child(ui::table_head_cell("文件名", cx).w(px(220.)))
-            .child(ui::table_head_cell("状态", cx).w(px(72.)))
+            .child(ui::table_head_cell(t("文件名"), cx).w(px(220.)))
+            .child(ui::table_head_cell(t("状态"), cx).w(px(72.)))
             .child(ui::table_head_cell(hash_label, cx).flex_1());
 
         let rows = self
@@ -783,10 +793,10 @@ fn hash_file(path: &std::path::Path, algorithm: &str) -> Result<String, String> 
 fn status_badge(status: BatchStatus, cx: &App) -> Div {
     let colors = cx.theme().colors;
     match status {
-        BatchStatus::Pending => ui::badge("待处理", colors.muted_foreground),
-        BatchStatus::Processing => ui::badge("处理中", colors.info),
-        BatchStatus::Completed => ui::badge("已完成", colors.success),
-        BatchStatus::Error => ui::badge("错误", colors.danger),
+        BatchStatus::Pending => ui::badge(t("待处理"), colors.muted_foreground),
+        BatchStatus::Processing => ui::badge(t("处理中"), colors.info),
+        BatchStatus::Completed => ui::badge(t("已完成"), colors.success),
+        BatchStatus::Error => ui::badge(t("错误"), colors.danger),
     }
 }
 

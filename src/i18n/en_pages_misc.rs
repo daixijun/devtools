@@ -1,0 +1,266 @@
+//! EN 词条：编码/加密/密钥/占位页（base64* / url* / aes* / placeholder / rsa_key_generator / pem_pfx）。
+//!
+//! key 为页面调用点中文原文（逐字一致，含标点与空格）；带变量的句子拆短语
+//! 传入 `format!`，en 译名在语序需要处带前后空格。通用词条（如「已复制」）
+//! 与 en_shell 等表保持同值。
+
+/// 编码/加密/密钥/占位页词条表。
+pub const EN_PAGES_MISC: &[(&str, &str)] = &[
+    // ---- base64 / url / aes 容器页 Tab 与工具条 ----
+    ("编码", "Encode"),
+    ("解码", "Decode"),
+    ("加密", "Encrypt"),
+    ("解密", "Decrypt"),
+    ("示例", "Example"),
+    ("清空", "Clear"),
+    ("输入长度:", "Input length:"),
+    ("输出长度:", "Output length:"),
+    ("复制结果", "Copy Result"),
+    ("已复制", "Copied"),
+    ("Base64解码失败", "Base64 decode failed"),
+    ("输入:", "Input:"),
+    ("输出:", "Output:"),
+    ("说明:", "Description:"),
+    (
+        "编码: 将文本转换为 URL 安全的百分号编码格式",
+        "Encode: convert text to URL-safe percent-encoded format",
+    ),
+    (
+        "解码: 将 URL 编码的文本还原为原始格式",
+        "Decode: restore URL-encoded text to its original form",
+    ),
+    ("错误", "Error"),
+    // ---- AES 加密/解密 ----
+    ("请输入要加密的文本", "Enter the text to encrypt"),
+    (
+        "加密结果将显示在这里",
+        "The encryption result will appear here",
+    ),
+    ("请输入128位密钥 (16 字符)", "Enter a 128-bit key (16 characters)"),
+    (
+        "请输入16字符的IV (128位)",
+        "Enter a 16-character IV (128-bit)",
+    ),
+    // 拼接段：「请输入{bits}位密钥 ({n} 字符)」
+    ("请输入", "Enter "),
+    ("位密钥", "-bit key"),
+    ("字符", "characters"),
+    ("请输入密钥", "Enter the key"),
+    (
+        "当前模式需要初始化向量(IV)",
+        "This mode requires an initialization vector (IV)",
+    ),
+    ("加密过程中发生错误", "Error during encryption"),
+    (
+        "这是一段需要加密的示例文本",
+        "This is a sample text to encrypt",
+    ),
+    ("要加密的文本", "Text to encrypt"),
+    ("加密结果", "Encryption result"),
+    ("密钥", "Key"),
+    // 拼接段：「密钥长度必须为 {n} 字符 ({bits} 位)」
+    ("密钥长度必须为", "Key length must be"),
+    ("位", "bits"),
+    ("初始化向量 (IV)", "Initialization Vector (IV)"),
+    ("随机生成", "Random"),
+    ("IV长度必须为16字符 (128位)", "The IV must be 16 characters (128-bit)"),
+    ("AES 配置", "AES Configuration"),
+    ("模式", "Mode"),
+    ("密钥长度", "Key Length"),
+    ("填充模式", "Padding"),
+    ("加载示例", "Load Example"),
+    ("请输入要解密的文本", "Enter the text to decrypt"),
+    (
+        "解密结果将显示在这里",
+        "The decryption result will appear here",
+    ),
+    (
+        "解密失败，请检查密钥、IV和密文是否正确",
+        "Decryption failed. Please check the key, IV and ciphertext.",
+    ),
+    ("解密过程中发生错误", "Error during decryption"),
+    (
+        "这是一段需要解密的示例文本",
+        "This is a sample text to decrypt",
+    ),
+    ("要解密的文本", "Text to decrypt"),
+    ("解密结果", "Decryption result"),
+    ("128 位", "128 bits"),
+    ("192 位", "192 bits"),
+    ("256 位", "256 bits"),
+    // ---- 占位页 ----
+    ("页面不可用", "Page unavailable"),
+    ("未注册的工具 id", "Unregistered tool id"),
+    // ---- RSA 密钥对生成 ----
+    ("2048 位（推荐）", "2048 bits (recommended)"),
+    ("3072 位", "3072 bits"),
+    ("4096 位", "4096 bits"),
+    (
+        "如 user@host，留空使用默认值",
+        "e.g. user@host; leave empty for the default",
+    ),
+    ("保存文件失败", "Failed to save file"),
+    ("文件保存成功", "File saved"),
+    ("密钥格式", "Key format"),
+    ("OpenSSH 注释（可选）", "OpenSSH comment (optional)"),
+    ("生成中…", "Generating…"),
+    ("生成密钥对", "Generate Key Pair"),
+    (
+        "选择密钥长度后点击「生成密钥对」，生成的私钥请妥善保管",
+        "Choose a key length and click \"Generate Key Pair\". Keep the generated private key safe.",
+    ),
+    ("私钥", "Private Key"),
+    (
+        "泄露私钥将危及所有依赖它的系统，切勿提交到代码仓库或聊天工具",
+        "A leaked private key endangers every system that depends on it; never commit it to a repository or share it in chat tools.",
+    ),
+    ("复制私钥", "Copy Private Key"),
+    ("下载 .pem", "Download .pem"),
+    ("公钥", "Public Key"),
+    ("复制公钥", "Copy Public Key"),
+    ("下载", "Download"),
+    ("PKCS#8（通用）", "PKCS#8 (General)"),
+    ("PKCS#1（传统 RSA）", "PKCS#1 (Legacy RSA)"),
+    ("OpenSSH（SSH）", "OpenSSH (SSH)"),
+    (
+        "PKCS#8 PEM —— 证书签发、JWT RS*、TLS 等通用场景的标准格式",
+        "PKCS#8 PEM — the standard format for certificate signing, JWT RS*, TLS and other general uses",
+    ),
+    (
+        "PKCS#1 PEM —— 传统 RSA 专用格式（BEGIN RSA PRIVATE KEY）",
+        "PKCS#1 PEM — legacy RSA-only format (BEGIN RSA PRIVATE KEY)",
+    ),
+    (
+        "私钥以 PKCS#8 PEM 导出（OpenSSH 兼容读取）",
+        "Private key is exported as PKCS#8 PEM (readable by OpenSSH)",
+    ),
+    (
+        "SPKI PEM —— 证书 / TLS / JWT 公钥通用格式",
+        "SPKI PEM — the general public key format for certificates / TLS / JWT",
+    ),
+    (
+        "PKCS#1 PEM —— 传统 RSA 公钥格式（BEGIN RSA PUBLIC KEY）",
+        "PKCS#1 PEM — legacy RSA public key format (BEGIN RSA PUBLIC KEY)",
+    ),
+    (
+        "可直接粘贴到服务器的 authorized_keys 中",
+        "Can be pasted directly into a server's authorized_keys",
+    ),
+    // ---- PEM 转 PFX ----
+    ("如果私钥需要密码...", "If the private key is password-protected..."),
+    ("设置PFX文件密码...", "Set the PFX file password..."),
+    ("请提供PEM证书内容", "Please provide the PEM certificate content"),
+    ("请设置PFX密码", "Please set the PFX password"),
+    ("请提供私钥内容", "Please provide the private key content"),
+    (
+        "检测到加密私钥，请填写私钥密码",
+        "Encrypted private key detected; please enter the key password",
+    ),
+    ("无法提取有效的证书内容", "Unable to extract valid certificate content"),
+    (
+        "转换失败：请检查证书和私钥内容是否匹配",
+        "Conversion failed: please check that the certificate and private key match",
+    ),
+    (
+        "证书内容不能为空，请提供有效的证书内容",
+        "Certificate content cannot be empty; please provide valid certificate content",
+    ),
+    (
+        "证书格式不正确，请确保证书以-----BEGIN CERTIFICATE-----开头",
+        "Invalid certificate format; make sure the certificate starts with -----BEGIN CERTIFICATE-----",
+    ),
+    (
+        "私钥内容不能为空，请提供有效的私钥内容",
+        "Private key content cannot be empty; please provide valid private key content",
+    ),
+    (
+        "私钥格式不正确，请确保私钥包含正确的BEGIN和END标记",
+        "Invalid private key format; make sure the key contains the correct BEGIN and END markers",
+    ),
+    (
+        "私钥密码错误或私钥格式不正确",
+        "Incorrect private key password or invalid private key format",
+    ),
+    (
+        "PFX密码不能为空，请设置PFX文件密码",
+        "PFX password cannot be empty; please set the PFX file password",
+    ),
+    (
+        "PFX文件构建失败：证书和私钥可能不匹配",
+        "Failed to build the PFX file: the certificate and private key may not match",
+    ),
+    (
+        "证书解析失败：请检查证书格式是否正确",
+        "Failed to parse the certificate: please check the certificate format",
+    ),
+    (
+        "私钥解析失败：请检查私钥格式和密码是否正确",
+        "Failed to parse the private key: please check the key format and password",
+    ),
+    ("PFX文件", "PFX File"),
+    ("保存文件失败：", "Failed to save file: "),
+    ("PFX文件已成功保存！", "PFX file saved successfully!"),
+    ("📋 OpenSSL命令参考", "📋 OpenSSL Command Reference"),
+    (
+        "💡 此工具为可视化版本，上述命令仅供参考。转换结果与命令行工具完全一致。",
+        "💡 This tool is a visual version; the commands above are for reference only. Results are identical to the command line.",
+    ),
+    ("隐藏OpenSSL命令", "Hide OpenSSL Commands"),
+    ("查看OpenSSL命令", "View OpenSSL Commands"),
+    ("PEM证书", "PEM Certificate"),
+    (
+        "粘贴PEM格式的证书内容，或以-----BEGIN CERTIFICATE-----开头...",
+        "Paste the PEM certificate content, or start with -----BEGIN CERTIFICATE-----...",
+    ),
+    ("证书格式有效", "Certificate format is valid"),
+    (
+        "证书已包含私钥，无需额外输入",
+        "The certificate already contains the private key; no extra input needed",
+    ),
+    ("私钥 *", "Private Key *"),
+    (
+        "请粘贴PEM格式的私钥内容，或以-----BEGIN PRIVATE KEY-----开头...",
+        "Paste the PEM private key content, or start with -----BEGIN PRIVATE KEY-----...",
+    ),
+    ("私钥格式有效", "Private key format is valid"),
+    ("密码设置", "Password Settings"),
+    ("私钥密码 *", "Private Key Password *"),
+    ("PFX密码 *", "PFX Password *"),
+    ("用于保护生成的PFX文件", "Used to protect the generated PFX file"),
+    ("转换中...", "Converting..."),
+    ("转换为PFX", "Convert to PFX"),
+    ("转换结果", "Conversion Result"),
+    ("转换成功！文件大小：", "Conversion successful! File size: "),
+    ("下载PFX文件", "Download PFX File"),
+    // ---- PFX 转 PEM ----
+    (
+        "输入PFX文件密码（如果有的话）",
+        "Enter the PFX file password (if any)",
+    ),
+    ("PFX/P12文件", "PFX/P12 Files"),
+    ("读取文件失败：", "Failed to read file: "),
+    ("请选择PFX或P12格式的文件", "Please choose a PFX or P12 file"),
+    ("请选择PFX文件", "Please choose a PFX file"),
+    ("转换失败", "Conversion failed"),
+    (
+        "密码错误或文件损坏。请检查密码是否正确，或尝试使用其他工具验证文件完整性。",
+        "Wrong password or corrupted file. Check the password, or use another tool to verify the file's integrity.",
+    ),
+    (
+        "文件格式错误，可能不是有效的PFX文件。请确认文件未损坏且为正确的PFX/P12格式。",
+        "Invalid file format; it may not be a valid PFX file. Make sure the file is not corrupted and is in the correct PFX/P12 format.",
+    ),
+    (
+        "未在PFX文件中找到证书和私钥。请检查以下几点：\n1. 确保选择的文件是有效的PFX/P12文件\n2. 如果文件有密码保护，请输入正确的密码\n3. 确认文件中确实包含证书和私钥内容",
+        "No certificate or private key found in the PFX file. Please check:\n1. The selected file is a valid PFX/P12 file\n2. If the file is password-protected, the password is correct\n3. The file does contain certificate and private key content",
+    ),
+    ("💡 使用提示", "💡 Tips"),
+    ("选择文件", "Choose File"),
+    ("支持 .pfx / .p12 格式", "Supports .pfx / .p12 formats"),
+    ("已选择：", "Selected:"),
+    ("清除", "Clear"),
+    ("PFX 密码 (可选):", "PFX Password (optional):"),
+    ("开始转换", "Start Conversion"),
+    ("转换结果:", "Conversion Result:"),
+    ("下载PEM", "Download PEM"),
+];

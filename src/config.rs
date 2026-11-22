@@ -42,6 +42,11 @@ fn default_true() -> bool {
     true
 }
 
+/// `language` 的默认值（跟随系统 locale）。
+fn default_language() -> String {
+    "system".to_string()
+}
+
 /// 应用配置。字段新增必须带 `#[serde(default)]` 以保持与历史版本配置文件双向兼容。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
@@ -53,6 +58,8 @@ pub struct AppConfig {
     pub close_to_tray: bool,
     #[serde(default)]
     pub theme: ThemeMode,
+    #[serde(default = "default_language")]
+    pub language: String, // "system" | "zh-CN" | "en"（语义见 i18n::Language）
     #[serde(default)]
     pub hotkey: HotKeyConfig,
 }
@@ -64,6 +71,7 @@ impl Default for AppConfig {
             start_minimized: false,
             close_to_tray: true, // 默认启用关闭时最小化到托盘
             theme: ThemeMode::default(),
+            language: default_language(),
             hotkey: HotKeyConfig::default(),
         }
     }
@@ -128,10 +136,20 @@ mod tests {
     fn test_new_fields_serialized() {
         let config = AppConfig {
             theme: ThemeMode::Dark,
+            language: "en".to_string(),
             ..Default::default()
         };
         let json = serde_json::to_string(&config).unwrap();
         assert!(json.contains("\"theme\":\"dark\""));
+        assert!(json.contains("\"language\":\"en\""));
+    }
+
+    #[test]
+    fn test_language_field_backward_compat() {
+        // 无 language 字段的旧配置必须按默认值补齐
+        let old = r#"{"tray_enabled":true}"#;
+        let config: AppConfig = serde_json::from_str(old).unwrap();
+        assert_eq!(config.language, "system");
     }
 
     #[test]

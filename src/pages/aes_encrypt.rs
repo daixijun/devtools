@@ -4,6 +4,7 @@
 //! 密文。错误一律内联红条展示；「加载示例」填入可立即加密的示例数据。
 
 use devtools::crypto::{aes_encrypt, generate_random_iv_hex, AesOptions};
+use devtools::i18n::t;
 use gpui::{div, prelude::*, px, Context, Entity, IntoElement, Render, SharedString, Window};
 use gpui_component::{
     input::{Input, InputState, TextareaState},
@@ -35,7 +36,13 @@ pub struct AesEncrypt {
 impl AesEncrypt {
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let mode_sel = select_state(window, cx, MODE_OPTIONS, 0);
-        let key_len_sel = select_state(window, cx, KEY_LEN_OPTIONS, 0);
+        // 「128 位」等标签经 i18n 翻译后传入下拉
+        let key_len_options: Vec<(&str, &str)> = KEY_LEN_OPTIONS
+            .iter()
+            .copied()
+            .map(|(value, label)| (value, t(label)))
+            .collect();
+        let key_len_sel = select_state(window, cx, &key_len_options, 0);
         let padding_sel = select_state(window, cx, PADDING_OPTIONS, 0);
 
         cx.subscribe_in(
@@ -77,11 +84,13 @@ impl AesEncrypt {
         .detach();
 
         Self {
-            text: cx.new(|cx| TextareaState::new(window, cx).placeholder("请输入要加密的文本")),
-            result: cx.new(|cx| TextareaState::new(window, cx).placeholder("加密结果将显示在这里")),
+            text: cx.new(|cx| TextareaState::new(window, cx).placeholder(t("请输入要加密的文本"))),
+            result: cx
+                .new(|cx| TextareaState::new(window, cx).placeholder(t("加密结果将显示在这里"))),
             // 默认 128 位；密钥长度切换时由 sync_key_placeholder 更新占位文案
-            key: cx.new(|cx| InputState::new(window, cx).placeholder("请输入128位密钥 (16 字符)")),
-            iv: cx.new(|cx| InputState::new(window, cx).placeholder("请输入16字符的IV (128位)")),
+            key: cx
+                .new(|cx| InputState::new(window, cx).placeholder(t("请输入128位密钥 (16 字符)"))),
+            iv: cx.new(|cx| InputState::new(window, cx).placeholder(t("请输入16字符的IV (128位)"))),
             error: None,
             mode: SharedString::from("CBC"),
             key_len: SharedString::from("128"),
@@ -94,7 +103,14 @@ impl AesEncrypt {
 
     fn sync_key_placeholder(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let bits = key_len_bits(&self.key_len);
-        let placeholder = format!("请输入{bits}位密钥 ({} 字符)", bits / 8);
+        let placeholder = format!(
+            "{}{}{} ({} {})",
+            t("请输入"),
+            bits,
+            t("位密钥"),
+            bits / 8,
+            t("字符")
+        );
         self.key.update(cx, |state, cx| {
             state.set_placeholder(placeholder, window, cx)
         });
@@ -108,11 +124,11 @@ impl AesEncrypt {
         let mode: &str = &self.mode;
 
         if text.is_empty() {
-            self.error = Some("请输入要加密的文本".to_string());
+            self.error = Some(t("请输入要加密的文本").to_string());
         } else if key.is_empty() {
-            self.error = Some("请输入密钥".to_string());
+            self.error = Some(t("请输入密钥").to_string());
         } else if mode != "ECB" && iv.is_empty() {
-            self.error = Some("当前模式需要初始化向量(IV)".to_string());
+            self.error = Some(t("当前模式需要初始化向量(IV)").to_string());
         } else {
             self.error = None;
             let opts = AesOptions {
@@ -128,7 +144,7 @@ impl AesEncrypt {
                         .update(cx, |state, cx| state.set_value(encrypted, window, cx));
                 }
                 Err(msg) => {
-                    self.error = Some(format!("加密过程中发生错误: {msg}"));
+                    self.error = Some(format!("{}: {}", t("加密过程中发生错误"), msg));
                 }
             }
         }
@@ -146,7 +162,7 @@ impl AesEncrypt {
     /// 加载示例（明文 + 密钥 + IV，点击「加密」立即得到结果）。
     fn load_example(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.text.update(cx, |state, cx| {
-            state.set_value("这是一段需要加密的示例文本", window, cx)
+            state.set_value(t("这是一段需要加密的示例文本"), window, cx)
         });
         self.key.update(cx, |state, cx| {
             state.set_value("my-secret-key-16", window, cx)
@@ -169,7 +185,7 @@ impl Render for AesEncrypt {
         let input_row = div()
             .flex()
             .gap_4()
-            .child(ui::field("要加密的文本", ui::edit_area(&self.text, 96.), cx).flex_1())
+            .child(ui::field(t("要加密的文本"), ui::edit_area(&self.text, 96.), cx).flex_1())
             .child(
                 div()
                     .flex()
@@ -185,12 +201,12 @@ impl Render for AesEncrypt {
                                 div()
                                     .text_size(px(12.))
                                     .text_color(cx.theme().colors.muted_foreground)
-                                    .child("加密结果"),
+                                    .child(t("加密结果")),
                             )
                             .when(!result.is_empty(), |el| {
                                 el.child(ui::copy_result_button(
                                     "aesencrypt-copy",
-                                    "复制结果",
+                                    t("复制结果"),
                                     result.clone(),
                                 ))
                             }),
@@ -200,9 +216,16 @@ impl Render for AesEncrypt {
 
         // 密钥 | IV（mode≠ECB 时显示）
         let mut key_iv_row = div().flex().gap_4().child(
-            ui::field("密钥", Input::new(&self.key), cx)
+            ui::field(t("密钥"), Input::new(&self.key), cx)
                 .child(ui::hint_text(
-                    &format!("密钥长度必须为 {} 字符 ({} 位)", bits / 8, bits),
+                    &format!(
+                        "{} {} {} ({} {})",
+                        t("密钥长度必须为"),
+                        bits / 8,
+                        t("字符"),
+                        bits,
+                        t("位")
+                    ),
                     cx,
                 ))
                 .flex_1(),
@@ -210,7 +233,7 @@ impl Render for AesEncrypt {
         if show_iv {
             key_iv_row = key_iv_row.child(
                 ui::field(
-                    "初始化向量 (IV)",
+                    t("初始化向量 (IV)"),
                     div()
                         .flex()
                         .items_center()
@@ -218,12 +241,12 @@ impl Render for AesEncrypt {
                         .child(div().flex_1().child(Input::new(&self.iv)))
                         .child(ui::secondary_button(
                             "aesencrypt-iv-gen",
-                            "随机生成",
+                            t("随机生成"),
                             cx.listener(|this, _, window, cx| this.generate_iv(window, cx)),
                         )),
                     cx,
                 )
-                .child(ui::hint_text("IV长度必须为16字符 (128位)", cx))
+                .child(ui::hint_text(t("IV长度必须为16字符 (128位)"), cx))
                 .flex_1(),
             );
         }
@@ -231,14 +254,22 @@ impl Render for AesEncrypt {
         let mut page = ui::tool_page("aesencrypt")
             // AES 配置卡片
             .child(
-                ui::card(cx).child(ui::card_header("AES 配置", cx)).child(
-                    div()
-                        .flex()
-                        .gap_4()
-                        .child(ui::field("模式", Select::new(&self.mode_sel), cx).flex_1())
-                        .child(ui::field("密钥长度", Select::new(&self.key_len_sel), cx).flex_1())
-                        .child(ui::field("填充模式", Select::new(&self.padding_sel), cx).flex_1()),
-                ),
+                ui::card(cx)
+                    .child(ui::card_header(t("AES 配置"), cx))
+                    .child(
+                        div()
+                            .flex()
+                            .gap_4()
+                            .child(ui::field(t("模式"), Select::new(&self.mode_sel), cx).flex_1())
+                            .child(
+                                ui::field(t("密钥长度"), Select::new(&self.key_len_sel), cx)
+                                    .flex_1(),
+                            )
+                            .child(
+                                ui::field(t("填充模式"), Select::new(&self.padding_sel), cx)
+                                    .flex_1(),
+                            ),
+                    ),
             )
             .child(input_row)
             .child(key_iv_row);
@@ -255,14 +286,14 @@ impl Render for AesEncrypt {
                 .child(
                     ui::primary_button(
                         "aesencrypt-run",
-                        "加密",
+                        t("加密"),
                         cx.listener(|this, _, window, cx| this.run_encrypt(window, cx)),
                     )
                     .disabled(text.is_empty()),
                 )
                 .child(ui::secondary_button(
                     "aesencrypt-example",
-                    "加载示例",
+                    t("加载示例"),
                     cx.listener(|this, _, window, cx| this.load_example(window, cx)),
                 )),
         )

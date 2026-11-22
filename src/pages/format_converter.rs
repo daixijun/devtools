@@ -16,6 +16,7 @@ use gpui_component::{
 
 use crate::components::select::{select_state, SimpleSelectDelegate};
 use crate::components::{notify, ui};
+use devtools::i18n::t;
 use devtools::text_tools::format::{self, Format};
 
 /// 示例（美化 JSON）。
@@ -86,14 +87,14 @@ impl FormatConverter {
     fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let input = ui::new_editor(window, cx);
         input.update(cx, |state, cx| {
-            state.set_placeholder("粘贴 JSON、YAML 或 TOML 内容...", window, cx);
+            state.set_placeholder(t("粘贴 JSON、YAML 或 TOML 内容..."), window, cx);
             // 初始即设高亮器（默认源格式 JSON）：否则首次加载示例/粘贴内容不高亮，
             // 只有切换过格式下拉才生效
             state.set_highlighter(Format::Json.as_str(), cx);
         });
         let output = ui::new_editor(window, cx);
         output.update(cx, |state, cx| {
-            state.set_placeholder("转换结果将显示在这里...", window, cx);
+            state.set_placeholder(t("转换结果将显示在这里..."), window, cx);
             state.set_highlighter(Format::Json.as_str(), cx);
         });
 
@@ -177,7 +178,7 @@ impl FormatConverter {
             return;
         }
         if self.input_format == self.output_format {
-            self.error = Some("输入和输出格式相同，无需转换".to_string());
+            self.error = Some(t("输入和输出格式相同，无需转换").to_string());
             self.set_output("", window, cx);
             cx.notify();
             return;
@@ -222,7 +223,7 @@ impl FormatConverter {
             return;
         }
         cx.write_to_clipboard(gpui::ClipboardItem::new_string(output));
-        notify::toast_success(window, cx, "已复制");
+        notify::toast_success(window, cx, t("已复制"));
     }
 }
 
@@ -238,19 +239,19 @@ impl Render for FormatConverter {
                 // 工具条：输入格式 / 输出格式 + 示例 / 清空 / 复制结果
                 ui::toolbar()
                     .child(ui::hfield(
-                        "输入格式:",
+                        t("输入格式:"),
                         Select::new(&self.input_sel).small(),
                         cx,
                     ))
                     .child(ui::hfield(
-                        "输出格式:",
+                        t("输出格式:"),
                         Select::new(&self.output_sel).small(),
                         cx,
                     ))
                     .child(gpui::div().flex_1())
                     .child(
                         Button::new("formatconverter-example")
-                            .label("示例")
+                            .label(t("示例"))
                             .secondary()
                             .small()
                             .on_click(cx.listener(|this, _ev, window, cx| {
@@ -259,7 +260,7 @@ impl Render for FormatConverter {
                     )
                     .child(
                         Button::new("formatconverter-clear")
-                            .label("清空")
+                            .label(t("清空"))
                             .secondary()
                             .small()
                             .disabled(!has_input)
@@ -269,7 +270,7 @@ impl Render for FormatConverter {
                     )
                     .child(
                         Button::new("formatconverter-copy")
-                            .label("复制结果")
+                            .label(t("复制结果"))
                             .primary()
                             .small()
                             .disabled(!can_copy)
