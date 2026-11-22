@@ -57,7 +57,7 @@ nom-exif = { version = "2.5", features = ["async"] }
 regex = "1.10"
 pcre2 = "0.2"
 sha1 = "0.10"
-sha2 = "0.10"
+sha2 = "0.11"
 sha3 = "0.10"
 md-5 = "0.10"
 hmac = "0.12"
