@@ -32,7 +32,8 @@ pub struct ReleaseInfo {
 }
 
 /// 查询 GitHub Releases 最新正式发布。
-pub async fn fetch_latest_release() -> DevToolResult<ReleaseInfo> {    let client = reqwest::Client::builder()
+pub async fn fetch_latest_release() -> DevToolResult<ReleaseInfo> {
+    let client = reqwest::Client::builder()
         .user_agent(format!("DevTools/{}", current_version()))
         .build()
         .map_err(|e| DevToolError::NetworkError(format!("构建 HTTP 客户端失败: {e}")))?;
