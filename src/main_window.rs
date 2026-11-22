@@ -3,24 +3,24 @@
 //! 侧栏布局（自上而下）：
 //! - 搜索框（过滤工具）
 //! - 按分类分组的工具列表（分类行带图标，搜索时显示扁平结果）
-//! - 底部固定操作区：主题切换图标（循环浅色/深色/跟随系统）+ 设置图标（弹窗）
+//! - 底部固定操作区：主题切换图标（循环浅色/深色/跟随系统）+ 设置图标（打开设置页）
 //!
 //! 「设置」不再作为侧栏工具项出现（registry 保留该分类供托盘/兜底分发），
-//! 入口统一为底部齿轮图标弹出的设置弹窗。
+//! 入口统一为底部齿轮图标打开的设置页（右侧内容区）。
 //! 关闭按钮按 close_to_tray 配置隐藏到托盘；失焦不自动隐藏。
 
-use crate::{components::ui, pages::settings::Settings, tool_window::ToolWindow, windows};
+use crate::{components::ui, tool_window::ToolWindow, windows};
 use devtools::config::ThemeMode;
+use devtools::i18n::t;
 use devtools::registry::{self, ToolDefinition};
 use gpui::{
     div, prelude::*, px, App, Context, Div, Entity, FocusHandle, Focusable, FontWeight,
     IntoElement, Render, SharedString, Window,
 };
 use gpui_component::{
-    button::{Button, ButtonVariants as _},
-    dialog::DialogFooter,
+    button::ButtonVariants as _,
     input::{InputEvent, InputState},
-    ActiveTheme as _, Icon, Sizable as _, WindowExt as _,
+    ActiveTheme as _, Icon, Sizable as _,
 };
 // 完整 Lucide 图标目录在 gpui-kit-assets（gpui_component::IconName 仅含组件子集）；
 // 其 IconName 实现 IconNamed，可直接用于 Icon::new / Button::icon
@@ -30,9 +30,6 @@ use gpui_kit_assets::IconName;
 const SIDEBAR_WIDTH: f32 = 232.;
 /// 导航行高
 const NAV_ROW_HEIGHT: f32 = 34.;
-/// 设置弹窗宽度
-const SETTINGS_DIALOG_WIDTH: f32 = 560.;
-
 pub struct MainWindow {
     input: Entity<InputState>,
     input_focus: FocusHandle,
@@ -46,14 +43,12 @@ pub struct MainWindow {
     pending_tool: Option<&'static ToolDefinition>,
     /// 右侧内容区（选中工具后创建）
     content: Option<Entity<ToolWindow>>,
-    /// 设置弹窗视图（首次打开创建并保持，主题/开关状态跨打开保留）
-    settings_view: Option<Entity<Settings>>,
 }
 
 impl MainWindow {
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let input =
-            cx.new(|cx| InputState::new(window, cx).placeholder(SharedString::from("搜索工具…")));
+        let input = cx
+            .new(|cx| InputState::new(window, cx).placeholder(SharedString::from(t("搜索工具…"))));
         let input_focus = input.focus_handle(cx);
 
         cx.subscribe_in(
@@ -94,7 +89,6 @@ impl MainWindow {
             selected_tool: None,
             pending_tool: None,
             content: None,
-            settings_view: None,
         }
     }
 
@@ -219,7 +213,7 @@ impl MainWindow {
                     .xsmall()
                     .text_color(theme.colors.muted_foreground),
             )
-            .child(category.name)
+            .child(t(category.name))
     }
 
     /// 侧栏工具列表（搜索态扁平结果 / 默认按分类分组）。
@@ -229,7 +223,7 @@ impl MainWindow {
 
         if self.query.is_empty() {
             for category in registry::CATEGORIES {
-                // 设置入口在侧栏底部（齿轮图标 → 弹窗），不再列为工具项
+                // 设置入口在侧栏底部（齿轮图标 → 设置页），不再列为工具项
                 if category.id == "settings" {
                     continue;
                 }
@@ -245,7 +239,7 @@ impl MainWindow {
                         .is_some_and(|selected| selected.id == tool_id);
                     list = list.child(self.nav_row(
                         &format!("nav-{}", tool.id),
-                        tool.name,
+                        t(tool.name),
                         None,
                         is_selected,
                         move |_, cx| windows::open_tool(cx, tool_id),
@@ -256,13 +250,13 @@ impl MainWindow {
         } else {
             for tool in &self.results {
                 let tool_id = tool.id;
-                let category = registry::category_name(tool.category);
+                let category = t(registry::category_name(tool.category));
                 let is_selected = self
                     .selected_tool
                     .is_some_and(|selected| selected.id == tool_id);
                 list = list.child(self.nav_row(
                     &format!("nav-search-{}", tool.id),
-                    tool.name,
+                    t(tool.name),
                     Some(category),
                     is_selected,
                     move |_, cx| windows::open_tool(cx, tool_id),
@@ -276,14 +270,14 @@ impl MainWindow {
                         .py_2()
                         .text_size(px(13.))
                         .text_color(theme.colors.muted_foreground)
-                        .child("没有匹配的工具"),
+                        .child(t("没有匹配的工具")),
                 );
             }
         }
         list
     }
 
-    /// 侧栏底部固定操作区：主题切换 + 设置弹窗入口 + 工具数提示。
+    /// 侧栏底部固定操作区：主题切换 + 设置页入口 + 工具数提示。
     fn sidebar_footer(&mut self, cx: &mut Context<Self>) -> Div {
         let theme = cx.theme().clone();
         let theme_mode = crate::config_state::get(cx).theme;
@@ -291,7 +285,7 @@ impl MainWindow {
         let theme_button = ui::icon_button("sidebar-theme", Self::theme_icon(theme_mode))
             .ghost()
             .small()
-            .on_click(cx.listener(move |this, _, window, cx| {
+            .on_click(cx.listener(move |_, _, window, cx| {
                 // 循环切换：浅色 → 深色 → 跟随系统（图标随当前模式变化）
                 let next = match crate::config_state::get(cx).theme {
                     ThemeMode::Light => ThemeMode::Dark,
@@ -299,18 +293,14 @@ impl MainWindow {
                     ThemeMode::System => ThemeMode::Light,
                 };
                 crate::theme::set_mode(next, window, cx);
-                // 设置弹窗打开期间同步其主题镜像
-                if let Some(settings) = &this.settings_view {
-                    settings.update(cx, |settings, cx| settings.sync_theme(next, cx));
-                }
                 cx.notify();
             }));
 
         let settings_button = ui::icon_button("sidebar-settings", IconName::Settings)
             .ghost()
             .small()
-            .on_click(cx.listener(|this, _, window, cx| {
-                this.open_settings_dialog(window, cx);
+            .on_click(cx.listener(|this, _, _window, cx| {
+                this.open_settings(cx);
             }));
 
         div()
@@ -328,36 +318,17 @@ impl MainWindow {
                     .text_color(theme.colors.muted_foreground)
                     .text_right()
                     .pr_1()
-                    .child(format!("{} 个工具", registry::TOOLS.len())),
+                    .child(format!("{} {}", registry::TOOLS.len(), t("个工具"))),
             )
     }
 
-    /// 打开设置弹窗（侧栏底部齿轮与欢迎页设置卡共用）。
-    ///
-    /// 实体必须在打开前创建（dialog 层重建时 builder 会重复执行）。
-    fn open_settings_dialog(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let view = self
-            .settings_view
-            .get_or_insert_with(|| Settings::create_embedded(cx))
-            .clone();
-        window.open_dialog(cx, move |dialog, _window, _cx| {
-            dialog
-                .title("设置")
-                .w(px(SETTINGS_DIALOG_WIDTH))
-                .content({
-                    let view = view.clone();
-                    move |content, _, _| content.child(view.clone())
-                })
-                .footer(
-                    DialogFooter::new().child(
-                        Button::new("settings-done")
-                            .label("完成")
-                            .primary()
-                            .on_click(|_, window, cx| window.close_dialog(cx)),
-                    ),
-                )
-        });
-        cx.notify();
+    /// 打开设置页（侧栏底部齿轮与欢迎页「偏好设置」卡共用）：
+    /// 切换右侧内容区到 settings 工具页——设置的唯一页面形态。
+    fn open_settings(&mut self, cx: &mut Context<Self>) {
+        let Some(tool) = registry::get_tool_by_id("settings") else {
+            return;
+        };
+        self.select_tool(tool, cx);
     }
 
     /// 欢迎页快捷工具（id 对应 registry；高频入口）。
@@ -416,13 +387,13 @@ impl MainWindow {
                             .text_size(px(13.))
                             .font_weight(FontWeight::MEDIUM)
                             .text_color(theme.colors.foreground)
-                            .child(category.name),
+                            .child(t(category.name)),
                     )
                     .child(
                         div()
                             .text_size(px(11.))
                             .text_color(theme.colors.muted_foreground)
-                            .child(format!("{} 个工具", count)),
+                            .child(format!("{} {}", count, t("个工具"))),
                     ),
             );
         }
@@ -438,8 +409,8 @@ impl MainWindow {
                 .bg(theme.colors.popover)
                 .cursor_pointer()
                 .hover(|style| style.bg(theme.colors.secondary))
-                .on_click(cx.listener(|this, _, window, cx| {
-                    this.open_settings_dialog(window, cx);
+                .on_click(cx.listener(|this, _, _window, cx| {
+                    this.open_settings(cx);
                 }))
                 .child(
                     Icon::new(IconName::Settings)
@@ -451,13 +422,13 @@ impl MainWindow {
                         .text_size(px(13.))
                         .font_weight(FontWeight::MEDIUM)
                         .text_color(theme.colors.foreground)
-                        .child("偏好设置"),
+                        .child(t("偏好设置")),
                 )
                 .child(
                     div()
                         .text_size(px(11.))
                         .text_color(theme.colors.muted_foreground)
-                        .child("主题 · 托盘 · 自启"),
+                        .child(t("主题 · 托盘 · 自启")),
                 ),
         );
 
@@ -480,7 +451,7 @@ impl MainWindow {
                         .on_click(cx.listener(move |this, _, _window, cx| {
                             this.select_tool(tool, cx);
                         }))
-                        .child(tool.name),
+                        .child(t(tool.name)),
                 );
             }
         }
@@ -513,16 +484,19 @@ impl MainWindow {
                                     .text_size(px(22.))
                                     .font_weight(FontWeight::SEMIBOLD)
                                     .text_color(theme.colors.foreground)
-                                    .child("DevTools 开发者工具箱"),
+                                    .child(t("DevTools 开发者工具箱")),
                             )
                             .child(
                                 div()
                                     .text_size(px(13.))
                                     .text_color(theme.colors.muted_foreground)
                                     .child(format!(
-                                        "{} 个分类 · {} 个工具 · 纯 Rust 原生渲染",
+                                        "{} {} · {} {} · {}",
                                         category_count,
-                                        registry::TOOLS.len()
+                                        t("个分类"),
+                                        registry::TOOLS.len(),
+                                        t("个工具"),
+                                        t("纯 Rust 原生渲染")
                                     )),
                             ),
                     )
@@ -538,7 +512,7 @@ impl MainWindow {
                                     .text_size(px(12.))
                                     .font_weight(FontWeight::MEDIUM)
                                     .text_color(theme.colors.muted_foreground)
-                                    .child("常用工具"),
+                                    .child(t("常用工具")),
                             )
                             .child(quick_row),
                     )
@@ -546,7 +520,9 @@ impl MainWindow {
                         div()
                             .text_size(px(12.))
                             .text_color(theme.colors.muted_foreground)
-                            .child("输入即搜索 · ↑↓ 选择 · Enter 打开 · 关闭窗口可隐藏到托盘"),
+                            .child(t(
+                                "输入即搜索 · ↑↓ 选择 · Enter 打开 · 关闭窗口可隐藏到托盘",
+                            )),
                     ),
             )
     }
