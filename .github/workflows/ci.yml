@@ -1,10 +1,9 @@
-# CI：push main / PR 时跑格式检查、clippy（零警告标准）与单元测试。
+# CI：lint（fmt + clippy，macOS 单点）+ 三平台 clippy/test 矩阵。
 #
-# 说明：
-# - 必须用 macOS runner：gpui 依赖 Metal 着色器编译，runner 自带 Metal Toolchain；
-# - libheif-sys 走 pkg-config 链接系统 libheif（HEIC 解码），需 brew 安装；
-# - openssl 用 vendored 特性源码编译，runner 自带 perl/make，无需额外安装。
-
+# 平台差异依赖安装：
+# - macOS：libheif（libheif-sys 走 pkg-config，HEIF 解码仅 macOS 编译）
+# - Linux：gpui 渲染栈（wayland/xkbcommon/vulkan/fontconfig）+ GTK3（rfd 文件对话框）
+# - Windows：无需系统依赖；openssl vendored 关汇编（免 NASM）
 name: CI
 
 on:
@@ -13,9 +12,13 @@ on:
   pull_request:
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  check:
-    name: Check & Test (macOS)
+  lint:
+    name: Format & Clippy (macOS)
     runs-on: macos-15
     timeout-minutes: 45
     steps:
@@ -30,10 +33,47 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      - name: rustfmt
-        run: cargo fmt --all -- --check
+      - run: cargo fmt --all -- --check
 
-      - name: clippy（零警告标准）
+      - run: cargo clippy --all-targets -- -D warnings
+
+  test:
+    name: Test (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            name: macOS (aarch64)
+          - os: windows-latest
+            name: Windows (x86_64)
+          - os: ubuntu-24.04
+            name: Linux (x86_64)
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    env:
+      # openssl vendored 编译走 C；Windows runner 无 NASM，关汇编
+      OPENSSL_NO_ASM: ${{ matrix.os == 'windows-latest' && '1' || '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: 安装系统依赖（macOS libheif）
+        if: matrix.os == 'macos-15'
+        run: brew install libheif
+
+      - name: 安装系统依赖（Linux gpui/rfd 栈）
+        if: matrix.os == 'ubuntu-24.04'
+        uses: ./.github/actions/linux-deps
+
+      - uses: Swatinem/rust-cache@v2
+
+      # macOS 的 clippy 由 lint job 覆盖，matrix 内只补 Windows/Linux 分支
+      - name: clippy（零警告标准，Windows/Linux 分支代码）
+        if: matrix.os != 'macos-15'
         run: cargo clippy --all-targets -- -D warnings
 
       - name: 单元测试（含加密黄金向量）

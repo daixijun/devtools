@@ -1,9 +1,12 @@
-# Release：推送 `v*` tag 时构建 DMG 并发布 GitHub Release。
+# Release：推送 `v*` tag 时三平台构建并发布 GitHub Release。
 #
-# 前置约定：tag 版本必须与 Cargo.toml 的 package version 一致（工作流内校验），
-# 如 `v0.2.0` ⇔ `version = "0.2.0"`。产物 `DevTools-<tag>-aarch64.dmg` 及其
-# SHA-256 校验和；应用未签名，Release 说明附 Gatekeeper 放行方法。
-# 应用内「检查更新…」（src/utils/updater.rs）读取的就是这里的 releases/latest。
+# 前置约定：tag 版本必须与 Cargo.toml 的 package version 一致（verify job
+# 校验），如 `v0.2.0` ⇔ `version = "0.2.0"`。产物：
+# - DevTools-<tag>-macos-aarch64.dmg   （Apple Silicon，macOS 12+）
+# - DevTools-<tag>-windows-x86_64.zip  （绿色单 exe）
+# - DevTools-<tag>-linux-x86_64.tar.gz （含 .desktop 与图标）
+# 各产物附 .sha256。应用未签名（macOS Release 说明附 Gatekeeper 放行方法）。
+# 应用内「检查更新…」（src/utils/updater.rs）读取 releases/latest。
 
 name: Release
 
@@ -15,51 +18,132 @@ permissions:
   contents: write
 
 jobs:
-  release:
-    name: Build & Publish DMG (macOS)
-    runs-on: macos-15
-    timeout-minutes: 90
+  verify:
+    name: 校验 tag 与 Cargo.toml 版本一致
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-
       - uses: dtolnay/rust-toolchain@stable
-
-      - name: 校验 tag 与 Cargo.toml 版本一致
-        run: |
+      - run: |
           TAG_VERSION="${GITHUB_REF_NAME#v}"
-          CARGO_VERSION="$(cargo metadata --no-deps --format-version 1 | /usr/bin/python3 -c "import json,sys; print(json.load(sys.stdin)['packages'][0]['version'])")"
+          CARGO_VERSION="$(cargo metadata --no-deps --format-version 1 | python3 -c "import json,sys; print(json.load(sys.stdin)['packages'][0]['version'])")"
           if [ "$TAG_VERSION" != "$CARGO_VERSION" ]; then
             echo "::error::tag 版本 ($TAG_VERSION) 与 Cargo.toml 版本 ($CARGO_VERSION) 不一致"
             exit 1
           fi
 
-      - name: 安装系统依赖（libheif）
+  build:
+    name: Build ${{ matrix.name }}
+    needs: verify
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            name: macOS (aarch64)
+          - os: windows-latest
+            name: Windows (x86_64)
+          - os: ubuntu-24.04
+            name: Linux (x86_64)
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    env:
+      # openssl vendored 编译走 C；Windows runner 无 NASM，关汇编
+      OPENSSL_NO_ASM: ${{ matrix.os == 'windows-latest' && '1' || '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: 安装系统依赖（macOS libheif）
+        if: matrix.os == 'macos-15'
         run: brew install libheif
+
+      - name: 安装系统依赖（Linux gpui/rfd 栈）
+        if: matrix.os == 'ubuntu-24.04'
+        uses: ./.github/actions/linux-deps
 
       - uses: Swatinem/rust-cache@v2
 
-      - name: 构建 DMG（release）
-        run: scripts/build-dmg.sh
+      - name: 构建（release）
+        # Windows runner 默认 shell 是 pwsh，执行 .sh 必须显式 bash
+        shell: bash
+        run: scripts/build-app.sh release
 
-      - name: 整理发布产物（带版本号命名 + 校验和）
+      # ---- 按平台打包 ----
+      - name: 打包 macOS DMG
+        if: matrix.os == 'macos-15'
         run: |
-          ASSET="DevTools-${GITHUB_REF_NAME}-aarch64.dmg"
+          scripts/build-dmg.sh
+          ASSET="DevTools-${GITHUB_REF_NAME}-macos-aarch64.dmg"
           mv target/DevTools.dmg "target/$ASSET"
-          # 校验和文件内写裸文件名：用户下载后可直接 shasum -a 256 -c <file>.sha256
           (cd target && shasum -a 256 "$ASSET" > "$ASSET.sha256")
           cat "target/$ASSET.sha256"
 
-      - name: 发布 GitHub Release
+      - name: 打包 Windows zip
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $asset = "DevTools-$env:GITHUB_REF_NAME-windows-x86_64"
+          New-Item -ItemType Directory -Force -Path "target/pack/$asset" | Out-Null
+          Copy-Item target/release/devtools.exe "target/pack/$asset/"
+          Compress-Archive -Path "target/pack/$asset" -DestinationPath "target/$asset.zip"
+          $hash = (Get-FileHash "target/$asset.zip" -Algorithm SHA256).Hash.ToLower()
+          "$hash  $asset.zip" | Out-File "target/$asset.zip.sha256" -Encoding ascii
+          Get-Content "target/$asset.zip.sha256"
+
+      - name: 打包 Linux tar.gz
+        if: matrix.os == 'ubuntu-24.04'
+        run: |
+          ASSET="DevTools-${GITHUB_REF_NAME}-linux-x86_64"
+          STAGING="target/pack/$ASSET"
+          mkdir -p "$STAGING"
+          cp target/release/devtools "$STAGING/"
+          cp assets/devtools.desktop assets/icon.png "$STAGING/"
+          tar -czf "target/$ASSET.tar.gz" -C "target/pack" "$ASSET"
+          (cd target && sha256sum "$ASSET.tar.gz" > "$ASSET.tar.gz.sha256")
+          cat "target/$ASSET.tar.gz.sha256"
+
+      - name: 汇聚产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.os }}
+          path: |
+            target/DevTools-*.dmg
+            target/DevTools-*.zip
+            target/DevTools-*.tar.gz
+            target/DevTools-*.sha256
+          if-no-files-found: error
+
+  publish:
+    name: 发布 GitHub Release
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: 发布 Release（产物 + 多平台安装说明）
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            target/DevTools-*-aarch64.dmg
-            target/DevTools-*-aarch64.dmg.sha256
+            dist/DevTools-*.dmg
+            dist/DevTools-*.zip
+            dist/DevTools-*.tar.gz
+            dist/DevTools-*.sha256
           body: |
             ## 安装说明
 
-            下载 `DevTools-${{ github.ref_name }}-aarch64.dmg`（Apple Silicon，macOS 12+），打开后将 DevTools 拖入 Applications。
+            | 平台 | 产物 | 说明 |
+            | --- | --- | --- |
+            | macOS (Apple Silicon) | `DevTools-*-macos-aarch64.dmg` | macOS 12+，打开后拖入 Applications |
+            | Windows (x86_64) | `DevTools-*-windows-x86_64.zip` | 解压得到绿色单文件 `devtools.exe`，任意目录运行 |
+            | Linux (x86_64) | `DevTools-*-linux-x86_64.tar.gz` | 解压后将 `devtools` 放入 PATH；`devtools.desktop` 与 `icon.png` 复制到 `~/.local/share/applications/` 与 `~/.local/share/icons/`（可选） |
 
-            > 应用暂未做 Developer ID 签名与公证，首次打开如被 Gatekeeper 拦截，请在终端执行
+            校验下载完整性：`shasum -a 256 -c DevTools-*.sha256`（macOS）或 `sha256sum -c DevTools-*.sha256`（Windows/Linux）。
+
+            > macOS 版暂未做 Developer ID 签名与公证，首次打开如被 Gatekeeper 拦截，请在终端执行
             > `xattr -cr /Applications/DevTools.app`，或在「系统设置 → 隐私与安全性」中点击「仍要打开」。
           generate_release_notes: true
