@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/daixijun/devtools/actions/workflows/ci.yml/badge.svg)](https://github.com/daixijun/devtools/actions/workflows/ci.yml)
 
-A macOS developer toolbox built with **pure Rust + GPUI** (native GPU-rendered UI) — 31 developer tools in one lightweight native app. No webviews, no Electron: one binary, instant startup, and a macOS-native grouped-view interface in light & dark themes.
+A cross-platform developer toolbox built with **pure Rust + GPUI** (native GPU-rendered UI) — 31 developer tools in one lightweight native app. No webviews, no Electron: one binary, instant startup, and a native grouped-view interface in light & dark themes. Available for **macOS (Apple Silicon), Windows, and Linux**, with **Simplified Chinese / English** UI.
 
 > 📖 中文说明：[README_ZH.md](README_ZH.md) · 详细工具使用指南（中文）：[docs/tools.md](docs/tools.md)
 
@@ -15,11 +15,13 @@ A macOS developer toolbox built with **pure Rust + GPUI** (native GPU-rendered U
 
 - **31 tools / 7 categories** — encoding, crypto, certificates, network, data-format, media, and more (see below)
 - **Pure Rust, native rendering** — gpui (`gpui-pre` + `gpui-component`); no webview memory overhead
-- **macOS-native look** — grouped-view cards, segmented tabs, system switches, macOS system-blue accent; light / dark / follow-system themes
+- **Native look** — grouped-view cards, segmented tabs, system switches, macOS system-blue accent; light / dark / follow-system themes
+- **Cross-platform** — macOS (Metal), Windows (Win32 + DirectWrite), Linux (Wayland / X11); tray on macOS & Windows, single instance everywhere
+- **Bilingual UI** — Simplified Chinese / English, switchable in Settings and effective immediately (system locale auto-detected by default)
 - **Single main window** — category sidebar with instant type-to-search, tool content area, tray menu, app menu
 - **Single instance** — launching again activates the existing window instead of opening a second app
-- **Close to tray** — closing the window hides it to the tray; reopen or relaunch brings it back instantly
-- **Update check** — the app menu's "检查更新…" queries GitHub Releases and links to the latest DMG
+- **Close to tray** — closing the window hides it to the tray (macOS/Windows; Linux minimizes); reopen or relaunch brings it back instantly
+- **Update check** — the app menu's "Check for Updates" queries GitHub Releases and links to the latest release
 - **Reliable crypto** — byte-compatible with the historical JS implementation, verified against golden vectors (RFC 1321/6234/7914, noble AES vectors)
 
 ## 🧰 Tools
@@ -38,7 +40,7 @@ Each tool's usage is documented (in Chinese) in [docs/tools.md](docs/tools.md).
 
 ## 🚀 Getting Started
 
-**Prerequisites**: macOS 12+, Rust (2021 edition), Apple Metal Toolchain (`xcodebuild -downloadComponent MetalToolchain`, required by gpui's Metal shaders). The video converter shells out to system FFmpeg when used.
+**Prerequisites**: Rust (2021 edition). macOS 12+ additionally needs the Apple Metal Toolchain (`xcodebuild -downloadComponent MetalToolchain`, required by gpui's Metal shaders) and libheif (`brew install libheif`). Linux needs the GPUI stack: `libgtk-3-dev libxkbcommon-dev libwayland-dev libvulkan-dev libfontconfig1-dev` (Debian/Ubuntu). The video converter shells out to system FFmpeg when used.
 
 ```bash
 # run in development (watch mode: auto recompile-restart on file save;
@@ -48,9 +50,9 @@ make run
 # full check (cargo check + clippy zero-warning + unit tests)
 make check
 
-# package the app / the DMG installer (release)
-make app            # → target/DevTools.app
-make dmg            # → target/DevTools.dmg (drag-to-Applications layout)
+# package (release)
+make app            # macOS → target/DevTools.app · other OS → bare binary
+make dmg            # macOS only → target/DevTools.dmg (drag-to-Applications layout)
 ```
 
 ## 🛠 Development
