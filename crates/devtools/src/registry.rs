@@ -65,9 +65,9 @@ pub const CATEGORIES: &[ToolCategory] = &[
 pub const TOOLS: &[ToolDefinition] = &[
     // ---------- encoding 编码/解码 ----------
     ToolDefinition {
-        id: "base64converter",
+        id: "base64",
         name: "Base64 编解码",
-        description: "Base64 编码和解码工具，支持文本和文件的 Base64 转换",
+        description: "Base64 编码和解码工具，支持文本的 Base64 转换与格式校验",
         keywords: &["base64", "编码", "解码", "encode", "decode", "转换", "文本"],
         category: "encoding",
         window_size: WindowSize {
@@ -76,7 +76,7 @@ pub const TOOLS: &[ToolDefinition] = &[
         },
     },
     ToolDefinition {
-        id: "urlencoderdecoder",
+        id: "url",
         name: "URL 编解码",
         description: "URL 编码和解码工具，对 URL 中的特殊字符进行百分号编码转换",
         keywords: &[
@@ -96,9 +96,10 @@ pub const TOOLS: &[ToolDefinition] = &[
         },
     },
     ToolDefinition {
-        id: "aescrypto",
+        id: "aes",
         name: "AES 加密/解密",
-        description: "AES 对称加密和解密工具，支持多种模式和填充方式",
+        description:
+            "AES 对称加密和解密工具，支持 CBC/ECB/CFB/OFB/CTR 模式与多种填充，结果为 Base64",
         keywords: &[
             "aes",
             "加密",
@@ -139,29 +140,21 @@ pub const TOOLS: &[ToolDefinition] = &[
         },
     },
     ToolDefinition {
-        id: "jwtencode",
-        name: "JWT 生成",
-        description: "JWT Token 生成工具，创建带有自定义 Header 和 Payload 的 JSON Web Token",
+        id: "jwt",
+        name: "JWT 工具",
+        description: "JWT Token 生成与解码工具，创建、解析和验证 JSON Web Token",
         keywords: &[
             "jwt",
             "token",
             "生成",
+            "解码",
             "generate",
             "encode",
+            "decode",
+            "verify",
             "令牌",
             "json web token",
         ],
-        category: "encoding",
-        window_size: WindowSize {
-            width: 1000,
-            height: 750,
-        },
-    },
-    ToolDefinition {
-        id: "jwtdecode",
-        name: "JWT 解码",
-        description: "JWT Token 解码工具，解析和验证 JSON Web Token 的内容",
-        keywords: &["jwt", "token", "解码", "decode", "解析", "verify", "令牌"],
         category: "encoding",
         window_size: WindowSize {
             width: 1000,
@@ -204,7 +197,7 @@ pub const TOOLS: &[ToolDefinition] = &[
         id: "rsakeygenerator",
         name: "RSA 密钥对生成",
         description:
-            "RSA 公私钥对生成工具，支持 PKCS#8 / PKCS#1 私钥与 SPKI / PKCS#1 / OpenSSH 公钥格式",
+            "RSA 公私钥对生成工具，私钥与公钥统一格式选择：PKCS#8（通用）/ PKCS#1（传统）/ OpenSSH",
         keywords: &[
             "rsa",
             "ssh",
@@ -702,7 +695,7 @@ mod tests {
 
     #[test]
     fn test_registry_counts() {
-        assert_eq!(TOOLS.len(), 32);
+        assert_eq!(TOOLS.len(), 31);
         assert_eq!(CATEGORIES.len(), 8);
         let per_category: Vec<(usize, &str)> = CATEGORIES
             .iter()
@@ -711,7 +704,7 @@ mod tests {
         assert_eq!(
             per_category,
             vec![
-                (10, "encoding"),
+                (9, "encoding"),
                 (6, "certificate"),
                 (4, "network"),
                 (5, "dataformat"),
@@ -725,10 +718,10 @@ mod tests {
 
     #[test]
     fn test_search() {
-        assert_eq!(search_tools("").len(), 32);
-        assert_eq!(search_tools("   ").len(), 32);
+        assert_eq!(search_tools("").len(), 31);
+        assert_eq!(search_tools("   ").len(), 31);
         assert!(search_tools("json").iter().any(|t| t.id == "jsonformatter"));
-        assert!(search_tools("JWT").iter().any(|t| t.id == "jwtdecode"));
+        assert!(search_tools("JWT").iter().any(|t| t.id == "jwt"));
         assert!(search_tools("子网")
             .iter()
             .any(|t| t.id == "subnetcalculator"));

@@ -37,11 +37,19 @@ impl Default for HotKeyConfig {
     }
 }
 
+/// `tray_enabled` / `close_to_tray` 的历史默认值（true）。
+fn default_true() -> bool {
+    true
+}
+
 /// 应用配置。字段新增必须带 `#[serde(default)]` 以保持与历史版本配置文件双向兼容。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
+    #[serde(default = "default_true")]
     pub tray_enabled: bool,
+    #[serde(default)]
     pub start_minimized: bool,
+    #[serde(default = "default_true")]
     pub close_to_tray: bool,
     #[serde(default)]
     pub theme: ThemeMode,
@@ -70,16 +78,24 @@ fn config_path() -> PathBuf {
 
 impl AppConfig {
     /// 读取配置；文件不存在时返回默认值。
+    ///
+    /// 解析失败（文件损坏/字段非法）同样回退默认值，但会打印告警——
+    /// 静默吞掉会让用户的主题等设置无声丢失。
     pub fn load() -> Self {
         let path = config_path();
         if path.exists() {
-            fs::read_to_string(path)
-                .ok()
-                .and_then(|content| serde_json::from_str(&content).ok())
-                .unwrap_or_default()
-        } else {
-            Self::default()
+            match fs::read_to_string(&path)
+                .map_err(|e| e.to_string())
+                .and_then(|content| serde_json::from_str(&content).map_err(|e| e.to_string()))
+            {
+                Ok(config) => return config,
+                Err(err) => eprintln!(
+                    "配置文件解析失败，已回退默认配置: {err}（{}）",
+                    path.display()
+                ),
+            }
         }
+        Self::default()
     }
 
     /// 写入配置（父目录不存在则创建）。
@@ -116,5 +132,17 @@ mod tests {
         };
         let json = serde_json::to_string(&config).unwrap();
         assert!(json.contains("\"theme\":\"dark\""));
+    }
+
+    #[test]
+    fn test_partial_config_uses_field_defaults() {
+        // 手工编辑/部分写入的配置（缺 bool 字段）不得整体回退默认，
+        // theme 等用户设置必须保留；缺的 bool 按历史默认值补齐
+        let partial = r#"{"theme":"dark"}"#;
+        let config: AppConfig = serde_json::from_str(partial).unwrap();
+        assert_eq!(config.theme, ThemeMode::Dark);
+        assert!(config.tray_enabled);
+        assert!(!config.start_minimized);
+        assert!(config.close_to_tray);
     }
 }

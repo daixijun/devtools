@@ -5,6 +5,9 @@ pub struct CodeFormatter;
 impl CodeFormatter {
     /// 格式化 Go 代码
     ///
+    /// 大括号块（struct/func）与圆括号块（`import (`、`var (`、`const (`）
+    /// 均按 Go 惯例使用制表符缩进；圆括号块内行相对块首行 +1 层。
+    ///
     /// # Arguments
     /// * `code` - 待格式化的Go代码
     ///
@@ -14,12 +17,36 @@ impl CodeFormatter {
         let lines: Vec<&str> = code.lines().collect();
         let mut formatted = Vec::new();
         let mut indent_level: i32 = 0;
+        // 圆括号块深度：块内行输出时相对当前层级再 +1 层缩进
+        let mut paren_depth: i32 = 0;
 
         for line in lines {
             let trimmed = line.trim();
 
             if trimmed.is_empty() {
                 formatted.push(String::new());
+                continue;
+            }
+
+            // 圆括号块内：`)` 行结束块（与块首同级），其余行 +1 层
+            if paren_depth > 0 {
+                if trimmed.starts_with(')') {
+                    paren_depth -= 1;
+                    formatted.push(Self::format_line_with_indent(trimmed, indent_level));
+                    continue;
+                }
+                formatted.push(Self::format_line_with_indent(trimmed, indent_level + 1));
+                continue;
+            }
+
+            // 进入圆括号块：块首行保持原级，内容行 +1 层
+            if (trimmed.starts_with("import ")
+                || trimmed.starts_with("var ")
+                || trimmed.starts_with("const "))
+                && trimmed.ends_with('(')
+            {
+                paren_depth += 1;
+                formatted.push(trimmed.to_string());
                 continue;
             }
 
@@ -112,5 +139,27 @@ mod tests {
         assert!(output.contains("\nfunc (u User) TableName() string {"));
         // 验证函数体缩进
         assert!(output.contains("\treturn \"users\""));
+    }
+
+    #[test]
+    fn test_format_go_import_block() {
+        let input = "package schema\n\nimport (\n\"entgo.io/ent\"\n\"time\"\n)\n";
+        let output = CodeFormatter::format_go_code(input);
+        // import 块首行与 `)` 无缩进，内容行 +1 层制表符
+        assert!(output.contains("import ("));
+        assert!(output.contains("\t\"entgo.io/ent\""));
+        assert!(output.contains("\t\"time\""));
+        assert!(output.contains("\n)"));
+    }
+
+    #[test]
+    fn test_format_go_const_block_inside_func() {
+        let input = "func f() int {\nconst (\nA = 1\nB = 2\n)\nreturn A\n}";
+        let output = CodeFormatter::format_go_code(input);
+        // 函数内 const 块：内容行相对函数体再 +1 层
+        assert!(output.contains("\n\t\tA = 1"));
+        assert!(output.contains("\n\t\tB = 2"));
+        assert!(output.contains("\n\t)\n"));
+        assert!(output.contains("\treturn A"));
     }
 }

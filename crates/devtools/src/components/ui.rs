@@ -8,8 +8,8 @@
 //! `radius_lg`，等宽统一 Menlo。
 
 use gpui::{
-    div, px, App, AppContext as _, Div, Entity, InteractiveElement as _, IntoElement,
-    ParentElement as _, SharedString, StatefulInteractiveElement as _, Styled as _,
+    div, px, App, AppContext as _, ClipboardItem, Div, Entity, InteractiveElement as _,
+    IntoElement, ParentElement as _, SharedString, StatefulInteractiveElement as _, Styled as _,
 };
 use gpui_base::SelectableText;
 use gpui_component::{
@@ -20,6 +20,8 @@ use gpui_component::{
     tab::{Tab, TabBar},
     ActiveTheme as _, IconNamed, Sizable as _,
 };
+
+use super::notify;
 
 // ---------------------------------------------------------------------------
 // 输入状态构造（单行 / 多行 / 代码编辑器）
@@ -400,6 +402,19 @@ pub fn loading_row(text: &str, cx: &App) -> Div {
 /// 一键复制按钮（「复制/已复制 ✓」两态）。
 pub fn copy_button(id: &'static str, value: impl Into<SharedString>) -> Clipboard {
     Clipboard::new(id).value(value).label("复制")
+}
+
+/// 主结果复制按钮（结果卡头部）：primary 蓝色，与 base64 等工具页一致；
+/// 点击写入剪贴板并弹出「已复制」toast。
+pub fn copy_result_button(id: &'static str, label: &str, value: impl Into<SharedString>) -> Button {
+    let value = value.into();
+    Button::new(id)
+        .label(label)
+        .primary()
+        .on_click(move |_, window, cx| {
+            cx.write_to_clipboard(ClipboardItem::new_string(value.to_string()));
+            notify::toast_success(window, cx, "已复制");
+        })
 }
 
 // ---------------------------------------------------------------------------

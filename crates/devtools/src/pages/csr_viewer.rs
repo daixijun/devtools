@@ -643,7 +643,7 @@ impl Render for CsrViewer {
                                 .flex()
                                 .items_center()
                                 .gap_2()
-                                .child(ui::copy_button("csr-pem-copy", pem))
+                                .child(ui::copy_result_button("csr-pem-copy", "复制PEM", pem))
                                 .child(download),
                         ),
                     )

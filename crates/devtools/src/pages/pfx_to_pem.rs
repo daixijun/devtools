@@ -420,7 +420,11 @@ impl Render for PfxToPemConverter {
                                     .flex()
                                     .items_center()
                                     .gap_2()
-                                    .child(ui::copy_button("copy-result", result_text))
+                                    .child(ui::copy_result_button(
+                                        "copy-result",
+                                        "复制结果",
+                                        result_text,
+                                    ))
                                     .child(
                                         Button::new("download-pem")
                                             .label("下载PEM")

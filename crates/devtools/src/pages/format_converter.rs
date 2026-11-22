@@ -270,7 +270,7 @@ impl Render for FormatConverter {
                     .child(
                         Button::new("formatconverter-copy")
                             .label("复制结果")
-                            .secondary()
+                            .primary()
                             .small()
                             .disabled(!can_copy)
                             .on_click(cx.listener(|this, _ev, window, cx| {

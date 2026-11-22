@@ -602,7 +602,7 @@ impl PasswordHasher {
             page = page.child(
                 ui::card(cx)
                     .child(ui::card_header("加密结果", cx).when(copyable, |h| {
-                        h.child(ui::copy_button("hash-copy", result.clone()))
+                        h.child(ui::copy_result_button("hash-copy", "复制", result.clone()))
                     }))
                     .child(ui::mono_block("mono-password-result", result.clone(), cx))
                     .child(ui::hint_text(

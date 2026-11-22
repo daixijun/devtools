@@ -362,10 +362,10 @@ impl MainWindow {
 
     /// 欢迎页快捷工具（id 对应 registry；高频入口）。
     const QUICK_TOOL_IDS: &[&str] = &[
-        "base64converter",
+        "base64",
         "jsonformatter",
         "timestamp",
-        "urlencoderdecoder",
+        "url",
         "md5crypto",
         "regextester",
     ];
@@ -398,7 +398,9 @@ impl MainWindow {
                     .rounded(theme.radius_lg)
                     .bg(theme.colors.popover)
                     .cursor_pointer()
-                    .hover(|style| style.bg(theme.colors.muted))
+                    // hover 用 secondary（比卡片深一档、比页面更深）——muted 在
+                    // light 下与页面背景同为 neutral-100，hover 等于「消失一块」
+                    .hover(|style| style.bg(theme.colors.secondary))
                     .on_click(cx.listener(move |this, _, _window, cx| {
                         if let Some(tool) = first_tool {
                             this.select_tool(tool, cx);
@@ -435,7 +437,7 @@ impl MainWindow {
                 .rounded(theme.radius_lg)
                 .bg(theme.colors.popover)
                 .cursor_pointer()
-                .hover(|style| style.bg(theme.colors.muted))
+                .hover(|style| style.bg(theme.colors.secondary))
                 .on_click(cx.listener(|this, _, window, cx| {
                     this.open_settings_dialog(window, cx);
                 }))
@@ -459,18 +461,26 @@ impl MainWindow {
                 ),
         );
 
-        // 常用工具快捷入口（点击直接切换右侧内容区）
+        // 常用工具快捷入口（点击直接切换右侧内容区）：
+        // 胶囊 chip（popover 底 + hover 抬升），ghost Button 无 hover 反馈
         let mut quick_row = div().flex().flex_wrap().gap_2();
         for &tool_id in Self::QUICK_TOOL_IDS {
             if let Some(tool) = registry::get_tool_by_id(tool_id) {
                 quick_row = quick_row.child(
-                    Button::new(SharedString::from(format!("home-quick-{tool_id}")))
-                        .label(tool.name)
-                        .ghost()
-                        .small()
+                    div()
+                        .id(SharedString::from(format!("home-quick-{tool_id}")))
+                        .px_3()
+                        .py_1p5()
+                        .rounded_full()
+                        .bg(theme.colors.popover)
+                        .text_size(px(13.))
+                        .text_color(theme.colors.foreground)
+                        .cursor_pointer()
+                        .hover(|style| style.bg(theme.colors.secondary))
                         .on_click(cx.listener(move |this, _, _window, cx| {
                             this.select_tool(tool, cx);
-                        })),
+                        }))
+                        .child(tool.name),
                 );
             }
         }

@@ -10,7 +10,6 @@ use std::path::PathBuf;
 use devtools::crypto::{md5_file_hex, md5_hex};
 use futures::StreamExt as _;
 use gpui::{div, prelude::*, px, App, Context, Div, Entity, IntoElement, Render, Window};
-use gpui_component::clipboard::Clipboard;
 use gpui_component::input::{Input, InputEvent, InputState, TextareaState};
 use gpui_component::{tab::TabBar, ActiveTheme as _, Disableable as _};
 
@@ -456,9 +455,11 @@ impl Md5Crypto {
                             .justify_between()
                             .child(ui::card_header("MD5 哈希值", cx))
                             .children((!self.text_hash.is_empty()).then(|| {
-                                Clipboard::new("md5-copy-text")
-                                    .value(self.text_hash.clone())
-                                    .label("复制结果")
+                                ui::copy_result_button(
+                                    "md5-copy-text",
+                                    "复制结果",
+                                    self.text_hash.clone(),
+                                )
                             })),
                     )
                     .child(ui::mono_block("mono-md5-text", hash_display, cx).min_h(px(96.))),
@@ -531,9 +532,11 @@ impl Md5Crypto {
                                     && self.file_error.is_none()
                                     && !self.file_hash.is_empty())
                                 .then(|| {
-                                    Clipboard::new("md5-copy-file")
-                                        .value(self.file_hash.clone())
-                                        .label("复制结果")
+                                    ui::copy_result_button(
+                                        "md5-copy-file",
+                                        "复制结果",
+                                        self.file_hash.clone(),
+                                    )
                                 }),
                             ),
                     )
@@ -617,9 +620,7 @@ impl Md5Crypto {
                                 .items_center()
                                 .gap_2()
                                 .children(has_completed.then(|| {
-                                    Clipboard::new("md5-copy-batch")
-                                        .value(results)
-                                        .label("复制结果")
+                                    ui::copy_result_button("md5-copy-batch", "复制结果", results)
                                 }))
                                 .child(
                                     ui::secondary_button(

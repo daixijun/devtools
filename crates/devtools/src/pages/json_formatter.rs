@@ -168,7 +168,7 @@ impl Render for JsonFormatter {
                             .text_color(theme.colors.muted_foreground)
                             .child(format!("长度: {}", text.chars().count())),
                     )
-                    .child(ui::copy_button("jsonformatter-copy", text)),
+                    .child(ui::copy_result_button("jsonformatter-copy", "复制", text)),
             )
             // 错误红条在工具条下
             .when_some(self.error.clone(), |el, err| {

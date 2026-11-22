@@ -13,13 +13,12 @@ pub fn create_tool_view(
     cx: &mut App,
 ) -> gpui::AnyView {
     match tool.id {
-        "base64converter" => base64_converter::Base64Converter::create_view(window, cx),
-        "urlencoderdecoder" => url_encoder_decoder::UrlEncoderDecoder::create_view(window, cx),
-        "aescrypto" => aes_crypto::AesCrypto::create_view(window, cx),
+        "base64" => base64::Base64::create_view(window, cx),
+        "url" => url::Url::create_view(window, cx),
+        "aes" => aes::Aes::create_view(window, cx),
         "md5crypto" => md5_crypto::Md5Crypto::create_view(window, cx),
         "shacrypto" => sha_crypto::ShaCrypto::create_view(window, cx),
-        "jwtencode" => jwt_encode::JwtEncode::create_view(window, cx),
-        "jwtdecode" => jwt_decode::JwtDecode::create_view(window, cx),
+        "jwt" => jwt::Jwt::create_view(window, cx),
         "passwordgenerator" => password_generator::PasswordGenerator::create_view(window, cx),
         "passwordhasher" => password_hasher::PasswordHasher::create_view(window, cx),
         "jsonformatter" => json_formatter::JsonFormatter::create_view(window, cx),
@@ -51,11 +50,17 @@ pub fn create_tool_view(
 
 pub mod placeholder;
 
-// 纯文本工具
-pub mod aes_crypto;
-pub mod base64_converter;
+// 纯文本工具（base64/url/aes/jwt 为 Tab 容器，子视图见对应 *_encode/*_decode）
+pub mod aes;
+pub mod aes_common;
+pub mod aes_decrypt;
+pub mod aes_encrypt;
+pub mod base64;
+pub mod base64_decode;
+pub mod base64_encode;
 pub mod format_converter;
 pub mod json_formatter;
+pub mod jwt;
 pub mod jwt_decode;
 pub mod jwt_encode;
 pub mod md5_crypto;
@@ -64,7 +69,9 @@ pub mod password_hasher;
 pub mod sha_crypto;
 pub mod subnet_calculator;
 pub mod timestamp_converter;
-pub mod url_encoder_decoder;
+pub mod url;
+pub mod url_decode;
+pub mod url_encode;
 
 // 证书/网络/正则工具
 pub mod certificate_viewer;

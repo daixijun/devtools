@@ -1,6 +1,10 @@
 //! RSA 密钥对生成器。
 //!
-//! 密钥长度下拉 + OpenSSH 注释输入（Enter 触发）+ 双输出卡（格式 Tab / 复制 / 下载）。
+//! 私钥与公钥共用一套「密钥格式」家族选择：PKCS#8（通用，默认）/
+//! PKCS#1（传统 RSA）/ OpenSSH（SSH 场景）——密钥并非都用于 SSH，
+//! 因此 OpenSSH 只是其中一个选项且不作为默认。选 OpenSSH 时私钥仍以
+//! PKCS#8 PEM 导出（OpenSSH 兼容），公钥为 OpenSSH 格式，注释输入框
+//! 仅在该格式下显示。
 
 use futures::StreamExt;
 use gpui::{
@@ -18,108 +22,98 @@ use crate::components::select::{select_state, SimpleSelectDelegate};
 use crate::components::{notify, ui};
 use devtools::tools::rsa_key_generator::{RsaGenerateRequest, RsaKeyPair};
 
-/// 私钥输出格式。
+/// 密钥格式家族：私钥与公钥统一选择。
 #[derive(Clone, Copy, PartialEq, Eq)]
-enum PrivateFormat {
+enum KeyFormat {
+    /// PKCS#8 私钥 + SPKI 公钥（证书 / JWT / TLS 等通用场景）。
     Pkcs8,
+    /// PKCS#1 私钥 + PKCS#1 公钥（传统 RSA 专用格式）。
     Pkcs1,
-}
-
-/// 公钥输出格式。
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum PublicFormat {
-    Pem,
-    Pkcs1,
+    /// OpenSSH 公钥（私钥仍为 PKCS#8 PEM，OpenSSH 兼容）。
     OpenSsh,
 }
 
-impl PrivateFormat {
-    fn label(self) -> &'static str {
-        match self {
-            PrivateFormat::Pkcs8 => "PKCS#8",
-            PrivateFormat::Pkcs1 => "PKCS#1",
-        }
-    }
+impl KeyFormat {
+    /// 下拉选项（value 为持久化字符串）。
+    const OPTIONS: &[(&str, &str)] = &[
+        ("pkcs8", "PKCS#8（通用）"),
+        ("pkcs1", "PKCS#1（传统 RSA）"),
+        ("openssh", "OpenSSH（SSH）"),
+    ];
 
-    /// 默认下载文件名中的格式标识。
-    fn id(self) -> &'static str {
-        match self {
-            PrivateFormat::Pkcs8 => "pkcs8",
-            PrivateFormat::Pkcs1 => "pkcs1",
-        }
-    }
-
-    /// 下载文件扩展名。
-    fn extension(self) -> &'static str {
-        "pem"
-    }
-
-    fn all() -> [PrivateFormat; 2] {
-        [PrivateFormat::Pkcs8, PrivateFormat::Pkcs1]
-    }
-}
-
-impl PublicFormat {
-    fn label(self) -> &'static str {
-        match self {
-            PublicFormat::Pem => "PEM",
-            PublicFormat::Pkcs1 => "PKCS#1",
-            PublicFormat::OpenSsh => "OpenSSH",
-        }
-    }
-
-    /// 下载文件扩展名（OpenSSH 为 .pub，其余 .pem）。
-    fn extension(self) -> &'static str {
-        match self {
-            PublicFormat::OpenSsh => "pub",
-            _ => "pem",
+    fn from_value(value: &str) -> Self {
+        match value {
+            "pkcs1" => KeyFormat::Pkcs1,
+            "openssh" => KeyFormat::OpenSsh,
+            _ => KeyFormat::Pkcs8,
         }
     }
 
     fn id(self) -> &'static str {
         match self {
-            PublicFormat::Pem => "pem",
-            PublicFormat::Pkcs1 => "pkcs1",
-            PublicFormat::OpenSsh => "openssh",
+            KeyFormat::Pkcs8 => "pkcs8",
+            KeyFormat::Pkcs1 => "pkcs1",
+            KeyFormat::OpenSsh => "openssh",
         }
     }
 
-    fn all() -> [PublicFormat; 3] {
-        [
-            PublicFormat::Pem,
-            PublicFormat::Pkcs1,
-            PublicFormat::OpenSsh,
-        ]
+    /// 私钥 PEM 文本。
+    fn private_text(self, pair: &RsaKeyPair) -> &str {
+        match self {
+            // OpenSSH 家族的私钥统一导出 PKCS#8 PEM（OpenSSH 可直接读取）
+            KeyFormat::Pkcs1 => &pair.private_pkcs1_pem,
+            _ => &pair.private_pkcs8_pem,
+        }
     }
-}
 
-fn private_text(pair: &RsaKeyPair, format: PrivateFormat) -> &str {
-    match format {
-        PrivateFormat::Pkcs8 => &pair.private_pkcs8_pem,
-        PrivateFormat::Pkcs1 => &pair.private_pkcs1_pem,
+    /// 公钥文本。
+    fn public_text(self, pair: &RsaKeyPair) -> &str {
+        match self {
+            KeyFormat::Pkcs8 => &pair.public_spki_pem,
+            KeyFormat::Pkcs1 => &pair.public_pkcs1_pem,
+            KeyFormat::OpenSsh => &pair.public_openssh,
+        }
     }
-}
 
-fn public_text(pair: &RsaKeyPair, format: PublicFormat) -> &str {
-    match format {
-        PublicFormat::Pem => &pair.public_spki_pem,
-        PublicFormat::Pkcs1 => &pair.public_pkcs1_pem,
-        PublicFormat::OpenSsh => &pair.public_openssh,
+    /// 私钥卡说明。
+    fn private_hint(self) -> &'static str {
+        match self {
+            KeyFormat::Pkcs8 => "PKCS#8 PEM —— 证书签发、JWT RS*、TLS 等通用场景的标准格式",
+            KeyFormat::Pkcs1 => "PKCS#1 PEM —— 传统 RSA 专用格式（BEGIN RSA PRIVATE KEY）",
+            KeyFormat::OpenSsh => "私钥以 PKCS#8 PEM 导出（OpenSSH 兼容读取）",
+        }
+    }
+
+    /// 公钥卡说明。
+    fn public_hint(self) -> &'static str {
+        match self {
+            KeyFormat::Pkcs8 => "SPKI PEM —— 证书 / TLS / JWT 公钥通用格式",
+            KeyFormat::Pkcs1 => "PKCS#1 PEM —— 传统 RSA 公钥格式（BEGIN RSA PUBLIC KEY）",
+            KeyFormat::OpenSsh => "可直接粘贴到服务器的 authorized_keys 中",
+        }
+    }
+
+    /// 公钥下载扩展名（OpenSSH 为 .pub，其余 .pem）。
+    fn public_extension(self) -> (&'static str, &'static str) {
+        match self {
+            KeyFormat::OpenSsh => ("Public Key Files", "pub"),
+            _ => ("PEM Files", "pem"),
+        }
     }
 }
 
 pub struct RsaKeyGenerator {
     key_size_select: Entity<SelectState<SimpleSelectDelegate>>,
     key_size: u32,
-    /// OpenSSH 注释（可选，Enter 触发生成）。
+    key_format_select: Entity<SelectState<SimpleSelectDelegate>>,
+    key_format: KeyFormat,
+    /// OpenSSH 注释（可选，Enter 触发生成）——仅 OpenSSH 格式显示。
     comment: Entity<InputState>,
     /// 私钥输出卡只读文本。
     private_view: Entity<TextareaState>,
     /// 公钥输出卡只读文本。
     public_view: Entity<TextareaState>,
     result: Option<RsaKeyPair>,
-    private_format: PrivateFormat,
-    public_format: PublicFormat,
     loading: bool,
     error: Option<String>,
     /// Enter 触发的生成请求（订阅回调无 window，render 中消费）。
@@ -152,6 +146,29 @@ impl RsaKeyGenerator {
         )
         .detach();
 
+        // 密钥格式家族（默认 PKCS#8 通用格式）
+        let key_format_select = select_state(window, cx, KeyFormat::OPTIONS, 0);
+        cx.subscribe_in(
+            &key_format_select,
+            window,
+            |this, _, event: &SelectEvent<SimpleSelectDelegate>, window, cx| {
+                if let SelectEvent::Confirm(Some(value)) = event {
+                    this.key_format = KeyFormat::from_value(value);
+                    // 切换格式后若已有结果，刷新两卡文本
+                    if let Some(pair) = this.result.clone() {
+                        let private = this.key_format.private_text(&pair).to_string();
+                        let public = this.key_format.public_text(&pair).to_string();
+                        this.private_view
+                            .update(cx, |out, cx| out.set_value(&private, window, cx));
+                        this.public_view
+                            .update(cx, |out, cx| out.set_value(&public, window, cx));
+                    }
+                    cx.notify();
+                }
+            },
+        )
+        .detach();
+
         let comment =
             cx.new(|cx| InputState::new(window, cx).placeholder("如 user@host，留空使用默认值"));
         // Enter 直接触发生成（回调里无 window，置标记后在 render 消费）
@@ -165,12 +182,12 @@ impl RsaKeyGenerator {
         Self {
             key_size_select,
             key_size: 2048,
+            key_format_select,
+            key_format: KeyFormat::Pkcs8,
             comment,
             private_view: ui::new_textarea(window, cx),
             public_view: ui::new_textarea(window, cx),
             result: None,
-            private_format: PrivateFormat::Pkcs8,
-            public_format: PublicFormat::Pem,
             loading: false,
             error: None,
             pending_generate: false,
@@ -220,8 +237,9 @@ impl RsaKeyGenerator {
         match result {
             Ok(pair) => {
                 self.error = None;
-                let private = private_text(&pair, self.private_format).to_string();
-                let public = public_text(&pair, self.public_format).to_string();
+                let format = self.key_format;
+                let private = format.private_text(&pair).to_string();
+                let public = format.public_text(&pair).to_string();
                 self.private_view
                     .update(cx, |out, cx| out.set_value(&private, window, cx));
                 self.public_view
@@ -236,43 +254,14 @@ impl RsaKeyGenerator {
         cx.notify();
     }
 
-    fn set_private_format(
-        &mut self,
-        format: PrivateFormat,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        self.private_format = format;
-        if let Some(pair) = &self.result {
-            let text = private_text(pair, format).to_string();
-            self.private_view
-                .update(cx, |out, cx| out.set_value(&text, window, cx));
-        }
-        cx.notify();
-    }
-
-    fn set_public_format(
-        &mut self,
-        format: PublicFormat,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        self.public_format = format;
-        if let Some(pair) = &self.result {
-            let text = public_text(pair, format).to_string();
-            self.public_view
-                .update(cx, |out, cx| out.set_value(&text, window, cx));
-        }
-        cx.notify();
-    }
-
     /// 下载私钥（默认名 rsa_private_key_{格式}.pem）。
     fn download_private(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let Some(pair) = self.result.clone() else {
             return;
         };
-        let text = private_text(&pair, self.private_format).to_string();
-        let default_name = format!("rsa_private_key_{}.pem", self.private_format.id());
+        let format = self.key_format;
+        let text = format.private_text(&pair).to_string();
+        let default_name = format!("rsa_private_key_{}.pem", format.id());
         self.save_text_file(text, default_name, "PEM Files", "pem", window, cx);
     }
 
@@ -281,14 +270,14 @@ impl RsaKeyGenerator {
         let Some(pair) = self.result.clone() else {
             return;
         };
-        let format = self.public_format;
-        let text = public_text(&pair, format).to_string();
-        let default_name = format!("rsa_public_key_{}.{}", format.id(), format.extension());
-        let (filter_name, extension) = if format.extension() == "pub" {
-            ("Public Key Files", "pub")
-        } else {
-            ("PEM Files", "pem")
-        };
+        let format = self.key_format;
+        let text = format.public_text(&pair).to_string();
+        let default_name = format!(
+            "rsa_public_key_{}.{}",
+            format.id(),
+            format.public_extension().1
+        );
+        let (filter_name, extension) = format.public_extension();
         self.save_text_file(text, default_name, filter_name, extension, window, cx);
     }
 
@@ -344,8 +333,10 @@ impl Render for RsaKeyGenerator {
             self.generate(window, cx);
         }
 
+        let format = self.key_format;
         let mut page = ui::tool_page("rsakeygenerator")
-            // 参数设置卡
+            // 参数设置卡：密钥长度 + 密钥格式（私钥/公钥统一）+ 生成按钮；
+            // OpenSSH 注释仅在该格式下显示（密钥并非都用于 SSH）
             .child(
                 ui::card(cx).child(
                     div()
@@ -359,10 +350,17 @@ impl Render for RsaKeyGenerator {
                             cx,
                         ))
                         .child(ui::field(
-                            "OpenSSH 注释（可选）",
-                            Input::new(&self.comment).w(px(288.)),
+                            "密钥格式",
+                            Select::new(&self.key_format_select),
                             cx,
                         ))
+                        .when(format == KeyFormat::OpenSsh, |row| {
+                            row.child(ui::field(
+                                "OpenSSH 注释（可选）",
+                                Input::new(&self.comment).w(px(288.)),
+                                cx,
+                            ))
+                        })
                         .child(
                             Button::new("generate")
                                 .label(if self.loading {
@@ -395,43 +393,10 @@ impl Render for RsaKeyGenerator {
 
         // 私钥输出卡
         if let Some(pair) = self.result.clone() {
-            let private_pair_text = private_text(&pair, self.private_format).to_string();
-            let public_pair_text = public_text(&pair, self.public_format).to_string();
+            let private_pair_text = format.private_text(&pair).to_string();
+            let public_pair_text = format.public_text(&pair).to_string();
 
-            // 私钥格式 Tab（自制按钮组）
-            let private_tabs = PrivateFormat::all().map(|format| {
-                let is_active = format == self.private_format;
-                Button::new(match format {
-                    PrivateFormat::Pkcs8 => "tab-private-pkcs8",
-                    PrivateFormat::Pkcs1 => "tab-private-pkcs1",
-                })
-                .label(format.label())
-                .xsmall()
-                .when(is_active, |b| b.primary())
-                .when(!is_active, |b| b.secondary())
-                .on_click(cx.listener(move |this, _, window, cx| {
-                    this.set_private_format(format, window, cx);
-                }))
-            });
-
-            // 公钥格式 Tab
-            let public_tabs = PublicFormat::all().map(|format| {
-                let is_active = format == self.public_format;
-                Button::new(match format {
-                    PublicFormat::Pem => "tab-public-pem",
-                    PublicFormat::Pkcs1 => "tab-public-pkcs1",
-                    PublicFormat::OpenSsh => "tab-public-openssh",
-                })
-                .label(format.label())
-                .xsmall()
-                .when(is_active, |b| b.primary())
-                .when(!is_active, |b| b.secondary())
-                .on_click(cx.listener(move |this, _, window, cx| {
-                    this.set_public_format(format, window, cx);
-                }))
-            });
-
-            // 私钥卡
+            // 私钥卡（格式由顶部统一选择，此处只展示 + 复制/下载）
             page = page.child(
                 ui::card(cx)
                     .child(
@@ -453,6 +418,7 @@ impl Render for RsaKeyGenerator {
                                             .text_color(cx.theme().colors.foreground)
                                             .child("私钥"),
                                     )
+                                    .child(ui::hint_text(format.private_hint(), cx))
                                     .child(ui::hint_text(
                                         "泄露私钥将危及所有依赖它的系统，切勿提交到代码仓库或聊天工具",
                                         cx,
@@ -464,23 +430,14 @@ impl Render for RsaKeyGenerator {
                                     .flex_wrap()
                                     .items_center()
                                     .gap_2()
-                                    .child(
-                                        div()
-                                            .flex()
-                                            .items_center()
-                                            .gap_1()
-                                            .children(private_tabs),
-                                    )
-                                    .child(ui::copy_button(
+                                    .child(ui::copy_result_button(
                                         "copy-private",
+                                        "复制私钥",
                                         private_pair_text,
                                     ))
                                     .child(
                                         Button::new("download-private")
-                                            .label(format!(
-                                                "下载 .{}",
-                                                self.private_format.extension()
-                                            ))
+                                            .label("下载 .pem")
                                             .small()
                                             .secondary()
                                             .on_click(cx.listener(|this, _, window, cx| {
@@ -514,10 +471,7 @@ impl Render for RsaKeyGenerator {
                                             .text_color(cx.theme().colors.foreground)
                                             .child("公钥"),
                                     )
-                                    .child(ui::hint_text(
-                                        "OpenSSH 格式可直接粘贴到服务器的 authorized_keys 中",
-                                        cx,
-                                    )),
+                                    .child(ui::hint_text(format.public_hint(), cx)),
                             )
                             .child(
                                 div()
@@ -525,16 +479,14 @@ impl Render for RsaKeyGenerator {
                                     .flex_wrap()
                                     .items_center()
                                     .gap_2()
-                                    .child(
-                                        div().flex().items_center().gap_1().children(public_tabs),
-                                    )
-                                    .child(ui::copy_button("copy-public", public_pair_text))
+                                    .child(ui::copy_result_button(
+                                        "copy-public",
+                                        "复制公钥",
+                                        public_pair_text,
+                                    ))
                                     .child(
                                         Button::new("download-public")
-                                            .label(format!(
-                                                "下载 .{}",
-                                                self.public_format.extension()
-                                            ))
+                                            .label(format!("下载 .{}", format.public_extension().1))
                                             .small()
                                             .secondary()
                                             .on_click(cx.listener(|this, _, window, cx| {

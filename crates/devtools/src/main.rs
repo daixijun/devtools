@@ -1,11 +1,12 @@
 //! DevTools 开发者工具箱入口。
 //!
 //! 启动流程：
-//! 1. 加载共享配置（沿用历史版本 JSON 文件，双向兼容）
-//! 2. 初始化 gpui-component、主题、tokio 桥
-//! 3. 设置应用菜单栏（关于/设置/编辑/窗口/帮助）
-//! 4. 按配置创建托盘
-//! 5. 打开主窗口（--autostart / start_minimized 时隐藏）
+//! 1. 单例抢占：已有实例则激活其主窗口后退出
+//! 2. 加载共享配置（沿用历史版本 JSON 文件，双向兼容）
+//! 3. 初始化 gpui-component、主题、tokio 桥
+//! 4. 设置应用菜单栏（关于/设置/编辑/窗口/帮助）
+//! 5. 按配置创建托盘
+//! 6. 打开主窗口（--autostart / start_minimized 时隐藏）
 
 mod about;
 mod app_menu;
@@ -16,6 +17,7 @@ mod core_rt;
 mod macos_window_ctl;
 mod main_window;
 mod pages;
+mod singleton;
 mod theme;
 mod tool_window;
 mod tray;
@@ -25,6 +27,11 @@ use devtools::config::AppConfig;
 use gpui::App;
 
 fn main() {
+    // 单例：二次启动时激活已有实例的主窗口并退出
+    if !singleton::acquire_or_notify() {
+        return;
+    }
+
     let config = AppConfig::load();
     let autostarted = std::env::args().any(|arg| arg == "--autostart");
     let start_minimized = config.start_minimized || autostarted;
@@ -40,6 +47,7 @@ fn main() {
 
         windows::init(cx);
         windows::create_main_window(cx, !start_minimized);
+        singleton::init(cx);
         // 非 minimized 启动时激活应用（启动即前置主窗口）
         if !start_minimized {
             cx.activate(true);

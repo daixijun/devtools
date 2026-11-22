@@ -14,7 +14,7 @@ use devtools::crypto::{
 };
 use futures::StreamExt as _;
 use gpui::{div, prelude::*, px, App, Context, Div, Entity, IntoElement, Render, Window};
-use gpui_component::clipboard::Clipboard;
+
 use gpui_component::input::{Input, InputEvent, InputState, TextareaState};
 use gpui_component::select::{Select, SelectEvent, SelectState};
 use gpui_component::{tab::TabBar, ActiveTheme as _, Disableable as _};
@@ -520,9 +520,11 @@ impl ShaCrypto {
                             .justify_between()
                             .child(ui::card_header(&format!("{name} 哈希值"), cx))
                             .children((!self.text_hash.is_empty()).then(|| {
-                                Clipboard::new("sha-copy-text")
-                                    .value(self.text_hash.clone())
-                                    .label("复制结果")
+                                ui::copy_result_button(
+                                    "sha-copy-text",
+                                    "复制结果",
+                                    self.text_hash.clone(),
+                                )
                             })),
                     )
                     .child(ui::mono_block("mono-sha-text", hash_display, cx).min_h(px(96.))),
@@ -596,9 +598,11 @@ impl ShaCrypto {
                                     && self.file_error.is_none()
                                     && !self.file_hash.is_empty())
                                 .then(|| {
-                                    Clipboard::new("sha-copy-file")
-                                        .value(self.file_hash.clone())
-                                        .label("复制结果")
+                                    ui::copy_result_button(
+                                        "sha-copy-file",
+                                        "复制结果",
+                                        self.file_hash.clone(),
+                                    )
                                 }),
                             ),
                     )
@@ -686,9 +690,7 @@ impl ShaCrypto {
                                 .items_center()
                                 .gap_2()
                                 .children(has_completed.then(|| {
-                                    Clipboard::new("sha-copy-batch")
-                                        .value(results)
-                                        .label("复制结果")
+                                    ui::copy_result_button("sha-copy-batch", "复制结果", results)
                                 }))
                                 .child(
                                     ui::secondary_button(

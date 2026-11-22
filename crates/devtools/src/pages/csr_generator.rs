@@ -345,7 +345,7 @@ fn output_card(
                         .flex()
                         .items_center()
                         .gap_2()
-                        .child(ui::copy_button(copy_id, content.to_string()))
+                        .child(ui::copy_result_button(copy_id, "复制", content.to_string()))
                         .child(
                             Button::new(download_id)
                                 .label(download_label)

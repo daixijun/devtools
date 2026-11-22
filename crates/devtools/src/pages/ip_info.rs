@@ -309,7 +309,11 @@ impl Render for IpInfo {
                                         .text_color(theme.colors.foreground)
                                         .child("原始响应"),
                                 )
-                                .child(ui::copy_button("ipinfo-copy-json", raw_json.clone())),
+                                .child(ui::copy_result_button(
+                                    "ipinfo-copy-json",
+                                    "复制JSON",
+                                    raw_json.clone(),
+                                )),
                         )
                         .child(ui::mono_block("mono-ip-raw", raw_json.clone(), cx).max_h(px(300.))),
                 )

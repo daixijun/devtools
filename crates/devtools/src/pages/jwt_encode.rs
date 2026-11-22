@@ -109,11 +109,7 @@ pub struct JwtEncode {
 }
 
 impl JwtEncode {
-    pub fn create_view(window: &mut Window, cx: &mut App) -> gpui::AnyView {
-        cx.new(|cx| Self::new(window, cx)).into()
-    }
-
-    fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let now = now_secs();
         let header_input = ui::new_textarea(window, cx);
         let payload_input = ui::new_textarea(window, cx);
@@ -574,12 +570,11 @@ impl gpui::Render for JwtEncode {
                 .gap_1()
                 .child(div().flex().items_center().justify_between().child(title));
             if !output_is_error {
-                // 按钮文案「复制JWT」（复制后 2 秒「已复制 ✓」复位）。
-                section = section.child(
-                    gpui_component::clipboard::Clipboard::new("jwt-copy-output")
-                        .value(output.clone())
-                        .label("复制JWT"),
-                );
+                section = section.child(ui::copy_result_button(
+                    "jwt-copy-output",
+                    "复制JWT",
+                    output.clone(),
+                ));
             }
             page = page
                 .child(section)

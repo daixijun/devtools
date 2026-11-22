@@ -21,7 +21,6 @@ use gpui::{
 };
 use gpui_component::{
     checkbox::Checkbox,
-    clipboard::Clipboard,
     input::{Input, InputEvent, InputState, TextareaState},
     ActiveTheme as _, Disableable as _,
 };
@@ -721,11 +720,10 @@ impl CertificateViewer {
             );
         }
 
-        let corrected_copy = check.corrected_pem.clone().map(|pem| {
-            Clipboard::new("copy-corrected-pem")
-                .value(pem)
-                .label("复制正确顺序的证书")
-        });
+        let corrected_copy = check
+            .corrected_pem
+            .clone()
+            .map(|pem| ui::copy_result_button("copy-corrected-pem", "复制正确顺序的证书", pem));
 
         ui::card(cx).child(
             ui::rich_banner("证书链顺序错误", theme.colors.warning, cx)

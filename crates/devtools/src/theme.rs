@@ -4,18 +4,25 @@
 //! `ThemeMode`。system 模式下每个窗口订阅外观变化事件实时跟随；
 //! light/dark 固定主题不受系统影响。
 //!
-//! 在内置默认主题之上施加应用级「macOS 分组视图」覆盖：默认主题两种
-//! 模式下 background 与 popover 同色（白/白、#0a0a0a/#0a0a0a），卡片
-//! 只能靠描边区分层级。覆盖后 light 页面转中性浅灰、卡片保持白色，
-//! dark 页面保持近黑、卡片抬升为 neutral-900——卡片无需描边即可分层。
-//! 同时放大圆角（radius 8 / radius_lg 10）并关闭控件聚焦光圈。
+//! 在内置默认主题之上施加应用级「macOS 分组视图」覆盖：
+//!
+//! 1. 底色分层：默认主题两种模式下 background 与 popover 同色（白/白、
+//!    #0a0a0a/#0a0a0a），卡片只能靠描边区分层级。覆盖后 light 页面转中性
+//!    浅灰、卡片保持白色，dark 页面保持近黑、卡片抬升为 neutral-900。
+//! 2. 主色：默认主题 primary 为近黑的 neutral-900（shadcn Web 风格），
+//!    覆盖为 macOS 系统蓝（light #2563eb 系、dark #3b82f6 系），主按钮、
+//!    开关、进度条等统一原生观感。
+//! 3. 形状：radius 8 / radius_lg 10，关闭控件聚焦光圈。
 //!
 //! 注意：`Theme::change` 会重新载入注册主题冲掉覆盖，因此覆盖必须在
 //! 每次切换之后重放（本文件三条切换路径均已收口）。
 
 use devtools::config::ThemeMode;
 use gpui::{px, App, Global, Subscription, Window};
-use gpui_component::theme::{neutral_100, neutral_900, Theme, ThemeMode as ComponentThemeMode};
+use gpui_component::theme::{
+    blue_300, blue_400, blue_500, blue_600, blue_700, blue_800, neutral_100, neutral_200,
+    neutral_800, neutral_900, white, Theme, ThemeMode as ComponentThemeMode,
+};
 
 /// 外观订阅保活表：Subscription drop 即取消订阅，必须持有才能持续跟随。
 struct AppearanceSubscriptions(Vec<Subscription>);
@@ -28,13 +35,34 @@ impl Global for AppearanceSubscriptions {}
 /// 本函数仅在 change 之后调用。
 fn apply_overrides(cx: &mut App) {
     Theme::update(cx, |t| {
-        if t.mode.is_dark() {
+        let (primary, hover, active) = if t.mode.is_dark() {
             // dark：页面保持近黑，卡片（popover）抬升一层形成分层
             t.colors.popover = neutral_900();
+            (blue_500(), blue_400(), blue_300())
         } else {
             // light：页面转中性浅灰，卡片（popover）保持白色形成分层
             t.colors.background = neutral_100();
-        }
+            (blue_600(), blue_700(), blue_800())
+        };
+        // 主色系（Switch/Checkbox/Progress/Select 等控件直接读 primary）
+        t.colors.primary = primary;
+        t.colors.primary_hover = hover;
+        t.colors.primary_active = active;
+        t.colors.primary_foreground = white();
+        // Button 组件读 button_primary 家族——其默认值在主题载入时从
+        // primary fallback 定型，不会跟随上述覆盖，需一并写入
+        t.colors.button_primary = primary;
+        t.colors.button_primary_hover = hover;
+        t.colors.button_primary_active = active;
+        t.colors.button_primary_foreground = white();
+        // 分段 TabBar：激活 tab 底色 = background（light 白 / dark 近黑），
+        // bar 底与激活底差距小（#f5f5f5/#171717）导致激活态几乎看不出。
+        // 调深 bar 一档（light neutral-200、dark neutral-800）拉开色差。
+        t.colors.tab_bar_segmented = if t.mode.is_dark() {
+            neutral_800()
+        } else {
+            neutral_200()
+        };
         t.radius = px(8.);
         t.radius_lg = px(10.);
         t.focus_ring = false;

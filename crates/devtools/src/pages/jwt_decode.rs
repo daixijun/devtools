@@ -135,11 +135,7 @@ pub struct JwtDecode {
 }
 
 impl JwtDecode {
-    pub fn create_view(window: &mut Window, cx: &mut App) -> gpui::AnyView {
-        cx.new(|cx| Self::new(window, cx)).into()
-    }
-
-    fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let token_input = ui::new_textarea(window, cx);
         let secret_key = ui::new_input(window, cx);
         let public_key = ui::new_textarea(window, cx);
