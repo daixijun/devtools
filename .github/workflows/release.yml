@@ -45,7 +45,8 @@ jobs:
         run: |
           ASSET="DevTools-${GITHUB_REF_NAME}-aarch64.dmg"
           mv target/DevTools.dmg "target/$ASSET"
-          shasum -a 256 "target/$ASSET" > "target/$ASSET.sha256"
+          # 校验和文件内写裸文件名：用户下载后可直接 shasum -a 256 -c <file>.sha256
+          (cd target && shasum -a 256 "$ASSET" > "$ASSET.sha256")
           cat "target/$ASSET.sha256"
 
       - name: 发布 GitHub Release
