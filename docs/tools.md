@@ -1,6 +1,6 @@
 # 工具使用指南
 
-本文档介绍开发者工具箱中每个工具的具体用法。工具的分类和顺序与应用内注册表（`crates/core/src/registry.rs`）保持一致。
+本文档介绍开发者工具箱中每个工具的具体用法。工具的分类和顺序与应用内注册表（`crates/devtools/src/registry.rs`）保持一致。
 
 - 相关文档：[README_ZH.md](../README_ZH.md)（项目总览）
 

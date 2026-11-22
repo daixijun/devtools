@@ -1357,30 +1357,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "devtools-app"
-version = "0.1.0"
-dependencies = [
- "devtools-core",
- "dirs 6.0.0",
- "futures",
- "gpui-base",
- "gpui-component",
- "gpui-kit-assets",
- "gpui-pre",
- "gpui-pre-platform",
- "image",
- "muda",
- "objc2 0.6.5",
- "raw-window-handle",
- "rfd",
- "serde",
- "serde_json",
- "tokio",
- "tray-icon",
-]
-
-[[package]]
-name = "devtools-core"
+name = "devtools"
 version = "0.1.0"
 dependencies = [
  "aes",
@@ -1392,20 +1369,30 @@ dependencies = [
  "ctr",
  "dirs 6.0.0",
  "dns-lookup",
+ "futures",
+ "gpui-base",
+ "gpui-component",
+ "gpui-kit-assets",
+ "gpui-pre",
+ "gpui-pre-platform",
  "hex",
  "hmac",
  "image",
  "imagequant",
  "libheif-sys",
  "md-5",
+ "muda",
  "nom-exif",
+ "objc2 0.6.5",
  "openssl",
  "oxipng",
  "pbkdf2",
  "pcre2",
  "png 0.18.1",
+ "raw-window-handle",
  "regex",
  "reqwest",
+ "rfd",
  "rustls",
  "serde",
  "serde_json",
@@ -1418,6 +1405,7 @@ dependencies = [
  "tokio",
  "tokio-rustls",
  "toml 0.8.23",
+ "tray-icon",
  "webpki-roots 0.26.11",
  "x509-parser",
 ]

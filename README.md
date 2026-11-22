@@ -77,7 +77,7 @@ A desktop developer toolbox built with **pure Rust + GPUI** (native GPU-rendered
 - **tray-icon + muda** - system tray menu; **rfd** - native file dialogs
 - **rfd** - native file dialogs
 
-### Core (devtools-core)
+### Business Layer (the `devtools` lib target)
 
 - **Rust 2021** - All business logic, zero framework coupling
 - **sqlparser 0.58** - Professional SQL parsing (AST-based)
@@ -106,14 +106,14 @@ A desktop developer toolbox built with **pure Rust + GPUI** (native GPU-rendered
 ### Development Mode
 
 ```bash
-make run            # run (auto watch + restart if cargo-watch is installed)
+make run            # run (watch mode: auto recompile-restart on file save; ends when the app exits)
 ```
 
 ### Build Application
 
 ```bash
-make app            # package target/DevTools.app (debug)
 make app-release    # package target/DevTools.app (release)
+make dmg            # package target/DevTools.dmg installer image (release; also builds the .app)
 ```
 
 ### Checks
@@ -133,36 +133,36 @@ devtools/                        # Project root
 ├── scripts/
 │   └── build-app.sh             # DevTools.app packaging (Info.plist + icns)
 ├── crates/
-│   ├── core/                    # devtools-core: pure business library (no UI)
-│   │   ├── src/registry.rs      # 32-tool metadata registry (single source of truth)
-│   │   ├── src/config.rs        # Shared config JSON (backward compatible)
-│   │   ├── src/crypto.rs        # Byte-compatible port of the former cipher.ts/jwt.ts
-│   │   ├── src/text_tools/      # base64 / url / password / timestamp / subnet / format
-│   │   ├── src/tools/           # 16 tool logic modules (ssl, certs, dns, whois, media, sql…)
-│   │   └── src/utils/           # shared helpers + DevToolError
-│   └── app/                     # devtools-app: GPUI shell (bin: devtools-gpui)
-│       ├── src/main.rs          # Startup flow (config → theme → core_rt → app menu → main window → tray)
+│   └── devtools/                # devtools: one package, two targets (lib = business layer, bin = GPUI shell)
+│       ├── src/lib.rs           # Business layer root (no UI deps)
+│       ├── src/registry.rs      # 32-tool metadata registry (single source of truth)
+│       ├── src/config.rs        # Shared config JSON (backward compatible)
+│       ├── src/crypto.rs        # Byte-compatible port of the former cipher.ts/jwt.ts
+│       ├── src/text_tools/      # base64 / url / password / timestamp / subnet / format
+│       ├── src/tools/           # 16 tool logic modules (ssl, certs, dns, whois, media, sql…)
+│       ├── src/utils/           # shared helpers + DevToolError
+│       ├── src/main.rs          # Shell entry: startup flow (config → theme → core_rt → app menu → main window → tray)
 │       ├── src/windows.rs       # WindowManager global (main window + about window)
 │       ├── src/main_window.rs   # Main window: sidebar nav (search + categories) + tool content area
 │       ├── src/app_menu.rs      # macOS app menu (About/Settings/Edit/Window/Help)
 │       ├── src/tool_window.rs   # Tool window host (header + page view)
 │       ├── src/tray.rs          # Tray icon + menu pump
 │       ├── src/macos_window_ctl.rs  # unsafe objc: per-window show/hide (only unsafe file)
-│       ├── src/core_rt.rs       # tokio runtime bridge for async core logic
+│       ├── src/core_rt.rs       # tokio runtime bridge for async business logic
 │       ├── src/components/      # UI component layer (ui/notify/select)
-│       └── src/tools/           # 32 tool pages, one file per tool
+│       └── src/pages/           # 32 tool pages, one file per tool
 └── docs/plans/                  # Migration design + tool UI contracts
 ```
 
 ## 🎯 Core Design
 
 - **Main Window** - Category sidebar (search + grouped tools) on the left, tool content on the right
-- **Tool Registry** - Every tool is declared once in `crates/core/src/registry.rs` (id, category, keywords, window size)
-- **Layered Architecture** - `devtools-core` holds all logic (pure functions + async), the GPUI shell only renders and forwards state; async core calls run on a background tokio Runtime bridged into the UI executor
+- **Tool Registry** - Every tool is declared once in `crates/devtools/src/registry.rs` (id, category, keywords, window size)
+- **Layered Architecture** - the `devtools` lib target holds all logic (pure functions + async), the GPUI shell (bin target) only renders and forwards state; async calls run on a background tokio Runtime bridged into the UI executor
 - **Component Layer** - Shared widgets (cards, fields, banners, toasts, selects) wrap gpui-component so all 32 tool pages stay consistent
 - **Theme Support** - Dark/light/system themes with live system-appearance following; theme is persisted to the shared config JSON
 - **Config Compatibility** - `devtools-config.json` fields are add-only with serde defaults for backward compatibility
-- **Crypto Compatibility** - `devtools-core/src/crypto.rs` reproduces the historical semantics byte-for-byte (AES 5 modes × 6 paddings, Keccak-512 as "SHA3", PBKDF2-HMAC-SHA256, JWT HS/RS, bcrypt), verified against golden vectors
+- **Crypto Compatibility** - `crates/devtools/src/crypto.rs` reproduces the historical semantics byte-for-byte (AES 5 modes × 6 paddings, Keccak-512 as "SHA3", PBKDF2-HMAC-SHA256, JWT HS/RS, bcrypt), verified against golden vectors
 
 ## 📋 Supported SQL Formats
 

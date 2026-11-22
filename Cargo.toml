@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/core", "crates/app"]
+members = ["crates/devtools"]
 
 [workspace.package]
 edition = "2021"
@@ -20,8 +20,6 @@ gpui-platform = { package = "gpui-pre-platform", version = "=0.3.12", features =
 gpui-component = "0.10"
 # gpui-base 与 gpui-component 0.10 同源锁定（SelectableText 等文本选择基建）
 gpui-base = "0.10"
-
-devtools-core = { path = "crates/core" }
 
 [profile.release]
 lto = true

@@ -1,5 +1,5 @@
 #!/bin/bash
-# 构建 DevTools.app（GPUI 壳打包）
+# 构建 DevTools.app
 # 用法：scripts/build-app.sh [release]
 set -euo pipefail
 
@@ -12,12 +12,12 @@ if [ "${1:-}" = "release" ]; then
   CARGO_FLAGS="--release"
 fi
 
-echo "▶ cargo build -p devtools-app $CARGO_FLAGS"
-cargo build -p devtools-app $CARGO_FLAGS
+echo "▶ cargo build -p devtools $CARGO_FLAGS"
+cargo build -p devtools $CARGO_FLAGS
 
-BIN="$ROOT/target/$PROFILE/devtools-gpui"
+BIN="$ROOT/target/$PROFILE/devtools"
 APP="$ROOT/target/DevTools.app"
-ICONS="$ROOT/crates/app/assets"
+ICONS="$ROOT/crates/devtools/assets"
 
 echo "▶ 组装 $APP"
 rm -rf "$APP"
@@ -34,7 +34,7 @@ cat > "$APP/Contents/Info.plist" << 'PLIST'
     <key>CFBundleName</key>
     <string>DevTools</string>
     <key>CFBundleDisplayName</key>
-    <string>开发者工具箱</string>
+    <string>DevTools</string>
     <key>CFBundleIdentifier</key>
     <string>devtools.linuxyunwei.com</string>
     <key>CFBundleVersion</key>

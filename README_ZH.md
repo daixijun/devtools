@@ -76,7 +76,7 @@
 - **gpui-component 0.10** - longbridge 组件库（输入、编辑器、下拉、通知、分栏等）
 - **tray-icon + muda** - 系统托盘；**rfd** - 原生文件对话框
 
-### 核心（devtools-core）
+### 业务层（devtools lib target）
 
 - **Rust 2021** - 全部业务逻辑，零框架耦合
 - **sqlparser 0.58 / reqwest + rustls / openssl + x509-parser** - SQL 解析、网络、证书
@@ -102,15 +102,16 @@
 
 ```bash
 make run
-# 装有 cargo-watch 时为 watch 模式（文件变化自动重编译并重启），
-# 未安装则普通运行；make run-direct 始终普通运行
+# watch 模式：应用运行中保存源文件自动重编译并重启；
+# 退出应用（Cmd+Q）后 watch 一并结束，回到 shell；
+# make run-direct 始终普通运行
 ```
 
 ### 构建应用
 
 ```bash
-make app            # 打包 target/DevTools.app (debug)
 make app-release    # 打包 target/DevTools.app (release)
+make dmg            # 打包 target/DevTools.dmg 安装镜像（release；先构建 .app）
 ```
 
 ### 检查
@@ -130,24 +131,24 @@ devtools/                        # 项目根目录
 ├── scripts/
 │   └── build-app.sh             # DevTools.app 打包（Info.plist + icns）
 ├── crates/
-│   ├── core/                    # devtools-core：纯业务库（无 UI）
-│   │   ├── src/registry.rs      # 32 工具元数据注册表（权威源）
-│   │   ├── src/config.rs        # 共享配置 JSON（双向兼容）
-│   │   ├── src/crypto.rs        # AES/MD5/SHA/JWT/bcrypt（字节级兼容历史行为）
-│   │   ├── src/text_tools/      # base64 / url / password / timestamp / subnet / format
-│   │   ├── src/tools/           # 16 个工具逻辑模块（ssl、证书、dns、whois、媒体、sql…）
-│   │   └── src/utils/           # 共享辅助模块 + DevToolError
-│   └── app/                     # devtools-app：GPUI 壳（bin: devtools-gpui）
-│       ├── src/main.rs          # 启动流程（config → theme → core_rt → 应用菜单 → 主窗口 → 托盘）
+│   └── devtools/                # devtools：单包双 target（lib = 业务层，bin = GPUI 壳）
+│       ├── src/lib.rs           # 业务层根（无 UI 依赖）
+│       ├── src/registry.rs      # 32 工具元数据注册表（权威源）
+│       ├── src/config.rs        # 共享配置 JSON（双向兼容）
+│       ├── src/crypto.rs        # AES/MD5/SHA/JWT/bcrypt（字节级兼容历史行为）
+│       ├── src/text_tools/      # base64 / url / password / timestamp / subnet / format
+│       ├── src/tools/           # 16 个工具逻辑模块（ssl、证书、dns、whois、媒体、sql…）
+│       ├── src/utils/           # 共享辅助模块 + DevToolError
+│       ├── src/main.rs          # 壳层入口：启动流程（config → theme → core_rt → 应用菜单 → 主窗口 → 托盘）
 │       ├── src/windows.rs       # WindowManager 全局（主窗口 + 关于窗口）
 │       ├── src/main_window.rs   # 主窗口：左侧导航（搜索 + 分类分组）+ 右侧工具内容区
 │       ├── src/app_menu.rs      # macOS 应用菜单（关于/设置/编辑/窗口/帮助）
 │       ├── src/tool_window.rs   # 工具窗口宿主（页头 + 页面视图）
 │       ├── src/tray.rs          # 托盘图标 + 菜单事件泵
 │       ├── src/macos_window_ctl.rs  # unsafe objc：逐窗口显隐（唯一 unsafe 文件）
-│       ├── src/core_rt.rs       # tokio 运行时桥（core 异步逻辑）
+│       ├── src/core_rt.rs       # tokio 运行时桥（业务层异步逻辑）
 │       ├── src/components/      # UI 组件层（ui/notify/select）
-│       └── src/tools/           # 32 个工具页，每工具一个文件
+│       └── src/pages/           # 32 个工具页，每工具一个文件
 └── docs/plans/                  # 工具 UI 契约规格
 ```
 
@@ -156,12 +157,12 @@ devtools/                        # 项目根目录
 ### 应用架构
 
 - **主窗口形态** - 左侧分类导航（搜索 + 分组工具列表），右侧工具内容区
-- **工具注册表** - 每个工具在 `crates/core/src/registry.rs` 中声明一次（id、中文名、描述、分类、关键字），单一事实来源
+- **工具注册表** - 每个工具在 `crates/devtools/src/registry.rs` 中声明一次（id、中文名、描述、分类、关键字），单一事实来源
 - **代码编辑器** - gpui-component Editor（代码模式）+ syntect 语法高亮（SQL/Go/JSON 等，配色跟随主题）
 - **主题支持** - 深色/浅色/跟随系统主题，窗口实时跟随系统外观
 - **应用菜单栏** - 关于/设置/编辑（剪贴板）/窗口/帮助，菜单项走 gpui 全局 action 分发
 
-### 业务逻辑（devtools-core）
+### 业务逻辑（devtools lib target）
 
 - **模块化工具结构** - 每个工具逻辑独立成模块，统一使用 `DevToolError` 错误处理与历史中文消息契约
 - **专业 SQL 解析** - sqlparser-rs 构建抽象语法树而非正则匹配；支持 Generic/MySQL/PostgreSQL/SQLite 方言
