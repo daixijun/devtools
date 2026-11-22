@@ -1,6 +1,6 @@
 //! 系统托盘（tray-icon + muda）。
 //!
-//! 菜单结构：8 分类二级菜单（32 工具）+ 分隔 + 显示/退出。
+//! 菜单结构：7 分类二级菜单（30 工具）+ 设置 + 显示/退出。
 //! 事件泵：muda MenuEvent 与 tray_icon TrayIconEvent 的全局 receiver 由后台线程
 //! 转发进 gpui executor（AsyncApp）。托盘句柄故意泄漏以保持存活（泄漏即生命周期）。
 
@@ -128,11 +128,17 @@ pub fn is_enabled(cx: &App) -> bool {
         .unwrap_or(false)
 }
 
-/// 构建 8 分类 / 32 工具二级菜单 + 显示/退出。
+/// 构建 7 分类二级菜单（30 工具）+ 设置 + 显示/退出。
+///
+/// 「设置」不套子菜单：settings 分类只有一个入口，直接作为菜单项挂在
+/// 分类之后（id 复用 `tool:` 前缀，经 open_tool("settings") 打开设置弹窗）。
 fn build_menu() -> Menu {
     let menu = Menu::new();
 
     for category in devtools::registry::CATEGORIES {
+        if category.id == "settings" {
+            continue;
+        }
         let mut items: Vec<MenuItem> = Vec::new();
         for tool in devtools::registry::tools_in_category(category.id) {
             items.push(MenuItem::with_id(
@@ -156,6 +162,7 @@ fn build_menu() -> Menu {
     }
 
     let _ = menu.append(&PredefinedMenuItem::separator());
+    let _ = menu.append(&MenuItem::with_id("tool:settings", "设置", true, None));
     let _ = menu.append(&MenuItem::with_id("show", "显示", true, None));
     let _ = menu.append(&MenuItem::with_id("quit", "退出", true, None));
     menu

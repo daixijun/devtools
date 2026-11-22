@@ -38,6 +38,10 @@ fn main() {
     let start_minimized = config.start_minimized || autostarted;
 
     let app = gpui_platform::application().with_assets(gpui_kit_assets::AllAssets);
+    // Dock 图标点击（applicationShouldHandleReopen）：主窗口被隐藏时
+    // （关闭入托盘 / Cmd-H / 最小化启动）唤回并前置——与单例激活同一路径。
+    // 回调注册在 Application 上（run 之前），执行于 run 后的 App 上下文
+    app.on_reopen(windows::show_main);
     app.run(move |cx: &mut App| {
         gpui_component::init(cx);
 
