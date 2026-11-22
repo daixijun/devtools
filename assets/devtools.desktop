@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=DevTools
+Comment=Developer toolbox (31 handy tools)
+Exec=devtools
+Icon=devtools
+Terminal=false
+Categories=Development;Utility;

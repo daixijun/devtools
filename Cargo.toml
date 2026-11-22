@@ -20,7 +20,6 @@ path = "src/main.rs"
 # UI 壳（gpui 系）。gpui 系精确 pin，升级需单独评估 breaking change：
 # gpui-pre 是 gpui 官方快照包；版本必须与 gpui-component 0.10.0 的 `=0.3.12` 锁定完全一致
 gpui = { package = "gpui-pre", version = "=0.3.12" }
-gpui-platform = { package = "gpui-pre-platform", version = "=0.3.12", features = ["font-kit"] }
 # syntect：代码编辑器语法高亮后端（SQL/Go/JSON 等，颜色跟随主题；升级 tree-sitter 后端时一并评估）
 gpui-component = { version = "0.10", features = ["syntect"] }
 gpui-kit-assets = "0.10"
@@ -34,10 +33,13 @@ serde_json = { version = "1", features = ["preserve_order"] }
 dirs = "6"
 
 # 业务逻辑依赖（异步网络/证书/图片/加解密/格式解析）
+# TLS 统一 ring provider：rustls/tokio-rustls 关默认（默认 provider 是
+# aws-lc-rs，Windows 构建需 NASM/Go 工具链），reqwest 的 rustls-tls 系
+# feature 已强制 ring——三处一致，交叉编译零 C 依赖
 tokio = { version = "1", features = ["full"] }
-reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
-tokio-rustls = "0.26"
-rustls = { version = "0.23", features = ["ring"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "http2", "system-proxy"] }
+tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "logging", "tls12"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "logging", "std", "tls12"] }
 webpki-roots = "0.26"
 dns-lookup = "2"
 openssl = { version = "0.10.73", features = ["vendored"] }
@@ -52,7 +54,6 @@ oxipng = { version = "10", default-features = false, features = ["zopfli", "para
 imagequant = "4"
 png = "0.18"
 nom-exif = { version = "2.5", features = ["async"] }
-libheif-sys = { version = "5.0.0", features = ["v1_20"] }
 regex = "1.10"
 pcre2 = "0.2"
 sha1 = "0.10"
@@ -69,17 +70,44 @@ serde_yaml = "0.9"
 toml = "0.8"
 sqlparser = "0.58"
 
-# 系统集成（gpui 不内置托盘）；rfd = 文件对话框（批次 II/III 工具使用）
+# 系统集成；rfd = 文件对话框（批次 II/III 工具使用）
 # 全局快捷键功能已移除；共享配置中的 hotkey 字段仅为向后兼容保留
-tray-icon = "0.21"
-muda = "0.17"
 rfd = "0.15"
 futures = "0.3"
-
-# macOS：逐窗口显隐（gpui 公开 API 只有 App 级 hide，无窗口级 orderOut/orderFront）
-[target.'cfg(target_os = "macos")'.dependencies]
-objc2 = "0.6"
+sys-locale = "0.3"
 raw-window-handle = "0.6"
+
+# gpui 平台后端（gpui-pre-platform）：按平台启用窗口/渲染后端——
+# macOS 用 Metal（font-kit 字体栅格化）、Linux 需 wayland/x11 至少一个、
+# Windows 用 Win32+DirectWrite 无需额外 feature
+[target.'cfg(target_os = "linux")'.dependencies]
+gpui-platform = { package = "gpui-pre-platform", version = "=0.3.12", features = ["wayland", "x11"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+gpui-platform = { package = "gpui-pre-platform", version = "=0.3.12" }
+# Windows：逐窗口显隐（ShowWindow/SetForegroundWindow）与开机自启（注册表 Run 键）
+windows-sys = { version = "0.60", features = [
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
+] }
+winreg = "0.55"
+
+# 托盘与菜单：tray-icon/muda 的 Linux 后端依赖 GTK 事件循环，与 gpui Linux
+# 自主事件循环不兼容（且 Wayland 无标准托盘协议）——托盘仅在 macOS/Windows 编译
+[target.'cfg(any(target_os = "macos", target_os = "windows"))'.dependencies]
+tray-icon = "0.21"
+muda = "0.17"
+
+# macOS：Metal 渲染后端（font-kit 字体栅格化）+ libheif 解码（HEIF 属 Apple
+# 生态格式；其他平台无此能力，输入 HEIF 报不支持）
+[target.'cfg(target_os = "macos")'.dependencies]
+gpui-platform = { package = "gpui-pre-platform", version = "=0.3.12", features = ["font-kit"] }
+libheif-sys = { version = "5.0.0", features = ["v1_20"] }
+objc2 = "0.6"
+
+# Windows：exe 资源嵌入（应用图标，见 build.rs 与 assets/devtools.rc）
+[target.'cfg(target_os = "windows")'.build-dependencies]
+embed-resource = "3"
 
 [profile.release]
 lto = true

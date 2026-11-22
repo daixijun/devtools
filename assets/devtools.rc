@@ -1,0 +1,2 @@
+// Windows exe 资源：应用图标（见 build.rs 嵌入逻辑）
+1 ICON "devtools.ico"

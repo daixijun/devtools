@@ -4,7 +4,7 @@
 //! `open_tool` 在主窗口右侧内容区切换工具（不再每工具开新窗）；
 //! 另有「关于」「软件更新」小窗口（app 菜单打开）。
 
-use crate::{about::AboutView, macos_window_ctl, main_window::MainWindow, update::UpdateView};
+use crate::{about::AboutView, main_window::MainWindow, update::UpdateView, window_ctl};
 use devtools::registry;
 use gpui::{
     px, size, App, AppContext as _, Bounds, Entity, Global, WindowBounds, WindowHandle,
@@ -93,7 +93,7 @@ pub fn create_main_window(cx: &mut App, visible: bool) {
                     window.on_window_should_close(cx, |window, cx| {
                         let config = crate::config_state::get(cx);
                         if config.tray_enabled && config.close_to_tray {
-                            macos_window_ctl::hide(window);
+                            window_ctl::hide(window);
                             false
                         } else {
                             cx.quit();
@@ -117,8 +117,7 @@ pub fn show_main(cx: &mut App) {
     };
     let view = cx.global::<WindowManager>().main_view.clone();
     let _ = handle.update(cx, |_, window, cx| {
-        macos_window_ctl::show(window);
-        window.activate_window();
+        window_ctl::show(window);
         cx.activate(true);
         // 聚焦搜索框（handle.update 闭包持有 window；focus 无需 view 的可变上下文）
         if let Some(view) = view {
@@ -134,7 +133,34 @@ pub fn hide_main(cx: &mut App) {
     let Some(handle) = cx.global::<WindowManager>().main else {
         return;
     };
-    let _ = handle.update(cx, |_, window, _| macos_window_ctl::hide(window));
+    let _ = handle.update(cx, |_, window, _| window_ctl::hide(window));
+}
+
+/// 关闭全部窗口并以可见状态重建主窗口（语言切换热生效）。
+///
+/// 主窗口视图与设置实体随窗口销毁，新建窗口以新语言渲染全部文案；
+/// 托盘菜单与应用菜单由调用方（settings 语言切换）先行刷新。
+pub fn reopen_all(cx: &mut App) {
+    let mut to_close = Vec::new();
+    {
+        let wm = cx.global_mut::<WindowManager>();
+        if let Some(handle) = wm.main.take() {
+            to_close.push(handle);
+        }
+        wm.main_view = None;
+        if let Some(handle) = wm.about.take() {
+            to_close.push(handle);
+        }
+        if let Some(handle) = wm.update.take() {
+            to_close.push(handle);
+        }
+        wm.update_view = None;
+    }
+    for handle in to_close {
+        // remove_window 直接关窗（不走 on_window_should_close 的托盘拦截）
+        let _ = handle.update(cx, |_, window, _| window.remove_window());
+    }
+    create_main_window(cx, true);
 }
 
 /// 在主窗口右侧内容区打开（切换到）指定工具；主窗口不可见时先显示。
@@ -154,8 +180,7 @@ pub fn open_tool(cx: &mut App, tool_id: &str) {
 
     if let Some(handle) = cx.global::<WindowManager>().main {
         let _ = handle.update(cx, |_, window, cx| {
-            macos_window_ctl::show(window);
-            window.activate_window();
+            window_ctl::show(window);
             cx.activate(true);
         });
     }
@@ -165,8 +190,7 @@ pub fn open_tool(cx: &mut App, tool_id: &str) {
 pub fn open_about(cx: &mut App) {
     if let Some(handle) = cx.global::<WindowManager>().about {
         let ok = handle.update(cx, |_, window, cx| {
-            macos_window_ctl::show(window);
-            window.activate_window();
+            window_ctl::show(window);
             cx.activate(true);
         });
         if ok.is_ok() {
@@ -220,8 +244,7 @@ pub fn open_about(cx: &mut App) {
 pub fn open_update(cx: &mut App) {
     if let Some(handle) = cx.global::<WindowManager>().update {
         let ok = handle.update(cx, |_, window, cx| {
-            macos_window_ctl::show(window);
-            window.activate_window();
+            window_ctl::show(window);
             cx.activate(true);
         });
         if ok.is_ok() {

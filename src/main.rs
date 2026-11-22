@@ -14,7 +14,6 @@ mod autostart;
 mod components;
 mod config_state;
 mod core_rt;
-mod macos_window_ctl;
 mod main_window;
 mod pages;
 mod singleton;
@@ -22,6 +21,7 @@ mod theme;
 mod tool_window;
 mod tray;
 mod update;
+mod window_ctl;
 mod windows;
 
 use devtools::config::AppConfig;
@@ -40,7 +40,9 @@ fn main() {
     let app = gpui_platform::application().with_assets(gpui_kit_assets::AllAssets);
     // Dock 图标点击（applicationShouldHandleReopen）：主窗口被隐藏时
     // （关闭入托盘 / Cmd-H / 最小化启动）唤回并前置——与单例激活同一路径。
-    // 回调注册在 Application 上（run 之前），执行于 run 后的 App 上下文
+    // 仅 macOS 有 Dock 语义；回调注册在 Application 上（run 之前），
+    // 执行于 run 后的 App 上下文
+    #[cfg(target_os = "macos")]
     app.on_reopen(windows::show_main);
     app.run(move |cx: &mut App| {
         gpui_component::init(cx);

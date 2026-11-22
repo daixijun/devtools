@@ -6,8 +6,8 @@
 #   make run            # 运行桌面应用 (debug; watch 模式: 运行中保存文件自动重启, 退出应用即结束)
 #   make run-direct     # 运行桌面应用 (debug, 不启用 watch)
 #   make check          # 全量检查 (check + clippy + test)
-#   make app            # 打包 DevTools.app
-#   make dmg            # 打包 DevTools.dmg 安装镜像 (release)
+#   make app            # 打包应用 (macOS → DevTools.app, 其他平台 → 裸二进制)
+#   make dmg            # 打包 DevTools.dmg 安装镜像 (release, 仅 macOS)
 #   make clean          # 清理构建产物
 
 # --- 可执行程序 -----------------------------------------------------------
@@ -75,15 +75,15 @@ fmt: ## cargo fmt (workspace)
 # =========================================================================
 # 构建 / 打包
 # =========================================================================
-app: ## 打包 DevTools.app (debug, scripts/build-app.sh)
-	@printf "$(COLOR_CYAN)▶ 打包 DevTools.app...$(COLOR_RESET)\n"
+app: ## 打包应用（macOS → DevTools.app，其他平台 → 裸二进制）
+	@printf "$(COLOR_CYAN)▶ 打包应用...$(COLOR_RESET)\n"
 	scripts/build-app.sh
 
-app-release: ## 打包 DevTools.app (release)
-	@printf "$(COLOR_CYAN)▶ 打包 DevTools.app (release)...$(COLOR_RESET)\n"
+app-release: ## 打包应用 (release)
+	@printf "$(COLOR_CYAN)▶ 打包应用 (release)...$(COLOR_RESET)\n"
 	scripts/build-app.sh release
 
-dmg: ## 打包 DevTools.dmg 安装镜像 (release, scripts/build-dmg.sh)
+dmg: ## 打包 DevTools.dmg 安装镜像 (release, 仅 macOS, scripts/build-dmg.sh)
 	@printf "$(COLOR_CYAN)▶ 打包 DevTools.dmg (release)...$(COLOR_RESET)\n"
 	scripts/build-dmg.sh
 
