@@ -27,12 +27,14 @@ cp -R "$APP" "$STAGING/"
 ln -s /Applications "$STAGING/Applications"
 
 echo "▶ 生成 $DMG"
-# macOS 15+ 用新的 diskutil image（hdiutil create 已弃用告警）；旧版回退 hdiutil
-if [ "$(sw_vers -productVersion | cut -d. -f1)" -ge 15 ] 2>/dev/null; then
+# macOS 15+ 优先用新的 diskutil image（hdiutil create 已弃用告警）；
+# diskutil 在部分系统（如 CI runner）不可用时自动回退 hdiutil
+if [ "$(sw_vers -productVersion | cut -d. -f1)" -ge 15 ] 2>/dev/null &&
     diskutil image create from \
         --volumeName "DevTools" \
         --format UDZO \
-        "$STAGING" "$DMG" 2>/dev/null
+        "$STAGING" "$DMG"; then
+    :
 else
     hdiutil create \
         -volname "DevTools" \
