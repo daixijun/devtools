@@ -2,8 +2,8 @@
 //!
 //! Tab「正向解析 / 反向解析」（ui::tab_bar 分段控件切换）：
 //! - 正向：DNS 服务器多选（挂载调 core `get_dns_servers()`，默认全选）+ 自定义服务器 +
-//!   记录类型 select + 域名输入；结果按服务器分组卡（latencyMs 徽章 + records 表格），
-//!   附 IP 地理位置信息卡。
+//!   记录类型 select + 域名输入；多服务器结果 Tab 切换（每 Tab 一台服务器：
+//!   latencyMs 徽章 + records 表格），单服务器直接显示，附 IP 地理位置信息卡。
 //! - 反向：单 IP（`reverse_dns_lookup`）/ 批量（`batch_reverse_dns_lookup`），
 //!   结果为 IP + domains 列表卡。
 //!   返回字段为 camelCase serde 名（Rust 侧仍是 snake_case 字段）。
@@ -64,6 +64,8 @@ pub struct DnsResolver {
     record_type: String,
     domain_input: Entity<InputState>,
     lookup: Option<DnsLookupResponse>,
+    /// 结果 Tab 当前选中的服务器下标（多服务器结果时 Tab 切换查看）。
+    active_result_tab: usize,
     forward_error: Option<String>,
 
     // ---- 反向解析 ----
@@ -103,6 +105,7 @@ impl DnsResolver {
             record_type: "ALL".to_string(),
             domain_input: domain_input.clone(),
             lookup: None,
+            active_result_tab: 0,
             forward_error: None,
             reverse_ip_input: reverse_ip_input.clone(),
             reverse_result: None,
@@ -245,7 +248,11 @@ impl DnsResolver {
     ) {
         self.loading = false;
         match result {
-            Ok(response) => self.lookup = Some(response),
+            Ok(response) => {
+                self.lookup = Some(response);
+                // 新结果回到第一个服务器 Tab
+                self.active_result_tab = 0;
+            }
             Err(err) => {
                 self.lookup = None;
                 self.forward_error = Some(format!("{}: {err}", t("查询失败")));
@@ -589,7 +596,7 @@ impl DnsResolver {
     }
 
     /// 正向解析右侧：查询结果。
-    fn render_forward_result(&self, cx: &Context<Self>) -> gpui::Div {
+    fn render_forward_result(&mut self, cx: &mut Context<Self>) -> gpui::Div {
         let theme = cx.theme().clone();
         let mut pane = ui::card(cx)
             .flex_1()
@@ -624,10 +631,33 @@ impl DnsResolver {
                         if response.results.is_empty() {
                             el.child(ui::empty_hint(t("未找到记录"), cx))
                         } else {
-                            let mut groups = div().flex().flex_col().gap_3();
-                            for result in &response.results {
-                                groups = groups.child(self.render_server_group(result, cx));
+                            // 多服务器结果 Tab 化：TabBar 选服务器，下方显示
+                            // 该服务器的记录卡（单服务器不渲染 TabBar）
+                            let n = response.results.len();
+                            let active = self.active_result_tab.min(n - 1);
+                            let mut content = div().flex().flex_col().gap_2();
+                            if n > 1 {
+                                // Tab 标题用服务器地址（name (server) 全名太长，
+                                // 多 Tab 放不下；完整名在组卡头部展示）
+                                let labels: Vec<String> = response
+                                    .results
+                                    .iter()
+                                    .map(|r| r.dns_server.clone())
+                                    .collect();
+                                let items: Vec<&str> =
+                                    labels.iter().map(String::as_str).collect();
+                                content = content.child(ui::tab_bar(
+                                    "dns-result-tabs",
+                                    &items,
+                                    active,
+                                    cx.listener(|this, ix: &usize, _window, cx| {
+                                        this.active_result_tab = *ix;
+                                        cx.notify();
+                                    }),
+                                ));
                             }
+                            content = content
+                                .child(self.render_server_group(&response.results[active], cx));
                             el.child(
                                 div()
                                     .flex()
@@ -640,7 +670,7 @@ impl DnsResolver {
                                             .text_color(theme.colors.foreground)
                                             .child(t("DNS 记录:")),
                                     )
-                                    .child(groups),
+                                    .child(content),
                             )
                         }
                     })
