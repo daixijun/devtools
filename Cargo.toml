@@ -40,7 +40,7 @@ tokio = { version = "1", features = ["full"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "http2", "system-proxy"] }
 tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "logging", "tls12"] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "logging", "std", "tls12"] }
-webpki-roots = "0.26"
+webpki-roots = "1.0"
 dns-lookup = "2"
 # DNS 查询原生实现：直接向指定服务器发 UDP/TCP 查询，不依赖外部 dig
 # （Windows 与多数 Linux 发行版默认没有 dig）。关默认特性——不读系统
