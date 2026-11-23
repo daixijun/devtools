@@ -61,6 +61,8 @@ pub struct AppConfig {
     #[serde(default = "default_language")]
     pub language: String, // "system" | "zh-CN" | "en"（语义见 i18n::Language）
     #[serde(default)]
+    pub auto_update: bool, // 启动时自动检查并下载更新（完成后提示确认重启；默认关闭，仅手动触发）
+    #[serde(default)]
     pub hotkey: HotKeyConfig,
 }
 
@@ -72,6 +74,7 @@ impl Default for AppConfig {
             close_to_tray: true, // 默认启用关闭时最小化到托盘
             theme: ThemeMode::default(),
             language: default_language(),
+            auto_update: false,
             hotkey: HotKeyConfig::default(),
         }
     }

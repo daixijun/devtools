@@ -62,6 +62,10 @@ if [ "$(uname)" = "Darwin" ]; then
 </plist>
 PLIST
 
+  # 嵌入 Homebrew 动态库（libheif/pcre2 等绝对路径在用户机器不存在，
+  # 不嵌入会启动即 "Library not loaded"；脚本内含 ad-hoc 重签）
+  scripts/embed-dylibs.sh
+
   # 最小化二进制（release 时已 strip；debug 保留）
   echo "✅ DevTools.app 构建完成：$APP"
   echo "   运行：open $APP"

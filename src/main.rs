@@ -28,6 +28,15 @@ use devtools::config::AppConfig;
 use gpui::App;
 
 fn main() {
+    // Windows 自更新残留（旧版本 exe 改名让位后的备份）：启动时尝试清理
+    #[cfg(target_os = "windows")]
+    if let Ok(exe) = std::env::current_exe() {
+        let old = exe.with_extension("exe.old");
+        if old.exists() {
+            let _ = std::fs::remove_file(old);
+        }
+    }
+
     // 单例：二次启动时激活已有实例的主窗口并退出
     if !singleton::acquire_or_notify() {
         return;
@@ -56,6 +65,8 @@ fn main() {
         windows::init(cx);
         windows::create_main_window(cx, !start_minimized);
         singleton::init(cx);
+        // 自动更新（设置页开启时）：静默检查下载，完成后弹窗提示确认重启
+        update::auto_update_on_launch(cx);
         // 非 minimized 启动时激活应用（启动即前置主窗口）
         if !start_minimized {
             cx.activate(true);

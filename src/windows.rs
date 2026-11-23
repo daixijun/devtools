@@ -243,15 +243,31 @@ pub fn open_about(cx: &mut App) {
 
 /// 打开（或聚焦已存在的）「软件更新」窗口；窗口已存在时重新触发检查。
 pub fn open_update(cx: &mut App) {
+    open_update_inner(cx, None);
+}
+
+/// 自动更新完成后的入口：打开更新窗口直接显示「更新已就绪」（已有窗口
+/// 则切换到就绪状态），用户确认后才重启。
+pub fn open_update_ready(cx: &mut App, info: &devtools::utils::updater::ReleaseInfo) {
+    open_update_inner(cx, Some(info));
+}
+
+fn open_update_inner(cx: &mut App, ready: Option<&devtools::utils::updater::ReleaseInfo>) {
     if let Some(handle) = cx.global::<WindowManager>().update {
         let ok = handle.update(cx, |_, window, cx| {
             window_ctl::show(window);
             cx.activate(true);
         });
         if ok.is_ok() {
-            // 菜单语义即「检查更新」：已有窗口时重跑一次检查
             if let Some(view) = cx.global::<WindowManager>().update_view.clone() {
-                view.update(cx, |this, cx| this.start_check(cx));
+                match ready {
+                    // 自动更新完成：窗口切换到就绪状态
+                    Some(info) => {
+                        view.update(cx, |this, cx| this.show_ready(&info.version, cx));
+                    }
+                    // 菜单语义即「检查更新」：已有窗口时重跑一次检查
+                    None => view.update(cx, |this, cx| this.start_check(cx)),
+                }
             }
             return;
         }
@@ -259,7 +275,8 @@ pub fn open_update(cx: &mut App) {
 
     let view_slot: Rc<std::cell::RefCell<Option<Entity<UpdateView>>>> = Default::default();
     let slot_for_closure = view_slot.clone();
-    let bounds = centered_bounds(cx, 420., 260.);
+    let ready_version = ready.map(|info| info.version.clone());
+    let bounds = centered_bounds(cx, 460., 380.);
     let options = WindowOptions {
         window_bounds: Some(WindowBounds::Windowed(bounds)),
         titlebar: Some(gpui::TitlebarOptions {
@@ -289,13 +306,28 @@ pub fn open_update(cx: &mut App) {
 
     let opened = cx.open_window(options, |window, cx| {
         crate::theme::observe_window_appearance(window, cx);
-        let view = cx.new(UpdateView::new);
+        let view = match ready_version {
+            Some(version) => cx.new(|cx| UpdateView::new_ready(version, cx)),
+            None => cx.new(UpdateView::new),
+        };
         *slot_for_closure.borrow_mut() = Some(view.clone());
         cx.new(|cx| Root::new(gpui::AnyView::from(view), window, cx))
     });
 
     match opened {
         Ok(handle) => {
+            // 关窗即取消下载：防止用户以为关掉了更新、后台却静默安装重启
+            let _ = handle.update(cx, |_, window, cx| {
+                window.on_window_should_close(cx, |_window, cx| {
+                    if let Some(view) = cx
+                        .try_global::<WindowManager>()
+                        .and_then(|wm| wm.update_view.clone())
+                    {
+                        view.update(cx, |this, _| this.request_cancel());
+                    }
+                    true // 允许关闭
+                });
+            });
             let wm = cx.global_mut::<WindowManager>();
             wm.update = Some(handle);
             wm.update_view = view_slot.borrow().clone();

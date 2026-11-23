@@ -87,6 +87,18 @@ mod imp {
             .join("devtools.sock")
     }
 
+    /// 仅尝试抢占 socket（bind 成功即持有并返回 true），不与既有实例
+    /// 通信。供自更新重启的等待循环使用。
+    pub fn try_bind() -> bool {
+        match UnixListener::bind(socket_path()) {
+            Ok(listener) => {
+                let _ = LISTENER.set(listener);
+                true
+            }
+            Err(_) => false,
+        }
+    }
+
     /// 单例抢占入口。返回 `true` 表示本实例继续启动；`false` 表示已成功
     /// 激活现有实例，调用方应立即退出进程。
     pub fn acquire_or_notify() -> bool {
@@ -173,6 +185,18 @@ mod imp {
         std::net::SocketAddr::from((std::net::Ipv4Addr::LOCALHOST, SINGLETON_PORT))
     }
 
+    /// 仅尝试抢占端口（bind 成功即持有并返回 true），不与既有实例通信。
+    /// 供自更新重启的等待循环使用。
+    pub fn try_bind() -> bool {
+        match TcpListener::bind(addr()) {
+            Ok(listener) => {
+                let _ = LISTENER.set(listener);
+                true
+            }
+            Err(_) => false,
+        }
+    }
+
     /// 单例抢占入口。返回 `true` 表示本实例继续启动；`false` 表示已成功
     /// 激活现有实例，调用方应立即退出进程。
     pub fn acquire_or_notify() -> bool {
@@ -215,9 +239,28 @@ mod imp {
     }
 }
 
+/// 自更新重启的等待时长与轮询间隔（旧实例从 spawn 到完全退出通常在
+/// 一秒内；给足余量避免新实例误判「已有实例」而激活它）。
+const RELAUNCH_WAIT: std::time::Duration = std::time::Duration::from_secs(10);
+const RELAUNCH_POLL: std::time::Duration = std::time::Duration::from_millis(200);
+
 /// 单例抢占入口。返回 `true` 表示本实例继续启动；`false` 表示已成功激活
 /// 现有实例，调用方应立即退出进程。
+///
+/// `--relaunch`（自更新重启）：新实例被拉起时旧实例尚在退出中，通道未
+/// 释放——先轮询等待抢占，超时才按普通二次启动处理。
 pub fn acquire_or_notify() -> bool {
+    let relaunch = std::env::args().any(|arg| arg == "--relaunch");
+    if relaunch {
+        let deadline = std::time::Instant::now() + RELAUNCH_WAIT;
+        while std::time::Instant::now() < deadline {
+            if imp::try_bind() {
+                return true;
+            }
+            std::thread::sleep(RELAUNCH_POLL);
+        }
+        eprintln!("--relaunch 等待旧实例退出超时，按二次启动处理");
+    }
     imp::acquire_or_notify()
 }
 

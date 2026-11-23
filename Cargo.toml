@@ -86,6 +86,9 @@ raw-window-handle = "0.6"
 # Windows 用 Win32+DirectWrite 无需额外 feature
 [target.'cfg(target_os = "linux")'.dependencies]
 gpui-platform = { package = "gpui-pre-platform", version = "=0.3.12", features = ["wayland", "x11"] }
+# 应用内自更新：解压 tar.gz 安装包（flate2 走 miniz_oxide 纯 Rust，无 C 依赖）
+tar = "0.4"
+flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 gpui-platform = { package = "gpui-pre-platform", version = "=0.3.12" }
@@ -95,6 +98,9 @@ windows-sys = { version = "0.60", features = [
     "Win32_UI_WindowsAndMessaging",
 ] }
 winreg = "0.55"
+# 应用内自更新：解压 zip 安装包。关默认特性剔除 bzip2/zstd/lzma 等 C 依赖，
+# 仅保留 deflate（deflate 走 flate2 rust 后端 miniz_oxide，纯 Rust）
+zip = { version = "9", default-features = false, features = ["deflate"] }
 
 # 托盘与菜单：tray-icon/muda 的 Linux 后端依赖 GTK 事件循环，与 gpui Linux
 # 自主事件循环不兼容（且 Wayland 无标准托盘协议）——托盘仅在 macOS/Windows 编译

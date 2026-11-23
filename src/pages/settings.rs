@@ -151,6 +151,15 @@ impl Settings {
         cx.notify();
     }
 
+    fn toggle_auto_update(&mut self, requested: bool, cx: &mut Context<Self>) {
+        if self.loading {
+            return;
+        }
+        // 自动更新：写共享配置（main.rs 启动流程实时读取该值）
+        crate::config_state::update(cx, |cfg| cfg.auto_update = requested);
+        cx.notify();
+    }
+
     // -----------------------------------------------------------------------
     // 渲染
     // -----------------------------------------------------------------------
@@ -278,6 +287,13 @@ impl Render for Settings {
             .on_change(cx.listener(|this, checked: &bool, _window, cx| {
                 this.toggle_close_to_tray(*checked, cx)
             }));
+        let auto_update = crate::config_state::get(cx).auto_update;
+        let auto_update_switch = Switch::new("switch-auto-update")
+            .checked(auto_update)
+            .disabled(loading)
+            .on_change(cx.listener(|this, checked: &bool, _window, cx| {
+                this.toggle_auto_update(*checked, cx)
+            }));
         // Linux 无系统托盘（tray.rs stub）：托盘相关开关整行隐藏
         let tray_available = cfg!(not(target_os = "linux"));
         let mut system_card = ui::card(cx).child(ui::card_header(t("系统设置"), cx));
@@ -302,12 +318,19 @@ impl Render for Settings {
                     cx,
                 ));
         }
-        system_card = system_card.child(Self::setting_row(
-            t("开机自动启动"),
-            t("系统启动时自动运行此应用程序"),
-            autostart_switch,
-            cx,
-        ));
+        system_card = system_card
+            .child(Self::setting_row(
+                t("开机自动启动"),
+                t("系统启动时自动运行此应用程序"),
+                autostart_switch,
+                cx,
+            ))
+            .child(Self::setting_row(
+                t("自动更新"),
+                t("启动时自动检查并下载更新，完成后提示确认重启"),
+                auto_update_switch,
+                cx,
+            ));
 
         // ---- 关于应用卡 ----
         let about_card = ui::card(cx)
