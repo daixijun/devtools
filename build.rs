@@ -7,7 +7,11 @@
 #[cfg(target_os = "windows")]
 fn main() {
     if std::path::Path::new("assets/devtools.rc").exists() {
-        if let Err(e) = embed_resource::try_compile("assets/devtools.rc", embed_resource::NONE) {
+        // embed-resource 3.x：compile() 返回 #[must_use] 的 CompilationResult，
+        // 图标属装饰性资源，manifest_optional 仅在真正编译失败时报 Err
+        if let Err(e) =
+            embed_resource::compile("assets/devtools.rc", embed_resource::NONE).manifest_optional()
+        {
             println!("cargo:warning=跳过 Windows 图标嵌入（资源编译失败: {e}）");
         }
     }

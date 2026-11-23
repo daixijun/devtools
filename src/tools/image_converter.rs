@@ -1,4 +1,5 @@
 use image::{self, DynamicImage, ImageFormat};
+#[cfg(target_os = "macos")]
 use libheif_sys::*;
 use nom_exif::{EntryValue, ExifIter, MediaParser, MediaSource};
 use serde::{Deserialize, Serialize};
@@ -87,6 +88,7 @@ fn validate_input_file(input_path: &str) -> Result<PathBuf, String> {
 }
 
 /// 使用 libheif 读取 HEIC 图片
+#[cfg(target_os = "macos")]
 fn read_heic_image(input_path: &Path) -> Result<DynamicImage, String> {
     // 读取文件数据
     let file_data = std::fs::read(input_path).map_err(|e| format!("读取 HEIC 文件失败: {}", e))?;
@@ -172,7 +174,14 @@ fn read_heic_image(input_path: &Path) -> Result<DynamicImage, String> {
     Ok(DynamicImage::ImageRgba8(img_buffer))
 }
 
+/// 非 macOS 平台无 libheif（HEIF 属 Apple 生态），HEIC 输入直接报不支持
+#[cfg(not(target_os = "macos"))]
+fn read_heic_image(_input_path: &Path) -> Result<DynamicImage, String> {
+    Err("当前平台不支持 HEIC/HEIF 图片".to_string())
+}
+
 /// 上下文守卫，确保正确释放
+#[cfg(target_os = "macos")]
 struct ContextGuard(*mut heif_context);
 impl Drop for ContextGuard {
     fn drop(&mut self) {
@@ -185,6 +194,7 @@ impl Drop for ContextGuard {
 }
 
 /// 图像句柄守卫，确保正确释放
+#[cfg(target_os = "macos")]
 struct ImageHandleGuard(*mut heif_image_handle);
 impl Drop for ImageHandleGuard {
     fn drop(&mut self) {
@@ -197,6 +207,7 @@ impl Drop for ImageHandleGuard {
 }
 
 /// 图像守卫，确保正确释放
+#[cfg(target_os = "macos")]
 struct ImageGuard(*mut heif_image);
 impl Drop for ImageGuard {
     fn drop(&mut self) {
@@ -209,6 +220,7 @@ impl Drop for ImageGuard {
 }
 
 /// 获取错误消息
+#[cfg(target_os = "macos")]
 fn error_message(error: &heif_error) -> String {
     unsafe {
         if !error.message.is_null() {
@@ -395,6 +407,7 @@ fn get_image_info(input_path: &Path) -> Result<ImageInfo, String> {
 }
 
 /// 获取 HEIC 图片信息
+#[cfg(target_os = "macos")]
 fn get_heic_image_info(input_path: &Path) -> Result<ImageInfo, String> {
     // 读取文件数据
     let file_data = std::fs::read(input_path).map_err(|e| format!("读取 HEIC 文件失败: {}", e))?;
@@ -454,6 +467,12 @@ fn get_heic_image_info(input_path: &Path) -> Result<ImageInfo, String> {
         path: input_path.to_string_lossy().to_string(),
         exif_data,
     })
+}
+
+/// 非 macOS 平台无 libheif，HEIC 信息读取同样报不支持
+#[cfg(not(target_os = "macos"))]
+fn get_heic_image_info(_input_path: &Path) -> Result<ImageInfo, String> {
+    Err("当前平台不支持 HEIC/HEIF 图片".to_string())
 }
 
 /// 使用 Rust image 库转换图片
