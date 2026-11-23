@@ -99,7 +99,7 @@ winreg = "0.55"
 # 托盘与菜单：tray-icon/muda 的 Linux 后端依赖 GTK 事件循环，与 gpui Linux
 # 自主事件循环不兼容（且 Wayland 无标准托盘协议）——托盘仅在 macOS/Windows 编译
 [target.'cfg(any(target_os = "macos", target_os = "windows"))'.dependencies]
-tray-icon = "0.21"
+tray-icon = "0.26"
 muda = "0.17"
 
 # macOS：Metal 渲染后端（font-kit 字体栅格化）+ libheif 解码（HEIF 属 Apple
