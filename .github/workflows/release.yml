@@ -63,6 +63,14 @@ jobs:
         if: matrix.os == 'ubuntu-24.04'
         uses: ./.github/actions/linux-deps
 
+      # Windows 构建走 bash，PATH 中 Git 自带的 MSYS perl 排在 Strawberry 之前；
+      # MSYS perl 缺 Locale::Maketext::Simple，vendored OpenSSL 配置直接失败。
+      # GITHUB_PATH 追加的条目置于 PATH 最前，让 perl 解析到模块齐全的 Strawberry。
+      - name: 前置 Strawberry Perl（Windows vendored OpenSSL）
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        run: echo "/c/Strawberry/perl/bin" >> "$GITHUB_PATH"
+
       - uses: Swatinem/rust-cache@v2
 
       - name: 构建（release）
