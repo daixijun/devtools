@@ -42,6 +42,10 @@ tokio-rustls = { version = "0.26", default-features = false, features = ["ring",
 rustls = { version = "0.23", default-features = false, features = ["ring", "logging", "std", "tls12"] }
 webpki-roots = "0.26"
 dns-lookup = "2"
+# DNS 查询原生实现：直接向指定服务器发 UDP/TCP 查询，不依赖外部 dig
+# （Windows 与多数 Linux 发行版默认没有 dig）。关默认特性——不读系统
+# resolv.conf、不带 TLS/DNSSEC（纯 Rust，无新增 C 依赖）
+hickory-resolver = { version = "0.26", default-features = false, features = ["tokio"] }
 openssl = { version = "0.10.73", features = ["vendored"] }
 x509-parser = "0.17"
 base64 = "0.21"
