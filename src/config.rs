@@ -129,7 +129,18 @@ mod tests {
         let config: AppConfig = serde_json::from_str(old_json).unwrap();
         assert!(config.tray_enabled);
         assert_eq!(config.theme, ThemeMode::System);
-        assert_eq!(config.hotkey.modifier, "option");
+        // 缺省字段按当前平台的默认值补齐（修饰键 macOS 为 option、其余平台 alt）
+        assert_eq!(config.hotkey, HotKeyConfig::default());
+    }
+
+    #[test]
+    fn test_hotkey_default_modifier_follows_platform() {
+        let expected = if cfg!(target_os = "macos") {
+            "option"
+        } else {
+            "alt"
+        };
+        assert_eq!(HotKeyConfig::default().modifier, expected);
     }
 
     #[test]

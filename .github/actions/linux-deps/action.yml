@@ -1,5 +1,5 @@
 # Linux 构建依赖（ci.yml 与 release.yml 共用，消除逐字重复清单）：
-# - gpui 渲染栈：wayland / xkbcommon / vulkan / fontconfig
+# - gpui 渲染栈：wayland / xkbcommon(+x11) / vulkan / fontconfig
 # - rfd 文件对话框走 GTK3 后端
 name: Install Linux build dependencies
 description: GPUI 渲染栈 + rfd(GTK3) 所需的系统库（Debian/Ubuntu）
@@ -12,6 +12,7 @@ runs:
         sudo apt-get install -y \
           libgtk-3-dev \
           libxkbcommon-dev \
+          libxkbcommon-x11-dev \
           libwayland-dev \
           libvulkan-dev \
           libfontconfig1-dev
