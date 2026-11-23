@@ -22,7 +22,7 @@ jobs:
     name: 校验 tag 与 Cargo.toml 版本一致
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
       - run: |
           TAG_VERSION="${GITHUB_REF_NAME#v}"
@@ -51,7 +51,7 @@ jobs:
       # openssl vendored 编译走 C；Windows runner 无 NASM，关汇编
       OPENSSL_NO_ASM: ${{ matrix.os == 'windows-latest' && '1' || '' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -118,7 +118,7 @@ jobs:
           cat "target/$ASSET.tar.gz.sha256"
 
       - name: 汇聚产物
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dist-${{ matrix.os }}
           path: |
@@ -133,13 +133,13 @@ jobs:
     needs: build
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
 
       - name: 发布 Release（产物 + 多平台安装说明）
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             dist/DevTools-*.dmg
