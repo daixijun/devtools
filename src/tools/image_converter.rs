@@ -183,6 +183,7 @@ fn read_heic_image(_input_path: &Path) -> Result<DynamicImage, String> {
 /// 上下文守卫，确保正确释放
 #[cfg(target_os = "macos")]
 struct ContextGuard(*mut heif_context);
+#[cfg(target_os = "macos")]
 impl Drop for ContextGuard {
     fn drop(&mut self) {
         if !self.0.is_null() {
@@ -196,6 +197,7 @@ impl Drop for ContextGuard {
 /// 图像句柄守卫，确保正确释放
 #[cfg(target_os = "macos")]
 struct ImageHandleGuard(*mut heif_image_handle);
+#[cfg(target_os = "macos")]
 impl Drop for ImageHandleGuard {
     fn drop(&mut self) {
         if !self.0.is_null() {
@@ -209,6 +211,7 @@ impl Drop for ImageHandleGuard {
 /// 图像守卫，确保正确释放
 #[cfg(target_os = "macos")]
 struct ImageGuard(*mut heif_image);
+#[cfg(target_os = "macos")]
 impl Drop for ImageGuard {
     fn drop(&mut self) {
         if !self.0.is_null() {
