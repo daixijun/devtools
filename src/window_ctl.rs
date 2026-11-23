@@ -88,8 +88,9 @@ mod imp {
         let handle = raw_window_handle::HasWindowHandle::window_handle(window).ok()?;
         match handle.as_raw() {
             RawWindowHandle::Win32(win32) => {
-                // raw-window-handle 0.6 的 hwnd 是 NonNull<c_void>，与 windows-sys 的 HWND 同型
-                Some(f(win32.hwnd.as_ptr()))
+                // raw-window-handle 0.6 的 hwnd 是 NonZero<isize>（Windows HANDLE 本为整数），
+                // windows-sys 0.60 的 HWND 是 *mut c_void，经 isize 整数转换衔接
+                Some(f(win32.hwnd.get() as *mut std::ffi::c_void))
             }
             _ => None,
         }

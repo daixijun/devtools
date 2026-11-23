@@ -132,7 +132,7 @@ mod imp {
                 "[Desktop Entry]\n\
                  Type=Application\n\
                  Name=DevTools\n\
-                 Exec="{exe}" {AUTOSTART_ARG}\n\
+                 Exec=\"{exe}\" {AUTOSTART_ARG}\n\
                  X-GNOME-Autostart-enabled=true\n"
             );
             if let Some(parent) = path.parent() {

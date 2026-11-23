@@ -170,7 +170,7 @@ mod imp {
     static LISTENER: OnceLock<TcpListener> = OnceLock::new();
 
     fn addr() -> std::net::SocketAddr {
-        std::net::SocketAddr::from(([std::net::Ipv4Addr::LOCALHOST, SINGLETON_PORT]))
+        std::net::SocketAddr::from((std::net::Ipv4Addr::LOCALHOST, SINGLETON_PORT))
     }
 
     /// 单例抢占入口。返回 `true` 表示本实例继续启动；`false` 表示已成功
