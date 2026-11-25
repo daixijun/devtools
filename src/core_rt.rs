@@ -69,7 +69,10 @@ where
 
 /// 提交任务到 tokio Runtime，任务内可多次 send 事件（下载进度这类
 /// 多值流）。sender 交给任务闭包自行使用；UI 侧循环消费直到流耗尽。
-pub fn submit_multi<R, F>(cx: &App, make: impl FnOnce(futures::channel::mpsc::UnboundedSender<R>) -> F) -> futures::channel::mpsc::UnboundedReceiver<R>
+pub fn submit_multi<R, F>(
+    cx: &App,
+    make: impl FnOnce(futures::channel::mpsc::UnboundedSender<R>) -> F,
+) -> futures::channel::mpsc::UnboundedReceiver<R>
 where
     R: Send + 'static,
     F: std::future::Future<Output = ()> + Send + 'static,

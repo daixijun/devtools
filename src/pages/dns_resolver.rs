@@ -644,8 +644,7 @@ impl DnsResolver {
                                     .iter()
                                     .map(|r| r.dns_server.clone())
                                     .collect();
-                                let items: Vec<&str> =
-                                    labels.iter().map(String::as_str).collect();
+                                let items: Vec<&str> = labels.iter().map(String::as_str).collect();
                                 content = content.child(ui::tab_bar(
                                     "dns-result-tabs",
                                     &items,

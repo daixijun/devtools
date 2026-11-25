@@ -239,7 +239,6 @@ impl JwtDecode {
         }
     }
 
-
     /// 300ms 防抖：每次输入重启计时器，代数不一致的到期任务直接丢弃。
     fn schedule_decode(&mut self, cx: &mut Context<Self>) {
         self.decode_gen += 1;
@@ -602,15 +601,9 @@ impl gpui::Render for JwtDecode {
                     .flex()
                     .gap_4()
                     .child(
-                        output_column_json(
-                            "jwt-copy-header",
-                            "Header",
-                            &self.header_out,
-                            200.,
-                            cx,
-                        )
-                        .flex_1()
-                        .min_w(px(0.)),
+                        output_column_json("jwt-copy-header", "Header", &self.header_out, 200., cx)
+                            .flex_1()
+                            .min_w(px(0.)),
                     )
                     .child(
                         output_column_json(

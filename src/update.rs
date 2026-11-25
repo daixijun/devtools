@@ -11,10 +11,7 @@ use devtools::utils::updater::{self, ReleaseInfo, UpdateEvent};
 use futures::StreamExt as _;
 use gpui::{div, prelude::*, px, Context, FontWeight, IntoElement, Render, Window};
 use gpui_component::{
-    progress::Progress,
-    scroll::ScrollableElement as _,
-    text::TextView,
-    ActiveTheme as _,
+    progress::Progress, scroll::ScrollableElement as _, text::TextView, ActiveTheme as _,
 };
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -346,16 +343,11 @@ impl Render for UpdateView {
                             )
                         })
                         .when(!installing, |el| {
-                            el.child(
-                                ui::panel(cx)
-                                    .w_full()
-                                    .child(
-                                        div().flex().flex_col().gap_1().child(
-                                            Progress::new("update-progress")
-                                                .value(*progress * 100.0),
-                                        ),
-                                    ),
-                            )
+                            el.child(ui::panel(cx).w_full().child(
+                                div().flex().flex_col().gap_1().child(
+                                    Progress::new("update-progress").value(*progress * 100.0),
+                                ),
+                            ))
                         })
                         .when(!installing, |el| {
                             el.child(
@@ -423,7 +415,10 @@ impl Render for UpdateView {
                                 .child(message),
                         )
                         .child(
-                            div().flex().items_center().gap_2()
+                            div()
+                                .flex()
+                                .items_center()
+                                .gap_2()
                                 .when(has_update, |el| {
                                     el.child(ui::primary_button(
                                         "update-retry-download",

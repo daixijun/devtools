@@ -201,7 +201,11 @@ pub fn update_in_progress() -> bool {
 /// 成功发送 [`UpdateEvent::Finished`]；失败发送 [`UpdateEvent::Failed`]
 /// 并清理临时目录。被取消时静默停止（UI 已自行回到可重试状态）。
 /// 已有任务进行中时直接发送 `Failed("已有更新任务进行中")`。
-pub async fn download_and_install(info: ReleaseInfo, tx: UnboundedSender<UpdateEvent>, cancel: CancelFlag) {
+pub async fn download_and_install(
+    info: ReleaseInfo,
+    tx: UnboundedSender<UpdateEvent>,
+    cancel: CancelFlag,
+) {
     if UPDATE_IN_PROGRESS.swap(true, Ordering::Relaxed) {
         let _ = tx.unbounded_send(UpdateEvent::Failed("已有更新任务进行中".into()));
         return;
@@ -296,7 +300,8 @@ async fn download_to_file(
         if cancel.load(Ordering::Relaxed) {
             return Err("已取消".into());
         }
-        file.write_all(&bytes).map_err(|e| format!("写入临时文件失败: {e}"))?;
+        file.write_all(&bytes)
+            .map_err(|e| format!("写入临时文件失败: {e}"))?;
         hasher.update(&bytes);
         downloaded += bytes.len() as u64;
         let pct = downloaded as f32 / total as f32;
@@ -353,7 +358,9 @@ fn work_dir() -> PathBuf {
 /// 重启应用进入新版本：先拉起新进程（携带 `--relaunch` 标记，新实例会在
 /// 单例抢占处等待旧实例退出），成功即退出当前进程，失败返回错误。
 pub fn relaunch() -> Result<(), String> {
-    let child = relaunch_command().spawn().map_err(|e| format!("启动新版本失败: {e}"))?;
+    let child = relaunch_command()
+        .spawn()
+        .map_err(|e| format!("启动新版本失败: {e}"))?;
     // 丢弃句柄：新进程独立运行
     std::mem::forget(child);
     std::process::exit(0);
@@ -364,17 +371,20 @@ fn relaunch_command() -> std::process::Command {
     // 通过 LaunchServices 启动保持 Dock/菜单栏观感；-n 允许在旧实例退出前
     // 启动，--args 把 --relaunch 传给新实例
     let mut cmd = std::process::Command::new("open");
-    cmd.arg("-n").arg(install::bundle_app_path().unwrap_or_else(|_| {
-        // 兜底：直接以可执行文件路径启动（正常情况不会走到）
-        std::env::current_exe().unwrap_or_else(|_| PathBuf::from("devtools"))
-    }));
+    cmd.arg("-n")
+        .arg(install::bundle_app_path().unwrap_or_else(|_| {
+            // 兜底：直接以可执行文件路径启动（正常情况不会走到）
+            std::env::current_exe().unwrap_or_else(|_| PathBuf::from("devtools"))
+        }));
     cmd.args(["--args", "--relaunch"]);
     cmd
 }
 
 #[cfg(not(target_os = "macos"))]
 fn relaunch_command() -> std::process::Command {
-    let mut cmd = std::process::Command::new(std::env::current_exe().unwrap_or_else(|_| PathBuf::from("devtools")));
+    let mut cmd = std::process::Command::new(
+        std::env::current_exe().unwrap_or_else(|_| PathBuf::from("devtools")),
+    );
     cmd.arg("--relaunch");
     cmd
 }
@@ -409,9 +419,17 @@ mod install {
         }
 
         let mounted_app = mnt.join("DevTools.app");
-        let copy = Cmd::new("cp").arg("-R").arg(&mounted_app).arg(&app).output();
+        let copy = Cmd::new("cp")
+            .arg("-R")
+            .arg(&mounted_app)
+            .arg(&app)
+            .output();
         // 无论复制成败先卸载
-        let _ = Cmd::new("hdiutil").arg("detach").arg("-force").arg(&mnt).output();
+        let _ = Cmd::new("hdiutil")
+            .arg("detach")
+            .arg("-force")
+            .arg(&mnt)
+            .output();
 
         match copy {
             Ok(out) if out.status.success() => Ok(()),
@@ -439,8 +457,6 @@ mod install {
 
     #[cfg(target_os = "windows")]
     pub fn install(pkg: &Path) -> Result<(), String> {
-        use std::io::Read as _;
-
         let dir = pkg.parent().ok_or("安装包路径异常")?;
         let extract = dir.join("extract");
         let _ = std::fs::remove_dir_all(&extract);
@@ -452,8 +468,15 @@ mod install {
         // 产物 zip 内是顶层目录 + devtools.exe；按名匹配（不展开全部条目）
         let mut exe_entry = None;
         for i in 0..archive.len() {
-            let entry = archive.by_index_raw(i);
-            let name = entry.name().trim_end_matches('/').to_string();
+            let entry = archive
+                .by_index_raw(i)
+                .map_err(|e| format!("读取 zip 条目失败: {e}"))?;
+            // zip 9 的 name() 返回 ZipResult<Cow<str>>（CP437/UTF-8 文件名解码可失败）
+            let name = entry
+                .name()
+                .map_err(|e| format!("解析 zip 条目名失败: {e}"))?
+                .trim_end_matches('/')
+                .to_string();
             if name.ends_with("/devtools.exe") || name == "devtools.exe" {
                 exe_entry = Some(name);
                 break;
@@ -467,13 +490,15 @@ mod install {
             .by_name(&entry_name)
             .map_err(|e| format!("读取 devtools.exe 失败: {e}"))?;
         let new_exe = extract.join("devtools.exe");
-        let mut out = std::fs::File::create(&new_exe).map_err(|e| format!("创建目标文件失败: {e}"))?;
+        let mut out =
+            std::fs::File::create(&new_exe).map_err(|e| format!("创建目标文件失败: {e}"))?;
         std::io::copy(&mut entry, &mut out).map_err(|e| format!("解压失败: {e}"))?;
         drop(entry);
 
         // 运行中的 exe 不能删除/覆盖写入，但允许改名——旧实例改名让位，
         // 新 exe 落到原路径；残留的 .old 由新实例启动时清理
-        let current = std::env::current_exe().map_err(|e| format!("获取当前可执行文件失败: {e}"))?;
+        let current =
+            std::env::current_exe().map_err(|e| format!("获取当前可执行文件失败: {e}"))?;
         let backup = current.with_extension("exe.old");
         let _ = std::fs::remove_file(&backup);
         std::fs::rename(&current, &backup).map_err(|e| format!("备份旧版本失败: {e}"))?;
@@ -490,7 +515,9 @@ mod install {
         let _ = std::fs::remove_dir_all(&extract);
         std::fs::create_dir_all(&extract).map_err(|e| format!("创建解压目录失败: {e}"))?;
 
-        let gz = flate2::read::GzDecoder::new(std::fs::File::open(pkg).map_err(|e| format!("打开安装包失败: {e}"))?);
+        let gz = flate2::read::GzDecoder::new(
+            std::fs::File::open(pkg).map_err(|e| format!("打开安装包失败: {e}"))?,
+        );
         tar::Archive::new(gz)
             .unpack(&extract)
             .map_err(|e| format!("解压失败: {e}"))?;
@@ -501,7 +528,8 @@ mod install {
             .map_err(|e| format!("设置执行权限失败: {e}"))?;
 
         // Linux 允许 rename 覆盖运行中的二进制（旧 inode 由进程继续持有）
-        let current = std::env::current_exe().map_err(|e| format!("获取当前可执行文件失败: {e}"))?;
+        let current =
+            std::env::current_exe().map_err(|e| format!("获取当前可执行文件失败: {e}"))?;
         std::fs::rename(&new_exe, &current)
             .map_err(|e| format!("安装新版本失败（安装目录可能无写权限）: {e}"))?;
         Ok(())
@@ -636,7 +664,10 @@ mod tests {
     #[test]
     fn test_parse_checksum() {
         let hash = "a".repeat(64);
-        assert_eq!(parse_checksum(&format!("{hash}  DevTools.zip\n")).unwrap(), hash);
+        assert_eq!(
+            parse_checksum(&format!("{hash}  DevTools.zip\n")).unwrap(),
+            hash
+        );
         // 大写统一转小写
         let upper = "A".repeat(64);
         assert_eq!(parse_checksum(&format!("{upper}  x\n")).unwrap(), hash);

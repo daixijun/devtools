@@ -55,7 +55,11 @@ run-release: ## 运行桌面应用 (release)
 # =========================================================================
 # 检查 / Lint / 测试
 # =========================================================================
-check: cargo-check clippy test ## 全量检查 (check + clippy + test)
+check: fmt-check cargo-check clippy test ## 全量检查 (fmt + check + clippy + test)
+
+fmt-check: ## cargo fmt --check（CI Format & Clippy job 同标准）
+	@printf "$(COLOR_CYAN)▶ cargo fmt --check...$(COLOR_RESET)\n"
+	$(CARGO) fmt --all -- --check
 
 cargo-check: ## cargo check
 	@printf "$(COLOR_CYAN)▶ cargo check...$(COLOR_RESET)\n"
