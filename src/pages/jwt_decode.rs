@@ -1,6 +1,7 @@
 //! JWT 解码工具页。
 //!
-//! Header/Payload/Signature 输出以只读文本框（result_area）承载；JSON pretty(2) 展示不变。
+//! Header/Payload 输出为只读 JSON 高亮编辑器（Editor + syntect，跟随主题），
+//! Signature 为只读文本框（base64url 原文非 JSON）。JSON pretty(2) 展示不变。
 //!
 //! 交互：
 //! - Token 输入 300ms 防抖自动解码（timer 任务 + 代数计数器淘汰过期任务）。
@@ -12,7 +13,7 @@ use devtools::i18n::t;
 use gpui::div;
 use gpui::prelude::*;
 use gpui::{px, App, ClickEvent, Context, Entity, IntoElement, Window};
-use gpui_component::input::{Input, InputEvent, TextareaState};
+use gpui_component::input::{EditorState, Input, InputEvent, TextareaState};
 use gpui_component::{ActiveTheme as _, Disableable as _, Sizable as _};
 use serde_json::Value;
 
@@ -86,15 +87,14 @@ fn decode_token(token: &str) -> Result<(String, String, String, String), String>
     ))
 }
 
-/// 只读结果区（标题行 + 复制按钮 + Textarea）。
-fn output_column(
+/// 只读结果列通用骨架（标题行 + 复制按钮 + 内容主体）。
+fn output_column_inner(
     copy_id: &'static str,
     title: &'static str,
-    state: &Entity<TextareaState>,
-    height: f32,
+    text: String,
+    body: impl IntoElement,
     cx: &App,
 ) -> gpui::Div {
-    let text = state.read(cx).value().to_string();
     div()
         .flex()
         .flex_col()
@@ -109,7 +109,37 @@ fn output_column(
                     el.child(ui::copy_button(copy_id, text))
                 }),
         )
-        .child(ui::result_area(state, height))
+        .child(body)
+}
+
+/// 只读文本列（Signature：base64url 原文，非 JSON 不做高亮）。
+fn output_column(
+    copy_id: &'static str,
+    title: &'static str,
+    state: &Entity<TextareaState>,
+    height: f32,
+    cx: &App,
+) -> gpui::Div {
+    let text = state.read(cx).value().to_string();
+    output_column_inner(copy_id, title, text, ui::result_area(state, height), cx)
+}
+
+/// 只读 JSON 高亮列（Header/Payload：Editor + syntect，颜色跟随主题）。
+fn output_column_json(
+    copy_id: &'static str,
+    title: &'static str,
+    state: &Entity<EditorState>,
+    height: f32,
+    cx: &App,
+) -> gpui::Div {
+    let text = state.read(cx).value().to_string();
+    output_column_inner(
+        copy_id,
+        title,
+        text,
+        ui::code_result_area(state, height),
+        cx,
+    )
 }
 
 pub struct JwtDecode {
@@ -119,8 +149,9 @@ pub struct JwtDecode {
     secret_key: Entity<gpui_component::input::InputState>,
     /// RS* 验证用 PEM 公钥。
     public_key: Entity<TextareaState>,
-    header_out: Entity<TextareaState>,
-    payload_out: Entity<TextareaState>,
+    /// 解码输出：Header/Payload 为 JSON 高亮编辑器，Signature 为纯文本。
+    header_out: Entity<EditorState>,
+    payload_out: Entity<EditorState>,
     signature_out: Entity<TextareaState>,
     /// header.alg（解码成功后填充）。
     algorithm: String,
@@ -140,8 +171,8 @@ impl JwtDecode {
         let token_input = ui::new_textarea(window, cx);
         let secret_key = ui::new_input(window, cx);
         let public_key = ui::new_textarea(window, cx);
-        let header_out = ui::new_textarea(window, cx);
-        let payload_out = ui::new_textarea(window, cx);
+        let header_out = ui::new_editor(window, cx);
+        let payload_out = ui::new_editor(window, cx);
         let signature_out = ui::new_textarea(window, cx);
 
         token_input.update(cx, |s, cx| {
@@ -154,10 +185,13 @@ impl JwtDecode {
             s.set_placeholder(t("请输入RSA公钥内容..."), window, cx)
         });
         header_out.update(cx, |s, cx| {
-            s.set_placeholder(t("Header 信息将在这里显示..."), window, cx)
+            s.set_placeholder(t("Header 信息将在这里显示..."), window, cx);
+            // JSON 语法高亮（syntect 后端，颜色跟随主题）
+            s.set_highlighter("json", cx);
         });
         payload_out.update(cx, |s, cx| {
-            s.set_placeholder(t("Payload 信息将在这里显示..."), window, cx)
+            s.set_placeholder(t("Payload 信息将在这里显示..."), window, cx);
+            s.set_highlighter("json", cx);
         });
         signature_out.update(cx, |s, cx| {
             s.set_placeholder(t("Signature 信息将在这里显示..."), window, cx)
@@ -205,6 +239,7 @@ impl JwtDecode {
         }
     }
 
+
     /// 300ms 防抖：每次输入重启计时器，代数不一致的到期任务直接丢弃。
     fn schedule_decode(&mut self, cx: &mut Context<Self>) {
         self.decode_gen += 1;
@@ -225,9 +260,11 @@ impl JwtDecode {
 
     /// 清空三区输出、算法与验证区（decode_error 由调用方决定）。
     fn clear_results(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        for out in [&self.header_out, &self.payload_out, &self.signature_out] {
+        for out in [&self.header_out, &self.payload_out] {
             out.update(cx, |s, cx| s.set_value("", window, cx));
         }
+        self.signature_out
+            .update(cx, |s, cx| s.set_value("", window, cx));
         self.algorithm.clear();
         self.show_verification = false;
         self.verify_result = None;
@@ -565,14 +602,26 @@ impl gpui::Render for JwtDecode {
                     .flex()
                     .gap_4()
                     .child(
-                        output_column("jwt-copy-header", "Header", &self.header_out, 200., cx)
-                            .flex_1()
-                            .min_w(px(0.)),
+                        output_column_json(
+                            "jwt-copy-header",
+                            "Header",
+                            &self.header_out,
+                            200.,
+                            cx,
+                        )
+                        .flex_1()
+                        .min_w(px(0.)),
                     )
                     .child(
-                        output_column("jwt-copy-payload", "Payload", &self.payload_out, 200., cx)
-                            .flex_1()
-                            .min_w(px(0.)),
+                        output_column_json(
+                            "jwt-copy-payload",
+                            "Payload",
+                            &self.payload_out,
+                            200.,
+                            cx,
+                        )
+                        .flex_1()
+                        .min_w(px(0.)),
                     ),
             )
             .child(output_column(

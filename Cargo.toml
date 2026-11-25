@@ -102,11 +102,12 @@ winreg = "0.55"
 # 仅保留 deflate（deflate 走 flate2 rust 后端 miniz_oxide，纯 Rust）
 zip = { version = "9", default-features = false, features = ["deflate"] }
 
-# 托盘与菜单：tray-icon/muda 的 Linux 后端依赖 GTK 事件循环，与 gpui Linux
-# 自主事件循环不兼容（且 Wayland 无标准托盘协议）——托盘仅在 macOS/Windows 编译
+# 托盘与菜单：tray-icon 的 Linux 后端（muda）依赖 GTK 事件循环，与 gpui Linux
+# 自主事件循环不兼容（且 Wayland 无标准托盘协议）——托盘仅在 macOS/Windows 编译。
+# 菜单用 tray_icon::menu（tray-icon 对 muda 的 re-export），勿直接声明 muda，
+# 否则 cargo 报 unused dependency
 [target.'cfg(any(target_os = "macos", target_os = "windows"))'.dependencies]
 tray-icon = "0.26"
-muda = "0.17"
 
 # macOS：Metal 渲染后端（font-kit 字体栅格化）+ libheif 解码（HEIF 属 Apple
 # 生态格式；其他平台无此能力，输入 HEIF 报不支持）
