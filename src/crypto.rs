@@ -585,6 +585,94 @@ pub fn generate_random_iv_hex() -> String {
 // JWT/JWS
 // ---------------------------------------------------------------------------
 
+/// JWT 三段解码结果（header/payload 为 pretty 化 JSON 文本，签名段保留原文）。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DecodedJwt {
+    pub header: String,
+    pub payload: String,
+    pub signature: String,
+    pub algorithm: String,
+}
+
+/// JWT 解码错误（结构化：静态文案由壳层经 i18n 翻译，动态详情随变体携带）。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum JwtDecodeError {
+    /// 段数不为 3
+    Malformed,
+    /// base64url 段解码失败（携带完整错误文案）
+    InvalidBase64(String),
+    /// Header 不是有效 JSON（携带 serde 错误详情）
+    InvalidHeaderJson(String),
+    /// Payload 不是有效 JSON（携带 serde 错误详情）
+    InvalidPayloadJson(String),
+}
+
+/// 解码 JWT 的三段结构：base64url 解码 → JSON 校验 → pretty 化（2 空格缩进）。
+/// alg 缺失时 `algorithm` 为 "Unknown"；签名段不解码、保留原文。
+pub fn decode_jwt(token: &str) -> Result<DecodedJwt, JwtDecodeError> {
+    let parts: Vec<&str> = token.split('.').collect();
+    if parts.len() != 3 {
+        return Err(JwtDecodeError::Malformed);
+    }
+    let header_bytes = base64_url_to_bytes(parts[0]).map_err(JwtDecodeError::InvalidBase64)?;
+    let header_raw = String::from_utf8_lossy(&header_bytes).into_owned();
+    let header: Value = serde_json::from_str(&header_raw)
+        .map_err(|e| JwtDecodeError::InvalidHeaderJson(e.to_string()))?;
+    let payload_bytes = base64_url_to_bytes(parts[1]).map_err(JwtDecodeError::InvalidBase64)?;
+    let payload_raw = String::from_utf8_lossy(&payload_bytes).into_owned();
+    let payload: Value = serde_json::from_str(&payload_raw)
+        .map_err(|e| JwtDecodeError::InvalidPayloadJson(e.to_string()))?;
+    let algorithm = header
+        .get("alg")
+        .and_then(Value::as_str)
+        .unwrap_or("Unknown")
+        .to_string();
+    Ok(DecodedJwt {
+        header: serde_json::to_string_pretty(&header).unwrap_or(header_raw),
+        payload: serde_json::to_string_pretty(&payload).unwrap_or(payload_raw),
+        signature: parts[2].to_string(),
+        algorithm,
+    })
+}
+
+/// 校验 PEM 外壳：`-----BEGIN [RSA ]<label>-----` / `-----END ...-----` 标记
+/// 存在、正文非空且仅含 base64 字符与空白。
+/// 只做外壳校验（不解析密钥内容）；`label` 如 "PUBLIC KEY" / "PRIVATE KEY"。
+pub fn validate_pem(pem: &str, label: &str) -> bool {
+    let begin = |rsa: bool| {
+        if rsa {
+            format!("-----BEGIN RSA {label}-----")
+        } else {
+            format!("-----BEGIN {label}-----")
+        }
+    };
+    let end = |rsa: bool| {
+        if rsa {
+            format!("-----END RSA {label}-----")
+        } else {
+            format!("-----END {label}-----")
+        }
+    };
+    let (begin_tok, end_tok) = if pem.contains(&begin(true)) {
+        (begin(true), end(true))
+    } else {
+        (begin(false), end(false))
+    };
+    if !pem.contains(begin_tok.as_str()) || !pem.contains(end_tok.as_str()) {
+        return false;
+    }
+    let body = pem
+        .replacen(begin_tok.as_str(), "", 1)
+        .replacen(end_tok.as_str(), "", 1);
+    let content = body.trim();
+    if content.is_empty() {
+        return false;
+    }
+    content
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '/' | '=') || c.is_whitespace())
+}
+
 /// alg -> openssl 摘要（HS/RS × 256/384/512）。
 fn alg_message_digest(alg: &str) -> Option<MessageDigest> {
     match alg {
@@ -1597,6 +1685,68 @@ F/oTzVy8qjlClT5Acwz5Smuskzg/dd2PEQIDAQAB
     const GOLDEN_HS384: &str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MDAwMDM2MDAsImlhdCI6MTcwMDAwMDAwMCwiaXNzIjoiZXhhbXBsZS5jb20iLCJzdWIiOiIxMjM0NTY3ODkwIn0.o_l-L594XccVPk11wn0qekfSSEYizypnZNnJHoDIWJdjcCiEWR0hOgyBGp6Nj4Gd";
     const GOLDEN_HS512: &str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MDAwMDM2MDAsImlhdCI6MTcwMDAwMDAwMCwiaXNzIjoiZXhhbXBsZS5jb20iLCJzdWIiOiIxMjM0NTY3ODkwIn0.rJKxisiqf_lXIYmr_RQnKC2LeR7nqkmSfEKg1_yoEPzBg6r689IvFf7WeNOvyU2ICFQeL2hwRHiPqHeMnIMyNw";
     const GOLDEN_RS256: &str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MDAwMDM2MDAsImlhdCI6MTcwMDAwMDAwMCwiaXNzIjoiZXhhbXBsZS5jb20iLCJzdWIiOiIxMjM0NTY3ODkwIn0.wrODx8nJmLKs3SEjcrN8z52B9_uvrNmyeXNPWFM-exSHw5BiEN_HOnidw6awjcZ_nbBPxdxzURWIxUPi5v6xpOtxIzPPwSwZ24PdLliRUSWmLg4YDaPfVcaC6jXqaA0ImDHbcxedU0kvcHOOXXTa6Z8CDmqbUYNCu2HydCw9pkm4A7U1FgxzqPd--QU0AcfRmBRrD9plN9FK5ypwuTwWsuumSgbQ3vmjQI_zeo6ztW1o2XNjCis-_Jt-7EIrbWh6E2Z4neUC-rof5MJ-XU82eSU8upXPR1uY-j4VUgVTcTJikDpAc0LFk_xa-nsZYySO0TYRZ1mSCkhPVUvkNOuZjQ";
+
+    #[test]
+    fn decode_jwt_parses_and_reports_structured_errors() {
+        let token = sign_jwt(
+            "HS256",
+            json!({ "alg": "HS256", "typ": "JWT" }),
+            json!({ "sub": "u", "exp": 1700003600 }),
+            "k",
+        )
+        .unwrap();
+        let d = decode_jwt(&token).unwrap();
+        assert_eq!(d.algorithm, "HS256");
+        assert!(d.header.contains("\"alg\""));
+        assert!(d.payload.contains("\"sub\""));
+        assert_eq!(d.signature, token.split('.').nth(2).unwrap());
+
+        // 段数不为 3
+        assert_eq!(decode_jwt("a.b"), Err(JwtDecodeError::Malformed));
+        // base64url 段非法
+        assert!(matches!(
+            decode_jwt("!!!.e30.x"),
+            Err(JwtDecodeError::InvalidBase64(_))
+        ));
+        // Header 非法 JSON（base64("xyz") → "eHl6"）
+        assert!(matches!(
+            decode_jwt("eHl6.e30.x"),
+            Err(JwtDecodeError::InvalidHeaderJson(_))
+        ));
+        // Payload 非法 JSON
+        assert!(matches!(
+            decode_jwt("e30.eHl6.x"),
+            Err(JwtDecodeError::InvalidPayloadJson(_))
+        ));
+        // alg 缺失 → "Unknown"
+        let no_alg = decode_jwt("e30.e30.x").unwrap();
+        assert_eq!(no_alg.algorithm, "Unknown");
+    }
+
+    #[test]
+    fn validate_pem_checks_markers_and_body() {
+        assert!(validate_pem(
+            "-----BEGIN PUBLIC KEY-----\nabc\n-----END PUBLIC KEY-----",
+            "PUBLIC KEY"
+        ));
+        // RSA 前缀变体
+        assert!(validate_pem(
+            "-----BEGIN RSA PUBLIC KEY-----\nabc\n-----END RSA PUBLIC KEY-----",
+            "PUBLIC KEY"
+        ));
+        // 标记缺失
+        assert!(!validate_pem("no markers", "PUBLIC KEY"));
+        // 空正文
+        assert!(!validate_pem(
+            "-----BEGIN PUBLIC KEY-----\n-----END PUBLIC KEY-----",
+            "PUBLIC KEY"
+        ));
+        // 正文含非 base64 字符
+        assert!(!validate_pem(
+            "-----BEGIN PUBLIC KEY-----\nabc!\n-----END PUBLIC KEY-----",
+            "PUBLIC KEY"
+        ));
+    }
 
     #[test]
     fn jwt_hs256_sign_golden_vector() {

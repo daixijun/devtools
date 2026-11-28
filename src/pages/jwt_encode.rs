@@ -24,43 +24,6 @@ fn now_secs() -> i64 {
         .unwrap_or(0)
 }
 
-/// `-----BEGIN (RSA )?<label>-----` PEM 格式校验（无 regex 依赖）：
-/// 必须含 BEGIN/END 头尾，正文非空且仅由 base64 字符与空白组成。
-fn validate_pem(pem: &str, label: &str) -> bool {
-    let begin = |rsa: bool| {
-        if rsa {
-            format!("-----BEGIN RSA {label}-----")
-        } else {
-            format!("-----BEGIN {label}-----")
-        }
-    };
-    let end = |rsa: bool| {
-        if rsa {
-            format!("-----END RSA {label}-----")
-        } else {
-            format!("-----END {label}-----")
-        }
-    };
-    let (begin_tok, end_tok) = if pem.contains(&begin(true)) {
-        (begin(true), end(true))
-    } else {
-        (begin(false), end(false))
-    };
-    if !pem.contains(begin_tok.as_str()) || !pem.contains(end_tok.as_str()) {
-        return false;
-    }
-    let body = pem
-        .replacen(begin_tok.as_str(), "", 1)
-        .replacen(end_tok.as_str(), "", 1);
-    let content = body.trim();
-    if content.is_empty() {
-        return false;
-    }
-    content
-        .chars()
-        .all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '/' | '=') || c.is_whitespace())
-}
-
 /// 红色错误小字。
 fn error_text(text: &str, cx: &App) -> gpui::Div {
     div()
@@ -193,12 +156,12 @@ impl JwtEncode {
                 return;
             }
             let text = this.private_key.read(cx).value().to_string();
-            this.private_key_error = if text.trim().is_empty() || validate_pem(&text, "PRIVATE KEY")
-            {
-                None
-            } else {
-                Some(t("RSA私钥格式无效，请检查或重新选择文件").to_string())
-            };
+            this.private_key_error =
+                if text.trim().is_empty() || devtools::crypto::validate_pem(&text, "PRIVATE KEY") {
+                    None
+                } else {
+                    Some(t("RSA私钥格式无效，请检查或重新选择文件").to_string())
+                };
             cx.notify();
         })
         .detach();
@@ -306,7 +269,7 @@ impl JwtEncode {
 
         // 非 HS 算法（含 RS* 与未知算法）一律先校验私钥格式。
         let private_key = self.private_key.read(cx).value().to_string();
-        if !is_hs && !validate_pem(&private_key, "PRIVATE KEY") {
+        if !is_hs && !devtools::crypto::validate_pem(&private_key, "PRIVATE KEY") {
             self.set_output(
                 &format!(
                     "{}: {}",
@@ -421,7 +384,7 @@ impl JwtEncode {
         let Some(text) = content else { return };
         self.private_key
             .update(cx, |s, cx| s.set_value(text.as_str(), window, cx));
-        self.private_key_error = if validate_pem(&text, "PRIVATE KEY") {
+        self.private_key_error = if devtools::crypto::validate_pem(&text, "PRIVATE KEY") {
             None
         } else {
             Some(t("RSA私钥格式无效，请检查或重新选择文件").to_string())
