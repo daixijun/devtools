@@ -1,8 +1,10 @@
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::net::{TcpStream, ToSocketAddrs};
-use std::time::Duration;
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -475,5 +477,95 @@ pub async fn query_whois_unified(
         Err(last_err.unwrap_or_else(|| "自动 WHOIS 查询失败".to_string()))
     } else {
         whois_from_server(d.to_string(), mode).await
+    }
+}
+
+// ---------------------------------------------------------------------------
+// 批量查询编排（壳层经 core_rt::submit_multi 提交，结果流式回流 UI）
+// ---------------------------------------------------------------------------
+
+/// 并发上限（tokio Semaphore）。
+pub const BATCH_CONCURRENCY: usize = 6;
+/// 每个查询源的最小间隔（限流）。
+pub const RATE_INTERVAL_MS: u64 = 700;
+
+/// 单个域名的批量查询结果（经 mpsc 回流 UI）。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WhoisBatchItem {
+    pub domain: String,
+    pub parsed: Option<WhoisParsed>,
+    pub error: Option<String>,
+    pub duration_ms: u64,
+}
+
+/// 查询源模式 → (传给 core 的 server 参数, 限流 key)。
+/// 主机名与本文件 `query_whois_unified` 的回退表同源维护。
+pub fn server_for_mode(mode: &str) -> (Option<String>, &'static str) {
+    match mode {
+        "whois_verisign" => (Some("whois.verisign-grs.com".to_string()), "whois_verisign"),
+        "whois_cndns" => (Some("grs-whois.cndns.com".to_string()), "whois_cndns"),
+        "whois_hichina" => (Some("grs-whois.hichina.com".to_string()), "whois_hichina"),
+        _ => (Some("auto".to_string()), "auto"),
+    }
+}
+
+/// 按源限流：预占该源下一个可用时间片，需要时 sleep 到位。
+/// 并发任务依次排队（首个立即放行，后续逐个 +700ms），避免同时唤醒挤在同一时刻。
+async fn whois_rate_wait(last_query: &Mutex<HashMap<String, Instant>>, key: &str) {
+    let wait = {
+        let mut map = last_query.lock().unwrap();
+        let now = Instant::now();
+        let earliest = map.get(key).copied().unwrap_or(now);
+        let delay = earliest.saturating_duration_since(now);
+        map.insert(
+            key.to_string(),
+            earliest.max(now) + Duration::from_millis(RATE_INTERVAL_MS),
+        );
+        delay
+    };
+    if wait > Duration::ZERO {
+        tokio::time::sleep(wait).await;
+    }
+}
+
+/// 批量查询任务：每完成一个域名立即向 tx 回流一条结果。
+/// 并发 [`BATCH_CONCURRENCY`]：先取 Semaphore 许可再 spawn，
+/// 任务结束（发送结果后）归还许可。auto 模式下 core 内部会按 TLD
+/// 依次尝试多个服务器，此处按所选「源模式」整体限流 700ms。
+///
+/// 批量结束后 tx 随作用域全部 drop，消费方的流随之结束（= 批量完成）。
+pub async fn run_whois_batch(
+    domains: Vec<String>,
+    server: Option<String>,
+    rate_key: &'static str,
+    tx: futures::channel::mpsc::UnboundedSender<WhoisBatchItem>,
+) {
+    let semaphore = Arc::new(tokio::sync::Semaphore::new(BATCH_CONCURRENCY));
+    let last_query: Arc<Mutex<HashMap<String, Instant>>> = Arc::new(Mutex::new(HashMap::new()));
+
+    for domain in domains {
+        // 占并发名额（最多 BATCH_CONCURRENCY 个在途查询）
+        let Ok(permit) = semaphore.clone().acquire_owned().await else {
+            break;
+        };
+        let tx = tx.clone();
+        let last_query = last_query.clone();
+        let server = server.clone();
+        tokio::spawn(async move {
+            let started = Instant::now();
+            whois_rate_wait(&last_query, rate_key).await;
+            let res = query_whois_unified(domain.clone(), server.clone()).await;
+            let (parsed, error) = match res {
+                Ok(p) => (Some(p), None),
+                Err(e) => (None, Some(e)),
+            };
+            let _ = tx.unbounded_send(WhoisBatchItem {
+                domain,
+                parsed,
+                error,
+                duration_ms: started.elapsed().as_millis() as u64,
+            });
+            drop(permit); // 归还并发名额
+        });
     }
 }
