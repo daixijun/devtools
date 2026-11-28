@@ -97,8 +97,8 @@ impl KeyFormat {
     /// 公钥下载扩展名（OpenSSH 为 .pub，其余 .pem）。
     fn public_extension(self) -> (&'static str, &'static str) {
         match self {
-            KeyFormat::OpenSsh => ("Public Key Files", "pub"),
-            _ => ("PEM Files", "pem"),
+            KeyFormat::OpenSsh => (t("公钥文件"), "pub"),
+            _ => (t("PEM文件"), "pem"),
         }
     }
 }
@@ -268,7 +268,7 @@ impl RsaKeyGenerator {
         let format = self.key_format;
         let text = format.private_text(&pair).to_string();
         let default_name = format!("rsa_private_key_{}.pem", format.id());
-        self.save_text_file(text, default_name, "PEM Files", "pem", true, window, cx);
+        self.save_text_file(text, default_name, t("PEM文件"), "pem", true, window, cx);
     }
 
     /// 下载公钥（默认名 rsa_public_key_{格式}.{ext}，OpenSSH 为 .pub）。

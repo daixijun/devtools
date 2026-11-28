@@ -211,4 +211,9 @@ pub const EN_PAGES_HASH: &[(&str, &str)] = &[
         "Length ≥ 8 with 2 character types: Medium",
     ),
     ("其他情况：弱", "Anything else: Weak"),
+    ("请至少选择一种字符类型", "Please select at least one character type"),
+    ("非常强", "Very strong"),
+    ("强", "Strong"),
+    ("中等", "Medium"),
+    ("弱", "Weak"),
 ];

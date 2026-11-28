@@ -235,7 +235,7 @@ impl PfxToPemConverter {
 
         let mut rx = crate::core_rt::submit(cx, async move {
             match rfd::FileDialog::new()
-                .add_filter("PEM Files", &["pem"])
+                .add_filter(t("PEM文件"), &["pem"])
                 .set_file_name(default_name)
                 .save_file()
             {
