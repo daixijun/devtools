@@ -13,16 +13,9 @@ use gpui_component::{
     ActiveTheme as _, Disableable as _,
 };
 
-use crate::components::{notify, ui};
+use crate::components::{file_save, ui};
 use devtools::i18n::t;
 use devtools::tools::csr_parser::{self, CsrInfo};
-
-/// 文件保存结果（rfd save_file + std::fs::write，均在 core_rt 后台任务中执行）。
-enum SaveOutcome {
-    Cancelled,
-    Saved,
-    Failed(String),
-}
 
 pub struct CsrViewer {
     /// 粘贴的 CSR 文本（PEM / Base64）。
@@ -223,48 +216,17 @@ impl CsrViewer {
     /// 下载原始 CSR（.csr）：保存对话框与写文件都在后台任务中完成。
     fn download_pem(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let Some(info) = &self.result else { return };
-        let content = info.pem.clone();
-        let mut rx = crate::core_rt::submit(cx, async move {
-            save_text(content, "certificate_request.csr", "csr", t("CSR 文件")).await
-        });
-
-        cx.spawn_in(window, async move |this, cx| {
-            if let Some(outcome) = rx.next().await {
-                let _ = this.update_in(cx, |_this, window, cx| report_save(outcome, window, cx));
-            }
-        })
-        .detach();
-    }
-}
-
-// ----------------------------------------------------------------------
-// 保存辅助（save 在 core_rt 后台任务内执行，回调回前台 toast）
-// ----------------------------------------------------------------------
-
-async fn save_text(
-    content: String,
-    default_name: &str,
-    ext: &'static str,
-    filter_name: &str,
-) -> SaveOutcome {
-    let Some(path) = rfd::FileDialog::new()
-        .add_filter(filter_name, &[ext])
-        .set_file_name(default_name)
-        .save_file()
-    else {
-        return SaveOutcome::Cancelled;
-    };
-    match std::fs::write(&path, content) {
-        Ok(_) => SaveOutcome::Saved,
-        Err(e) => SaveOutcome::Failed(format!("{}: {}", t("保存文件失败"), e)),
-    }
-}
-
-fn report_save(outcome: SaveOutcome, window: &mut Window, cx: &mut App) {
-    match outcome {
-        SaveOutcome::Cancelled => {}
-        SaveOutcome::Saved => notify::toast_success(window, cx, t("文件保存成功")),
-        SaveOutcome::Failed(message) => notify::toast_error(window, cx, message),
+        file_save::save_text_file(
+            file_save::SaveTextParams {
+                content: info.pem.clone(),
+                default_name: "certificate_request.csr".to_string(),
+                filter_name: t("CSR 文件"),
+                extension: "csr",
+                private: false,
+            },
+            window,
+            cx,
+        );
     }
 }
 
