@@ -3,7 +3,7 @@
 //! 独立加密工具（与 AES 解密对称）：文本 + 密钥 + IV（非 ECB）→ Base64
 //! 密文。错误一律内联红条展示；「加载示例」填入可立即加密的示例数据。
 
-use devtools::crypto::{aes_encrypt, generate_random_iv_hex, AesOptions};
+use devtools::crypto::{aes_encrypt, generate_random_iv, AesOptions};
 use devtools::i18n::t;
 use gpui::{div, prelude::*, px, Context, Entity, IntoElement, Render, SharedString, Window};
 use gpui_component::{
@@ -151,9 +151,9 @@ impl AesEncrypt {
         cx.notify();
     }
 
-    /// 随机生成 IV（32 位小写 hex）填入 IV 输入框。
+    /// 随机生成 IV（16 字符 base62，完整 128 位 IV）填入 IV 输入框。
     fn generate_iv(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let iv = generate_random_iv_hex();
+        let iv = generate_random_iv();
         self.iv
             .update(cx, |state, cx| state.set_value(iv, window, cx));
         cx.notify();

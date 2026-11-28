@@ -20,7 +20,7 @@
 //! pub struct AesOptions { pub mode: AesMode, pub key_size: usize, pub padding: AesPadding }
 //! pub fn aes_encrypt(text: &str, key: &str, iv: &str, opts: &AesOptions) -> Result<String, String>
 //! pub fn aes_decrypt_to_bytes(b64: &str, key: &str, iv: &str, opts: &AesOptions) -> Result<Vec<u8>, String>
-//! pub fn generate_random_iv_hex() -> String                // 16 随机字节小写 hex（32 字符）
+//! pub fn generate_random_iv() -> String                    // 16 个 base62 字符（约 95 位熵）
 //!
 //! pub fn sign_jwt(alg: &str, header: serde_json::Value, payload: serde_json::Value, key: &str) -> Result<String, String>
 //! pub fn verify_jwt(token: &str, alg: &str, key: &str) -> Result<bool, String>
@@ -573,12 +573,30 @@ pub fn aes_decrypt_to_bytes(
     unpad_data(&data, opts.padding)
 }
 
-/// 生成 16 字节随机 IV 的十六进制文本。
-/// 16 字节随机值 → 小写 hex（32 字符，与历史版本输出一致）。
-pub fn generate_random_iv_hex() -> String {
-    let mut buf = [0u8; AES_BLOCK_SIZE];
-    fill_random(&mut buf);
-    hex::encode(buf)
+/// 生成随机 IV 文本：16 个 base62 字符（约 95 位熵）。
+///
+/// parse_iv 按字节取前 16 字符作 IV。历史版本生成器输出 32 字符 hex，
+/// 实际仅前 16 字符（8 字节熵）参与运算，且与 OpenSSL 等工具的 32 字符
+/// hex IV 互相误读；改为恰好 16 字符后生成值即完整 IV，与页面「16 字符」
+/// 契约一致。解析语义未变，历史 32 字符 IV 的既有密文仍按原样解密。
+pub fn generate_random_iv() -> String {
+    const ALPHABET: &[u8; 62] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    // 248 = 62 * 4：拒绝区间消除模偏（每个字符恰有 4 个字节前像）
+    const UNBIASED_MAX: u8 = 248;
+    let mut out = String::with_capacity(AES_BLOCK_SIZE);
+    while out.len() < AES_BLOCK_SIZE {
+        let mut buf = [0u8; AES_BLOCK_SIZE];
+        fill_random(&mut buf);
+        for &b in &buf {
+            if b < UNBIASED_MAX {
+                out.push(ALPHABET[(b % 62) as usize] as char);
+                if out.len() == AES_BLOCK_SIZE {
+                    break;
+                }
+            }
+        }
+    }
+    out
 }
 
 // ---------------------------------------------------------------------------
@@ -1596,15 +1614,29 @@ mod tests {
     }
 
     #[test]
-    fn generate_random_iv_hex_format() {
+    fn generate_random_iv_format() {
         for _ in 0..8 {
-            let iv = generate_random_iv_hex();
-            assert_eq!(iv.len(), 32);
-            assert!(iv
-                .chars()
-                .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase()));
+            let iv = generate_random_iv();
+            assert_eq!(iv.len(), 16);
+            assert!(iv.chars().all(|c| c.is_ascii_alphanumeric()));
         }
-        assert_ne!(generate_random_iv_hex(), generate_random_iv_hex());
+        assert_ne!(generate_random_iv(), generate_random_iv());
+    }
+
+    #[test]
+    fn generated_iv_round_trips_through_encrypt_decrypt() {
+        // 生成的 IV 必须被 parse_iv 完整消费（16 字符即完整 IV）：
+        // 同一 IV 加密后解密应还原明文
+        let iv = generate_random_iv();
+        let opts = AesOptions {
+            mode: AesMode::Cbc,
+            key_size: 128,
+            padding: AesPadding::Pkcs7,
+        };
+        let key = "0123456789abcdef";
+        let cipher = aes_encrypt("生成的 IV 回读验证", key, &iv, &opts).unwrap();
+        let plain = aes_decrypt_to_bytes(&cipher, key, &iv, &opts).unwrap();
+        assert_eq!(String::from_utf8(plain).unwrap(), "生成的 IV 回读验证");
     }
 
     // ---------- JWT ----------

@@ -265,7 +265,7 @@ impl Render for AesDecrypt {
                             "aesdecrypt-iv-gen",
                             t("随机生成"),
                             cx.listener(|this, _, window, cx| {
-                                let iv = devtools::crypto::generate_random_iv_hex();
+                                let iv = devtools::crypto::generate_random_iv();
                                 this.iv
                                     .update(cx, |state, cx| state.set_value(iv, window, cx));
                                 cx.notify();
