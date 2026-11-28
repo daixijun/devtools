@@ -60,15 +60,17 @@ png = "0.18"
 nom-exif = { version = "2.5", features = ["async"] }
 regex = "1.10"
 pcre2 = "0.2"
-sha1 = "0.10"
-sha2 = "0.10"
-sha3 = "0.10"
-md-5 = "0.10"
-hmac = "0.12"
-pbkdf2 = "0.12"
-aes = "0.8"   # CBC/ECB 模式基于 aes::cipher 原语手写实现，无需 cbc/ecb crate
-ctr = "0.9"
-cfb-mode = "0.8"
+# RustCrypto 族：共用 digest 0.11 / cipher 0.5 基座，major 必须整体同升
+# （只升个别 crate 会变成两套 Digest trait 并存，编译失败）
+sha1 = "0.11"
+sha2 = "0.11"
+sha3 = "0.12"
+md-5 = "0.11"
+hmac = "0.13"
+pbkdf2 = "0.13"
+aes = "0.9"   # CBC/ECB 模式基于 aes::cipher 原语手写实现，无需 cbc/ecb crate
+ctr = "0.10"
+cfb-mode = "0.9"
 bcrypt = "0.15"
 serde_yaml = "0.9"
 toml = "0.8"

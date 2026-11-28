@@ -47,14 +47,12 @@
 //!   PEM 私钥兼容 PKCS#1（手工包裹为 PKCS#8）与 PKCS#8；PEM 公钥兼容 PKCS#1
 //!   （手工包裹为 SPKI）与 SPKI，DER 长编码 `0x80 | lenBytes` 与历史版本一致。
 
-use aes::cipher::generic_array::GenericArray;
 // cipher::KeyInit/KeyIvInit 即 crypto_common 的同名 trait，同一份导入同时覆盖
 // aes 分组密码与 HMAC 的 new_from_slice/new_from_slices。
-use aes::cipher::{BlockDecrypt, BlockEncrypt, KeyInit, KeyIvInit};
+use aes::cipher::{BlockCipherDecrypt, BlockCipherEncrypt, KeyInit, KeyIvInit};
 use aes::{Aes128, Aes192, Aes256};
 use base64::engine::general_purpose;
 use base64::Engine;
-use cfb_mode::cipher::AsyncStreamCipher;
 use cfb_mode::{Decryptor as CfbDecryptor, Encryptor as CfbEncryptor};
 use ctr::cipher::StreamCipher;
 use ctr::Ctr128BE;
@@ -369,17 +367,17 @@ impl AesCipher {
 
     fn encrypt_block(&self, block: &mut [u8; AES_BLOCK_SIZE]) {
         match self {
-            Self::A128(c) => BlockEncrypt::encrypt_block(c, GenericArray::from_mut_slice(block)),
-            Self::A192(c) => BlockEncrypt::encrypt_block(c, GenericArray::from_mut_slice(block)),
-            Self::A256(c) => BlockEncrypt::encrypt_block(c, GenericArray::from_mut_slice(block)),
+            Self::A128(c) => BlockCipherEncrypt::encrypt_block(c, block.into()),
+            Self::A192(c) => BlockCipherEncrypt::encrypt_block(c, block.into()),
+            Self::A256(c) => BlockCipherEncrypt::encrypt_block(c, block.into()),
         }
     }
 
     fn decrypt_block(&self, block: &mut [u8; AES_BLOCK_SIZE]) {
         match self {
-            Self::A128(c) => BlockDecrypt::decrypt_block(c, GenericArray::from_mut_slice(block)),
-            Self::A192(c) => BlockDecrypt::decrypt_block(c, GenericArray::from_mut_slice(block)),
-            Self::A256(c) => BlockDecrypt::decrypt_block(c, GenericArray::from_mut_slice(block)),
+            Self::A128(c) => BlockCipherDecrypt::decrypt_block(c, block.into()),
+            Self::A192(c) => BlockCipherDecrypt::decrypt_block(c, block.into()),
+            Self::A256(c) => BlockCipherDecrypt::decrypt_block(c, block.into()),
         }
     }
 }
