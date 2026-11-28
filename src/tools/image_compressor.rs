@@ -320,6 +320,8 @@ fn compress_image_inner(
 /// 压缩单张图片（由调用方循环调用以实现批量进度）
 pub async fn compress_image(request: CompressRequest) -> Result<CompressResponse, String> {
     let input_path = validate_input_file(&request.input_path)?;
+    // 输出守卫：同文件 / 已存在的输出一律拒绝，防止覆盖损毁源文件或既有产物
+    super::ensure_output_safe(&request.input_path, &request.output_path)?;
     let output_path = PathBuf::from(&request.output_path);
 
     let (original_size, compressed_size, out_width, out_height) =

@@ -341,6 +341,25 @@ impl ImageCompressor {
         let max_width = self.parse_bound(&self.max_width_input, cx);
         let max_height = self.parse_bound(&self.max_height_input, cx);
 
+        // 批内输出冲突预检：不同源文件映射到同一输出时会相互覆盖
+        let mut seen_outputs = std::collections::HashSet::new();
+        for row in &self.files {
+            let output_path =
+                build_output_path(&row.path, &output_format, custom_output, &custom_dir);
+            if !seen_outputs.insert(output_path.clone()) {
+                self.message = Some((
+                    false,
+                    format!(
+                        "{}: {}",
+                        t("输出路径冲突：多个文件映射到同一输出"),
+                        output_path
+                    ),
+                ));
+                cx.notify();
+                return;
+            }
+        }
+
         let mut jobs: Vec<(String, CompressRequest)> = Vec::new();
         for row in &self.files {
             let output_path =

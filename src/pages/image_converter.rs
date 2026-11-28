@@ -383,6 +383,24 @@ impl ImageConverter {
         let height = self.height_value(cx);
         let resize_mode = self.resize_mode;
 
+        // 批内输出冲突预检：不同源文件映射到同一输出时会相互覆盖
+        let mut seen_outputs = std::collections::HashSet::new();
+        for row in &self.files {
+            let output_path = build_output_path(&row.path, &target, use_custom, &custom_dir);
+            if !seen_outputs.insert(output_path.clone()) {
+                self.message = Some((
+                    false,
+                    format!(
+                        "{}: {}",
+                        t("输出路径冲突：多个文件映射到同一输出"),
+                        output_path
+                    ),
+                ));
+                cx.notify();
+                return;
+            }
+        }
+
         let mut jobs: Vec<(String, ImageConversionRequest)> = Vec::new();
         for row in &self.files {
             let output_path = build_output_path(&row.path, &target, use_custom, &custom_dir);

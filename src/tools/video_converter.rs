@@ -235,6 +235,10 @@ pub async fn convert_video(
     // 生成输出路径
     let output_path = generate_output_path(&input_path, &request.output_path)?;
 
+    // 输出守卫：同文件 / 已存在的输出一律拒绝（ffmpeg -y 会先截断输出；
+    // 同路径输入输出会被 ffmpeg 拒绝，但给出的报错用户不可读）
+    super::ensure_output_safe(input_path.to_string_lossy().as_ref(), &request.output_path)?;
+
     // 执行转换
     convert_video_with_ffmpeg(&input_path, &output_path)?;
 

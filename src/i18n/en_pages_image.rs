@@ -136,4 +136,5 @@ pub const EN_PAGES_IMAGE: &[(&str, &str)] = &[
     ("压缩中...", "Compressing..."),
     ("开始压缩", "Compress"),
     ("失败", "Failed"),
+    ("输出路径冲突：多个文件映射到同一输出", "Output path conflict: multiple files map to the same output"),
 ];

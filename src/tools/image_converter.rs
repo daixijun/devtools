@@ -606,6 +606,9 @@ pub async fn convert_image(
     // 验证输入文件
     let input_path = validate_input_file(&request.input_path)?;
 
+    // 输出守卫：同文件 / 已存在的输出一律拒绝，防止覆盖损毁源文件或既有产物
+    super::ensure_output_safe(&request.input_path, &request.output_path)?;
+
     // 验证输出格式
     let supported_formats = ["jpg", "jpeg", "png", "gif", "bmp", "tiff", "webp", "ico"];
     if !supported_formats.contains(&request.target_format.to_lowercase().as_str()) {

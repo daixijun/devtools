@@ -379,6 +379,17 @@ impl VideoConverter {
             .iter()
             .map(|item| (item.path.clone(), self.output_path_for(item)))
             .collect();
+        // 批内输出冲突预检：不同源文件映射到同一输出时会相互覆盖
+        let mut seen_outputs = std::collections::HashSet::new();
+        for (_, output) in &jobs {
+            if !seen_outputs.insert(output.clone()) {
+                self.error = Some(
+                    format!("{}: {}", t("输出路径冲突：多个文件映射到同一输出"), output).into(),
+                );
+                cx.notify();
+                return;
+            }
+        }
         let delete_source = self.delete_source;
 
         for item in self.files.iter_mut() {
