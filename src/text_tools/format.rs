@@ -312,9 +312,11 @@ fn format_toml_key(key: &str) -> String {
     }
 }
 
-/// 字符串值转义，保持历史版本顺序：先 `"` → `\"`，再 `\` → `\\`。
+/// 字符串值转义。必须先 `\` → `\\` 再 `"` → `\"`：旧 TSX 实现的链式 replace
+/// 顺序相反，会把转义引号时插入的反斜杠再次翻倍（`a\b"c` → `a\\b\\"c`），
+/// 产出 `"` 提前终结字符串的非法 TOML
 fn escape_toml_string(s: &str) -> String {
-    s.replace('"', "\\\"").replace('\\', "\\\\")
+    s.replace('\\', "\\\\").replace('"', "\\\"")
 }
 
 // ---------------------------------------------------------------------------
@@ -521,11 +523,15 @@ mod tests {
     }
 
     #[test]
-    fn toml_string_escape_order_matches_legacy() {
-        // 值 a\b"c：先 " → \"（a\b\"c），再 \ → \\（插入的反斜杠也被翻倍）
-        // → a\\b\\"c。该输出经 node 模拟旧 TSX 链式 replace 验证一致。
+    fn toml_string_escape_handles_backslash_and_quote() {
+        // 值 a\b"c：先 \ → \\（a\\b"c），再 " → \"（a\\b\"c）→ 整体合法。
+        // 旧 TSX 顺序相反会把插入的反斜杠再翻倍，产出 " 提前终结的非法
+        // TOML，修复后必须可用 toml crate 完整回读
         let src = json!({ "s": "a\\b\"c" });
-        assert_eq!(to_toml_string(&src), "s = \"a\\\\b\\\\\"c\"");
+        let out = to_toml_string(&src);
+        assert_eq!(out, "s = \"a\\\\b\\\"c\"");
+        let parsed: toml::Value = toml::from_str(&out).unwrap();
+        assert_eq!(parsed["s"].as_str().unwrap(), "a\\b\"c");
     }
 
     #[test]
