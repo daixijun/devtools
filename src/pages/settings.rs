@@ -23,8 +23,6 @@ use gpui_component::{
 use crate::components::{notify, ui};
 
 pub struct Settings {
-    /// 主题模式镜像（写共享配置时同步更新）。
-    theme: ThemeMode,
     /// 语言镜像（切换后立即生效：写配置 + 刷新托盘/菜单 + 重建窗口）。
     language: Language,
     /// 托盘可见状态（挂载时读运行时，切换后以 set_enabled 返回的实际值为准）。
@@ -47,8 +45,9 @@ impl Settings {
     fn from_config(cx: &mut Context<Self>) -> Self {
         let config = crate::config_state::get(cx);
         Self {
-            theme: config.theme,
             language: Language::parse(&config.language),
+            // 主题不镜像：侧栏主题按钮不经过本实体，渲染时实时读
+            // config_state（否则高亮与「当前主题」会停留在挂载时的值）
             // 托盘以运行时状态为准（图标加载失败时 config 为 true 而实际不可见）
             show_tray: crate::tray::is_enabled(cx),
             // 文件操作很快，挂载时同步读一次 plist 存在性
@@ -62,11 +61,7 @@ impl Settings {
     // -----------------------------------------------------------------------
 
     fn set_theme(&mut self, mode: ThemeMode, window: &mut Window, cx: &mut Context<Self>) {
-        if self.theme == mode {
-            return;
-        }
         crate::theme::set_mode(mode, window, cx);
-        self.theme = mode;
         cx.notify();
     }
 
@@ -201,12 +196,13 @@ impl Render for Settings {
 
         // ---- 外观设置卡 ----
         let mut theme_buttons = gpui::div().flex().gap_2();
+        let current_theme = crate::config_state::get(cx).theme;
         for (mode, id, label) in [
             (ThemeMode::Light, "theme-light", t("☀️ 浅色")),
             (ThemeMode::Dark, "theme-dark", t("🌙 深色")),
             (ThemeMode::System, "theme-system", t("🖥️ 跟随系统")),
         ] {
-            let selected = self.theme == mode;
+            let selected = current_theme == mode;
             // 激活项用 primary（主题蓝实底）与未激活 secondary 拉开对比
             let button = if selected {
                 Button::new(id).label(label).primary()
@@ -218,7 +214,7 @@ impl Render for Settings {
             ));
         }
         // System 模式下按窗口外观解析实际明暗
-        let resolved_dark = match self.theme {
+        let resolved_dark = match current_theme {
             ThemeMode::Light => false,
             ThemeMode::Dark => true,
             ThemeMode::System => ComponentThemeMode::from(window.appearance()).is_dark(),

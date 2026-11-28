@@ -251,7 +251,8 @@ impl SqlToGo {
     fn load_example(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.sql_input
             .update(cx, |state, cx| state.set_value(EXAMPLE_SQL, window, cx));
-        cx.notify();
+        // set_value 不发 Change 事件，显式触发一次转换（与 json_to_go 等页面一致）
+        self.schedule_convert(window, cx);
     }
 
     /// 清空输入与输出。
