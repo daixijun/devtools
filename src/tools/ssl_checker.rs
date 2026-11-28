@@ -1,3 +1,4 @@
+use crate::i18n::{t, tf};
 use crate::tools::cert_chain_utils::{determine_chain_level, is_self_signed, issuer_in_chain};
 use chrono_tz::Asia::Shanghai;
 use rustls::client::danger::{HandshakeSignatureValid, ServerCertVerified, ServerCertVerifier};
@@ -1328,7 +1329,7 @@ enum VerifyIssueKind {
     Other,
 }
 
-/// 把 rustls 证书验证错误分类并翻译为中文说明
+/// 把 rustls 证书验证错误分类并翻译为面向用户的说明
 fn classify_certificate_error(err: &rustls::Error) -> (VerifyIssueKind, String) {
     let (kind, text) = match err {
         rustls::Error::InvalidCertificate(CertificateError::Expired)
@@ -1360,7 +1361,10 @@ fn classify_certificate_error(err: &rustls::Error) -> (VerifyIssueKind, String) 
         ),
         _ => (VerifyIssueKind::Other, "证书验证失败"),
     };
-    (kind, format!("{}；标准验证错误：{}", text, err))
+    (
+        kind,
+        tf("{}；标准验证错误：{}", &[t(text), &err.to_string()]),
+    )
 }
 
 /// 诊断用途的服务器证书验证器：完整执行 webpki 标准验证并记录失败原因，
@@ -1427,7 +1431,10 @@ impl ServerCertVerifier for DiagnosticsCertVerifier {
             Err(e) => {
                 self.record(VerifyIssue {
                     kind: VerifyIssueKind::HandshakeSignature,
-                    message: format!("TLS 1.2 握手签名验证失败；标准验证错误：{}", e),
+                    message: tf(
+                        "TLS 1.2 握手签名验证失败；标准验证错误：{}",
+                        &[&e.to_string()],
+                    ),
                 });
                 Ok(HandshakeSignatureValid::assertion())
             }
@@ -1445,7 +1452,10 @@ impl ServerCertVerifier for DiagnosticsCertVerifier {
             Err(e) => {
                 self.record(VerifyIssue {
                     kind: VerifyIssueKind::HandshakeSignature,
-                    message: format!("TLS 1.3 握手签名验证失败；标准验证错误：{}", e),
+                    message: tf(
+                        "TLS 1.3 握手签名验证失败；标准验证错误：{}",
+                        &[&e.to_string()],
+                    ),
                 });
                 Ok(HandshakeSignatureValid::assertion())
             }
@@ -1485,7 +1495,7 @@ async fn check_tls_connection(
 
     let server_name = match ServerName::try_from(domain.to_string()) {
         Ok(name) => name,
-        Err(_) => return Err("Invalid domain name".to_string()),
+        Err(_) => return Err(t("无效的域名").to_string()),
     };
 
     let (config, verifier_issues) = diagnostics_client_config();
@@ -1501,8 +1511,8 @@ async fn check_tls_connection(
     .await
     {
         Ok(Ok(stream)) => stream,
-        Ok(Err(e)) => return Err(format!("TCP connection failed: {}", e)),
-        Err(_) => return Err("TCP connection timed out (10s)".to_string()),
+        Ok(Err(e)) => return Err(tf("TCP 连接失败: {}", &[&e.to_string()])),
+        Err(_) => return Err(t("TCP 连接超时（10 秒）").to_string()),
     };
 
     let tls_stream = match tokio::time::timeout(
@@ -1512,8 +1522,8 @@ async fn check_tls_connection(
     .await
     {
         Ok(Ok(stream)) => stream,
-        Ok(Err(e)) => return Err(format!("TLS connection failed: {}", e)),
-        Err(_) => return Err("TLS handshake timed out (10s)".to_string()),
+        Ok(Err(e)) => return Err(tf("TLS 连接失败: {}", &[&e.to_string()])),
+        Err(_) => return Err(t("TLS 握手超时（10 秒）").to_string()),
     };
 
     // Get connection info and cipher suites
@@ -1556,7 +1566,7 @@ async fn check_tls_connection(
         }
     }
 
-    Err("No certificate found".to_string())
+    Err(t("未找到证书").to_string())
 }
 
 fn protocol_version_name(version: rustls::ProtocolVersion) -> String {
@@ -1586,7 +1596,10 @@ fn build_certificate_chain(cert_chain_ders: &[Vec<u8>]) -> Result<CertificateCha
                 infos.push(info);
                 x509s.push(cert);
             }
-            Err(e) => chain_errors.push(format!("解析证书 {} 时出错: {}", index + 1, e)),
+            Err(e) => chain_errors.push(tf(
+                "解析证书 {} 时出错: {}",
+                &[&(index + 1).to_string(), &e],
+            )),
         }
     }
     if x509s.is_empty() {
@@ -1609,10 +1622,12 @@ fn build_certificate_chain(cert_chain_ders: &[Vec<u8>]) -> Result<CertificateCha
     for pair in order.windows(2) {
         let (upper, lower) = (pair[0], pair[1]);
         if x509s[upper].issuer().as_raw() != x509s[lower].subject().as_raw() {
-            chain_errors.push(format!(
+            chain_errors.push(tf(
                 "证书链中断: {} 的颁发者与 {} 的主体不匹配",
-                x509s[lower].subject(),
-                x509s[upper].issuer()
+                &[
+                    &x509s[lower].subject().to_string(),
+                    &x509s[upper].issuer().to_string(),
+                ],
             ));
         }
     }
@@ -1642,29 +1657,31 @@ fn build_certificate_chain(cert_chain_ders: &[Vec<u8>]) -> Result<CertificateCha
 
         if let Ok(valid_to) = chrono::DateTime::parse_from_rfc3339(&info.valid_to) {
             if valid_to.with_timezone(&chrono::Utc) < chrono::Utc::now() {
-                validation_errors.push("证书已过期".to_string());
+                validation_errors.push(t("证书已过期").to_string());
             }
         }
         if let Ok(valid_from) = chrono::DateTime::parse_from_rfc3339(&info.valid_from) {
             if valid_from.with_timezone(&chrono::Utc) > chrono::Utc::now() {
-                validation_errors.push("证书尚未生效".to_string());
+                validation_errors.push(t("证书尚未生效").to_string());
             }
         }
         if info.signature_algorithm.to_lowercase().contains("sha1") {
-            validation_errors.push("使用已弃用的SHA-1签名算法".to_string());
+            validation_errors.push(t("使用已弃用的SHA-1签名算法").to_string());
         }
         match info.public_key_algorithm.as_str() {
             "RSA" => {
                 if let Some(key_size) = info.key_size {
                     if key_size < 2048 {
-                        validation_errors.push(format!("RSA密钥长度过短: {} 位", key_size));
+                        validation_errors
+                            .push(tf("RSA密钥长度过短: {} 位", &[&key_size.to_string()]));
                     }
                 }
             }
             "EC" => {
                 if let Some(key_size) = info.key_size {
                     if key_size < 256 {
-                        validation_errors.push(format!("EC密钥长度过短: {} 位", key_size));
+                        validation_errors
+                            .push(tf("EC密钥长度过短: {} 位", &[&key_size.to_string()]));
                     }
                 }
             }
@@ -1709,14 +1726,14 @@ fn build_certificate_chain(cert_chain_ders: &[Vec<u8>]) -> Result<CertificateCha
 
     // 根 CA 信息：优先展示信任锚，说明根证书来源
     let root_ca_info = match &trust_anchor_info {
-        Some(anchor) if root_in_chain => Some(format!("{}（服务器已发送）", anchor)),
-        Some(anchor) => Some(format!(
+        Some(anchor) if root_in_chain => Some(tf("{}（服务器已发送）", &[anchor])),
+        Some(anchor) => Some(tf(
             "{}（服务器未发送根证书，由客户端信任库提供，属标准配置）",
-            anchor
+            &[anchor],
         )),
-        None => Some(format!(
+        None => Some(tf(
             "{}（未能匹配到受信任的根 CA）",
-            certificates.last().unwrap().certificate.subject
+            &[&certificates.last().unwrap().certificate.subject],
         )),
     };
 
@@ -1746,7 +1763,7 @@ fn find_trust_anchor(name_raw: &[u8]) -> Option<String> {
             let full_der = wrap_in_sequence(anchor.subject.as_ref());
             return match X509Name::from_der(&full_der) {
                 Ok((_, name)) => Some(name.to_string()),
-                Err(_) => Some("未知受信任根 CA".to_string()),
+                Err(_) => Some(t("未知受信任根 CA").to_string()),
             };
         }
     }
@@ -1934,14 +1951,14 @@ fn detect_cve_vulnerabilities(
     if has_version("SSL 2.0") {
         findings.push(finding(
             "SSL-2.0",
-            "支持已废止的 SSL 2.0 协议",
-            "SSL 2.0 存在多个根本性设计缺陷，是 DROWN 攻击的基础，RFC 6176 已于 2011 年废止该协议。",
+            t("支持已废止的 SSL 2.0 协议"),
+            t("SSL 2.0 存在多个根本性设计缺陷，是 DROWN 攻击的基础，RFC 6176 已于 2011 年废止该协议。"),
             "CRITICAL",
             "protocol",
-            "向服务器发送 SSL 2.0 握手探测，服务器以 SSLv2 ServerHello 应答".to_string(),
+            t("向服务器发送 SSL 2.0 握手探测，服务器以 SSLv2 ServerHello 应答").to_string(),
             vec!["CVE-2016-0800"],
             vec!["SSL 2.0".to_string()],
-            "完全禁用 SSL 2.0。现代服务器软件默认已移除该协议，请检查是否使用了过旧的服务器软件或代理。",
+            t("完全禁用 SSL 2.0。现代服务器软件默认已移除该协议，请检查是否使用了过旧的服务器软件或代理。"),
             vec!["https://drownattack.com/", "https://nvd.nist.gov/vuln/detail/CVE-2016-0800", "https://datatracker.ietf.org/doc/html/rfc6176"],
             "F",
         ));
@@ -1950,14 +1967,14 @@ fn detect_cve_vulnerabilities(
     if has_version("SSL 3.0") {
         findings.push(finding(
             "SSL-3.0",
-            "支持已废止的 SSL 3.0 协议",
-            "SSL 3.0 受 POODLE 填充预言攻击影响，RFC 7568 已于 2015 年废止该协议。",
+            t("支持已废止的 SSL 3.0 协议"),
+            t("SSL 3.0 受 POODLE 填充预言攻击影响，RFC 7568 已于 2015 年废止该协议。"),
             "HIGH",
             "protocol",
-            "向服务器发送 SSL 3.0 握手探测，服务器精确协商 SSL 3.0".to_string(),
+            t("向服务器发送 SSL 3.0 握手探测，服务器精确协商 SSL 3.0").to_string(),
             vec!["CVE-2014-3566"],
             vec!["SSL 3.0".to_string()],
-            "完全禁用 SSL 3.0，仅保留 TLS 1.2 及以上版本。",
+            t("完全禁用 SSL 3.0，仅保留 TLS 1.2 及以上版本。"),
             vec![
                 "https://nvd.nist.gov/vuln/detail/CVE-2014-3566",
                 "https://datatracker.ietf.org/doc/html/rfc7568",
@@ -1971,23 +1988,23 @@ fn detect_cve_vulnerabilities(
             s.versions.iter().any(|v| v == "TLS 1.0") && s.name.contains("CBC")
         });
         let evidence = if cbc.is_empty() {
-            "向服务器发送 TLS 1.0 握手探测，服务器精确协商 TLS 1.0".to_string()
+            t("向服务器发送 TLS 1.0 握手探测，服务器精确协商 TLS 1.0").to_string()
         } else {
-            format!(
+            tf(
                 "向服务器发送 TLS 1.0 握手探测，服务器精确协商 TLS 1.0，且接受 CBC 模式套件（BEAST 利用前提）：{}",
-                cbc.join("、")
+                &[&cbc.join("、")],
             )
         };
         findings.push(finding(
             "TLS-1.0",
-            "支持已废弃的 TLS 1.0 协议",
-            "TLS 1.0 已于 2021 年被 RFC 8996 正式废弃，主流合规标准（PCI DSS 等）均要求禁用；配合 CBC 套件时受 BEAST 影响。",
+            t("支持已废弃的 TLS 1.0 协议"),
+            t("TLS 1.0 已于 2021 年被 RFC 8996 正式废弃，主流合规标准（PCI DSS 等）均要求禁用；配合 CBC 套件时受 BEAST 影响。"),
             "MEDIUM",
             "protocol",
             evidence,
             vec!["CVE-2011-3389"],
             vec!["TLS 1.0".to_string()],
-            "禁用 TLS 1.0，仅保留 TLS 1.2 及以上版本。",
+            t("禁用 TLS 1.0，仅保留 TLS 1.2 及以上版本。"),
             vec!["https://nvd.nist.gov/vuln/detail/CVE-2011-3389", "https://datatracker.ietf.org/doc/html/rfc8996"],
             "B",
         ));
@@ -1996,14 +2013,14 @@ fn detect_cve_vulnerabilities(
     if has_version("TLS 1.1") {
         findings.push(finding(
             "TLS-1.1",
-            "支持已废弃的 TLS 1.1 协议",
-            "TLS 1.1 已于 2021 年被 RFC 8996 正式废弃，应迁移到 TLS 1.2 及以上版本。",
+            t("支持已废弃的 TLS 1.1 协议"),
+            t("TLS 1.1 已于 2021 年被 RFC 8996 正式废弃，应迁移到 TLS 1.2 及以上版本。"),
             "LOW",
             "protocol",
-            "向服务器发送 TLS 1.1 握手探测，服务器精确协商 TLS 1.1".to_string(),
+            t("向服务器发送 TLS 1.1 握手探测，服务器精确协商 TLS 1.1").to_string(),
             vec![],
             vec!["TLS 1.1".to_string()],
-            "禁用 TLS 1.1，仅保留 TLS 1.2 及以上版本。",
+            t("禁用 TLS 1.1，仅保留 TLS 1.2 及以上版本。"),
             vec!["https://datatracker.ietf.org/doc/html/rfc8996"],
             "B",
         ));
@@ -2015,17 +2032,14 @@ fn detect_cve_vulnerabilities(
     if !export_suites.is_empty() {
         findings.push(finding(
             "EXPORT-CIPHER",
-            "接受出口级（EXPORT）加密套件",
-            "出口级套件使用 40/56 位密钥，可被现代算力实时破解，是 FREAK 和 Logjam 攻击的前提。",
+            t("接受出口级（EXPORT）加密套件"),
+            t("出口级套件使用 40/56 位密钥，可被现代算力实时破解，是 FREAK 和 Logjam 攻击的前提。"),
             "HIGH",
             "cipher",
-            format!(
-                "握手探测确认服务器接受了出口级套件：{}",
-                export_suites.join("、")
-            ),
+            tf("握手探测确认服务器接受了出口级套件：{}", &[&export_suites.join("、")]),
             vec!["CVE-2015-0204", "CVE-2015-4000"],
             export_suites.clone(),
-            "从服务器配置中移除所有 EXPORT 级加密套件，并更新 OpenSSL 到已修补版本。",
+            t("从服务器配置中移除所有 EXPORT 级加密套件，并更新 OpenSSL 到已修补版本。"),
             vec![
                 "https://freakattack.com/",
                 "https://weakdh.org/",
@@ -2039,17 +2053,17 @@ fn detect_cve_vulnerabilities(
     if !rc4_suites.is_empty() {
         findings.push(finding(
             "RC4-CIPHER",
-            "接受 RC4 加密套件",
-            "RC4 流密码存在多个偏差攻击（如 RC4 NOMORE），IETF 已于 RFC 7465 禁止其用于 TLS。",
+            t("接受 RC4 加密套件"),
+            t("RC4 流密码存在多个偏差攻击（如 RC4 NOMORE），IETF 已于 RFC 7465 禁止其用于 TLS。"),
             "HIGH",
             "cipher",
-            format!(
+            tf(
                 "握手探测确认服务器接受了 RC4 套件：{}",
-                rc4_suites.join("、")
+                &[&rc4_suites.join("、")],
             ),
             vec!["CVE-2013-2566", "CVE-2015-2808"],
             rc4_suites.clone(),
-            "禁用所有 RC4 加密套件，改用 AES-GCM 或 ChaCha20-Poly1305。",
+            t("禁用所有 RC4 加密套件，改用 AES-GCM 或 ChaCha20-Poly1305。"),
             vec![
                 "https://www.rc4nomore.com/",
                 "https://nvd.nist.gov/vuln/detail/CVE-2013-2566",
@@ -2062,17 +2076,17 @@ fn detect_cve_vulnerabilities(
     if !null_suites.is_empty() {
         findings.push(finding(
             "NULL-CIPHER",
-            "接受 NULL 加密或匿名协商套件",
-            "NULL 套件不加密流量，匿名（aNULL）套件不验证服务器身份，均等同于明文通信。",
+            t("接受 NULL 加密或匿名协商套件"),
+            t("NULL 套件不加密流量，匿名（aNULL）套件不验证服务器身份，均等同于明文通信。"),
             "CRITICAL",
             "cipher",
-            format!(
+            tf(
                 "握手探测确认服务器接受了无加密/匿名套件：{}",
-                null_suites.join("、")
+                &[&null_suites.join("、")],
             ),
             vec![],
             null_suites.clone(),
-            "禁用所有 NULL 与匿名（aNULL/anon）加密套件。",
+            t("禁用所有 NULL 与匿名（aNULL/anon）加密套件。"),
             vec!["https://datatracker.ietf.org/doc/html/rfc7525"],
             "F",
         ));
@@ -2084,17 +2098,17 @@ fn detect_cve_vulnerabilities(
     if !sweet32_suites.is_empty() {
         findings.push(finding(
             "3DES-CIPHER",
-            "接受 64 位分组密码（3DES/DES）",
-            "64 位分组密码受 Sweet32 生日攻击影响，长期会话可在数小时内泄露明文内容。",
+            t("接受 64 位分组密码（3DES/DES）"),
+            t("64 位分组密码受 Sweet32 生日攻击影响，长期会话可在数小时内泄露明文内容。"),
             "MEDIUM",
             "cipher",
-            format!(
+            tf(
                 "握手探测确认服务器接受了 64 位分组密码套件：{}",
-                sweet32_suites.join("、")
+                &[&sweet32_suites.join("、")],
             ),
             vec!["CVE-2016-2183"],
             sweet32_suites.clone(),
-            "禁用 3DES 和 DES 套件，改用 AES-GCM 或 ChaCha20-Poly1305。",
+            t("禁用 3DES 和 DES 套件，改用 AES-GCM 或 ChaCha20-Poly1305。"),
             vec![
                 "https://sweet32.info/",
                 "https://nvd.nist.gov/vuln/detail/CVE-2016-2183",
@@ -2108,14 +2122,14 @@ fn detect_cve_vulnerabilities(
     if compression_supported {
         findings.push(finding(
             "TLS-COMPRESSION",
-            "启用 TLS 级压缩",
-            "TLS 压缩是 CRIME 信息泄露攻击的前提，攻击者可据此恢复会话 Cookie 等明文内容。",
+            t("启用 TLS 级压缩"),
+            t("TLS 压缩是 CRIME 信息泄露攻击的前提，攻击者可据此恢复会话 Cookie 等明文内容。"),
             "HIGH",
             "protocol",
-            "握手探测中服务器在 ServerHello 中选择了 zlib 压缩方法".to_string(),
+            t("握手探测中服务器在 ServerHello 中选择了 zlib 压缩方法").to_string(),
             vec!["CVE-2012-4929"],
             vec!["TLS 压缩".to_string()],
-            "禁用 TLS 压缩。Apache：SSLCompression off；Nginx：ssl_compression off。",
+            t("禁用 TLS 压缩。Apache：SSLCompression off；Nginx：ssl_compression off。"),
             vec!["https://nvd.nist.gov/vuln/detail/CVE-2012-4929"],
             "C",
         ));
@@ -2128,17 +2142,17 @@ fn detect_cve_vulnerabilities(
     if !rsa_kex_suites.is_empty() {
         findings.push(finding(
             "RSA-KEY-EXCHANGE",
-            "接受无前向保密的静态 RSA 密钥交换",
-            "静态 RSA 密钥交换不具备前向保密性：服务器私钥一旦泄露，历史流量可被完整解密。",
+            t("接受无前向保密的静态 RSA 密钥交换"),
+            t("静态 RSA 密钥交换不具备前向保密性：服务器私钥一旦泄露，历史流量可被完整解密。"),
             "MEDIUM",
             "key-exchange",
-            format!(
+            tf(
                 "握手探测确认服务器接受了静态 RSA 密钥交换套件：{}",
-                rsa_kex_suites.join("、")
+                &[&rsa_kex_suites.join("、")],
             ),
             vec![],
             rsa_kex_suites.clone(),
-            "仅保留 ECDHE/DHE 密钥交换套件以启用前向保密。",
+            t("仅保留 ECDHE/DHE 密钥交换套件以启用前向保密。"),
             vec!["https://datatracker.ietf.org/doc/html/rfc7525"],
             "B",
         ));
@@ -2154,28 +2168,34 @@ fn detect_cve_vulnerabilities(
         if days < 0 {
             findings.push(finding(
                 "EXPIRED-CERT",
-                "证书已过期",
-                "过期的证书会导致所有现代浏览器直接拒绝连接。",
+                t("证书已过期"),
+                t("过期的证书会导致所有现代浏览器直接拒绝连接。"),
                 "CRITICAL",
                 "certificate",
-                format!("证书已于 {} 过期（{} 天前）", cert.valid_to, -days),
+                tf(
+                    "证书已于 {} 过期（{} 天前）",
+                    &[&cert.valid_to, &(-days).to_string()],
+                ),
                 vec![],
-                vec![format!("有效期至 {}", cert.valid_to)],
-                "立即更换证书。建议使用 Let's Encrypt certbot 等工具实现自动化续期。",
+                vec![tf("有效期至 {}", &[&cert.valid_to])],
+                t("立即更换证书。建议使用 Let's Encrypt certbot 等工具实现自动化续期。"),
                 vec![],
                 "F",
             ));
         } else if days < 30 {
             findings.push(finding(
                 "EXPIRING-CERT",
-                "证书即将过期",
-                "证书将在 30 天内过期，需安排续期以避免服务中断。",
+                t("证书即将过期"),
+                t("证书将在 30 天内过期，需安排续期以避免服务中断。"),
                 "MEDIUM",
                 "certificate",
-                format!("证书将于 {} 天后过期（{}）", days, cert.valid_to),
+                tf(
+                    "证书将于 {} 天后过期（{}）",
+                    &[&days.to_string(), &cert.valid_to],
+                ),
                 vec![],
-                vec![format!("有效期至 {}", cert.valid_to)],
-                "尽快续期证书，并配置到期监控或自动续期。",
+                vec![tf("有效期至 {}", &[&cert.valid_to])],
+                t("尽快续期证书，并配置到期监控或自动续期。"),
                 vec![],
                 "",
             ));
@@ -2186,28 +2206,28 @@ fn detect_cve_vulnerabilities(
     if sig_lower.contains("md5") {
         findings.push(finding(
             "MD5-SIG",
-            "使用已破解的 MD5 签名算法",
-            "MD5 签名可被伪造（已有选择前缀碰撞的实践案例），攻击者可制作假证书。",
+            t("使用已破解的 MD5 签名算法"),
+            t("MD5 签名可被伪造（已有选择前缀碰撞的实践案例），攻击者可制作假证书。"),
             "CRITICAL",
             "certificate",
-            format!("证书签名为 {}", cert.signature_algorithm),
+            tf("证书签名为 {}", &[&cert.signature_algorithm]),
             vec![],
             vec![cert.signature_algorithm.clone()],
-            "立即更换为 SHA-256 或更强的签名算法。",
+            t("立即更换为 SHA-256 或更强的签名算法。"),
             vec![],
             "F",
         ));
     } else if sig_lower.contains("sha1") && !sig_lower.contains("sha256") {
         findings.push(finding(
             "SHA1-SIG",
-            "使用已弃用的 SHA-1 签名算法",
-            "SHA-1 已可被构造碰撞，所有主流浏览器自 2017 年起拒绝 SHA-1 证书。",
+            t("使用已弃用的 SHA-1 签名算法"),
+            t("SHA-1 已可被构造碰撞，所有主流浏览器自 2017 年起拒绝 SHA-1 证书。"),
             "HIGH",
             "certificate",
-            format!("证书签名为 {}", cert.signature_algorithm),
+            tf("证书签名为 {}", &[&cert.signature_algorithm]),
             vec![],
             vec![cert.signature_algorithm.clone()],
-            "更换为 SHA-256 或更强的签名算法。",
+            t("更换为 SHA-256 或更强的签名算法。"),
             vec![],
             "C",
         ));
@@ -2220,28 +2240,28 @@ fn detect_cve_vulnerabilities(
             _ => false,
         };
         if weak {
-            let description = format!(
+            let description = tf(
                 "{} 位{}密钥不符合当前安全标准（RSA 至少 2048 位 / EC 至少 256 位）。",
-                key_size, cert.public_key_algorithm
+                &[&key_size.to_string(), &cert.public_key_algorithm],
             );
             findings.push(finding(
                 "WEAK-KEY",
-                "证书密钥长度不足",
+                t("证书密钥长度不足"),
                 &description,
                 "HIGH",
                 "certificate",
-                format!(
+                tf(
                     "证书使用 {} 密钥，长度 {} 位",
-                    cert.public_key_algorithm, key_size
+                    &[&cert.public_key_algorithm, &key_size.to_string()],
                 ),
                 vec![],
-                vec![format!(
+                vec![tf(
                     "{} 密钥 {} 位",
-                    cert.public_key_algorithm, key_size
+                    &[&cert.public_key_algorithm, &key_size.to_string()],
                 )],
                 match cert.public_key_algorithm.as_str() {
-                    "RSA" => "更换为至少 2048 位的 RSA 密钥，推荐 3072 位以上。",
-                    _ => "更换为至少 256 位的 ECC 密钥（如 P-256）。",
+                    "RSA" => t("更换为至少 2048 位的 RSA 密钥，推荐 3072 位以上。"),
+                    _ => t("更换为至少 256 位的 ECC 密钥（如 P-256）。"),
                 },
                 vec!["https://www.keylength.com/"],
                 "C",
@@ -2338,15 +2358,20 @@ fn assess_security(
         || score < 80;
 
     let details = if applied_caps.is_empty() && weighted_score >= 80 {
-        "未发现封顶级安全问题".to_string()
+        t("未发现封顶级安全问题").to_string()
     } else if applied_caps.is_empty() {
-        format!("加权得分 {}，未触发等级封顶", weighted_score)
+        tf(
+            "加权得分 {}，未触发等级封顶",
+            &[&weighted_score.to_string()],
+        )
     } else {
-        format!(
+        tf(
             "加权得分 {}，受 {} 项发现封顶至 {}",
-            weighted_score,
-            applied_caps.len(),
-            score
+            &[
+                &weighted_score.to_string(),
+                &applied_caps.len().to_string(),
+                &score.to_string(),
+            ],
         )
     };
 
@@ -2398,7 +2423,7 @@ fn derive_security_lists(
 ) -> (Vec<String>, Vec<String>) {
     let vulnerabilities = findings
         .iter()
-        .map(|f| format!("{}：{}", f.name, f.evidence))
+        .map(|f| format!("{}{}{}", f.name, t("："), f.evidence))
         .collect();
 
     let mut recommendations: Vec<String> = findings
@@ -2408,23 +2433,24 @@ fn derive_security_lists(
         .collect();
 
     if score >= 90 {
-        recommendations.push("SSL/TLS 配置优秀，建议定期复查。".to_string());
+        recommendations.push(t("SSL/TLS 配置优秀，建议定期复查。").to_string());
     } else if score >= 70 {
-        recommendations.push("SSL/TLS 配置良好，仍有优化空间。".to_string());
+        recommendations.push(t("SSL/TLS 配置良好，仍有优化空间。").to_string());
     } else if score >= 50 {
-        recommendations.push("SSL/TLS 配置需要改进，存在安全风险。".to_string());
+        recommendations.push(t("SSL/TLS 配置需要改进，存在安全风险。").to_string());
     } else {
-        recommendations.push("SSL/TLS 配置存在严重安全风险，需要立即修复。".to_string());
+        recommendations.push(t("SSL/TLS 配置存在严重安全风险，需要立即修复。").to_string());
     }
     recommendations.push(
-        "启用 HSTS：Strict-Transport-Security: max-age=31536000; includeSubDomains; preload"
+        t("启用 HSTS：Strict-Transport-Security: max-age=31536000; includeSubDomains; preload")
             .to_string(),
     );
     recommendations.push(
-        "配置 OCSP Stapling 提高证书验证性能：ssl_stapling on; ssl_stapling_verify on;".to_string(),
+        t("配置 OCSP Stapling 提高证书验证性能：ssl_stapling on; ssl_stapling_verify on;")
+            .to_string(),
     );
     recommendations
-        .push("仅启用 TLS 1.2 和 TLS 1.3，禁用 SSL 2.0/3.0 与 TLS 1.0/1.1。".to_string());
+        .push(t("仅启用 TLS 1.2 和 TLS 1.3，禁用 SSL 2.0/3.0 与 TLS 1.0/1.1。").to_string());
 
     (vulnerabilities, recommendations)
 }
@@ -2599,7 +2625,7 @@ pub async fn check_ssl_info(domain: String) -> Result<SslInfo, String> {
     let domain = domain.trim().to_lowercase();
 
     if domain.is_empty() {
-        return Err("域名不能为空".to_string());
+        return Err(t("域名不能为空").to_string());
     }
 
     // Resolve IP address
@@ -2750,7 +2776,7 @@ pub async fn check_ssl_info(domain: String) -> Result<SslInfo, String> {
                 Err(tls_err) => {
                     // TLS 失败不再吞成全空结果：证书过期 / 自签 / 域名不匹配 /
                     // 服务器不可达正是本工具要诊断的场景，必须把原因带回给用户
-                    return Err(format!("TLS 连接失败: {}", tls_err));
+                    return Err(tf("TLS 连接失败: {}", &[&tls_err]));
                 }
             }
         }
@@ -2793,14 +2819,14 @@ fn cert_trust_findings(issues: &[VerifyIssue]) -> Vec<SecurityVulnerability> {
             VerifyIssueKind::UntrustedIssuer => {
                 findings.push(SecurityVulnerability {
                     id: "CERT-UNTRUSTED".to_string(),
-                    name: "证书链不受信任".to_string(),
-                    description: "证书链无法锚定到客户端信任库中的根 CA（自签名或非公认 CA 签发），现代浏览器会直接拒绝连接。".to_string(),
+                    name: t("证书链不受信任").to_string(),
+                    description: t("证书链无法锚定到客户端信任库中的根 CA（自签名或非公认 CA 签发），现代浏览器会直接拒绝连接。").to_string(),
                     severity: "CRITICAL".to_string(),
                     category: "certificate".to_string(),
                     evidence: issue.message.clone(),
                     cve_ids: vec![],
                     affected_components: vec![],
-                    remediation: "使用受信任 CA 签发的证书；内网/自建服务可改用企业受信 CA 签发，或将根证书分发安装到客户端信任库。".to_string(),
+                    remediation: t("使用受信任 CA 签发的证书；内网/自建服务可改用企业受信 CA 签发，或将根证书分发安装到客户端信任库。").to_string(),
                     references: vec!["https://datatracker.ietf.org/doc/html/rfc7525".to_string()],
                     grade_cap: "F".to_string(),
                 });
@@ -2808,17 +2834,18 @@ fn cert_trust_findings(issues: &[VerifyIssue]) -> Vec<SecurityVulnerability> {
             VerifyIssueKind::NameMismatch => {
                 findings.push(SecurityVulnerability {
                     id: "CERT-NAME-MISMATCH".to_string(),
-                    name: "证书域名不匹配".to_string(),
-                    description: "证书的 SAN 不包含当前访问的域名，浏览器会直接拒绝连接。"
+                    name: t("证书域名不匹配").to_string(),
+                    description: t("证书的 SAN 不包含当前访问的域名，浏览器会直接拒绝连接。")
                         .to_string(),
                     severity: "HIGH".to_string(),
                     category: "certificate".to_string(),
                     evidence: issue.message.clone(),
                     cve_ids: vec![],
                     affected_components: vec![],
-                    remediation:
-                        "更换为覆盖该域名（含通配符）的证书，或在证书中补充对应 SAN 条目。"
-                            .to_string(),
+                    remediation: t(
+                        "更换为覆盖该域名（含通配符）的证书，或在证书中补充对应 SAN 条目。",
+                    )
+                    .to_string(),
                     references: vec!["https://datatracker.ietf.org/doc/html/rfc6125".to_string()],
                     grade_cap: "F".to_string(),
                 });

@@ -23,6 +23,7 @@ mod en_pages_network;
 mod en_pages_ssl;
 mod en_registry;
 mod en_shell;
+mod en_tools;
 
 /// 语言选项（配置值为 `"system"` 时按系统 locale 解析）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -107,6 +108,7 @@ static EN_TABLE: LazyLock<HashMap<&'static str, &'static str>> = LazyLock::new(|
         en_shell::EN_SHELL,
         en_registry::EN_REGISTRY,
         en_errors::EN_ERRORS,
+        en_tools::EN_TOOLS,
         en_pages_ssl::EN_PAGES_SSL,
         en_pages_cert::EN_PAGES_CERT,
         en_pages_network::EN_PAGES_NETWORK,
@@ -136,6 +138,19 @@ pub fn t(key: &'static str) -> &'static str {
     } else {
         key
     }
+}
+
+/// 带占位符的模板翻译：查表得到译文（含 `{}` 槽位）后按顺序填充。
+///
+/// i18n 表无格式化能力，动态句子（词序在双语文言间不同）用固定槽位 +
+/// 顺序替换实现；中文模式下 key 本身即完整中文模板，填充后与历史输出
+/// 逐字节一致。参数内容不会被再次扫描，含 `{}` 的实参安全。
+pub fn tf(key: &'static str, args: &[&str]) -> String {
+    let mut out = t(key).to_string();
+    for arg in args {
+        out = out.replacen("{}", arg, 1);
+    }
+    out
 }
 
 /// 查 EN 译名（无论当前语言；供搜索索引等跨语言匹配场景）。
@@ -174,15 +189,37 @@ mod tests {
         set_language(Language::ZhCn);
     }
 
+    #[test]
+    fn test_tf_fills_placeholders_in_order() {
+        set_language(Language::ZhCn);
+        assert_eq!(
+            tf("证书已于 {} 过期（{} 天前）", &["2026-01-01", "3"]),
+            "证书已于 2026-01-01 过期（3 天前）"
+        );
+        // 实参内容不会被二次扫描（含 {} 的实参安全）
+        assert_eq!(
+            tf("加权得分 {}，未触发等级封顶", &["{}"]),
+            "加权得分 {}，未触发等级封顶"
+        );
+        // EN 模式下模板按译文槽位填充
+        set_language(Language::En);
+        assert_eq!(
+            tf("证书已于 {} 过期（{} 天前）", &["2026-01-01", "3"]),
+            "Certificate expired on 2026-01-01 (3 days ago)"
+        );
+        set_language(Language::ZhCn);
+    }
+
     /// EN 表内同 key 不得出现两个不同译法（分域文件由多人/多批维护，防止
     /// 后写覆盖先写导致译名漂移；相同译法则无害）。
     #[test]
     fn test_en_table_no_conflicting_keys() {
         let mut seen: HashMap<&'static str, &'static str> = HashMap::new();
-        let domains: [&[(&'static str, &'static str)]; 12] = [
+        let domains: [&[(&'static str, &'static str)]; 13] = [
             en_shell::EN_SHELL,
             en_registry::EN_REGISTRY,
             en_errors::EN_ERRORS,
+            en_tools::EN_TOOLS,
             en_pages_ssl::EN_PAGES_SSL,
             en_pages_cert::EN_PAGES_CERT,
             en_pages_network::EN_PAGES_NETWORK,

@@ -66,7 +66,10 @@ mod tests {
         assert!(validate_dimensions(30001, 1).is_err(), "单边超限");
         assert!(validate_dimensions(1, 30001).is_err(), "单边超限");
         assert!(validate_dimensions(20000, 6000).is_err(), "120MP 超总量");
-        assert!(validate_dimensions(10001, 10000).is_err(), "100.01MP 超总量");
+        assert!(
+            validate_dimensions(10001, 10000).is_err(),
+            "100.01MP 超总量"
+        );
     }
 
     #[test]
@@ -76,9 +79,7 @@ mod tests {
         let dir = std::env::temp_dir().join("devtools-image-limit-test");
         std::fs::create_dir_all(&dir).unwrap();
         let huge = dir.join("huge.png");
-        image::DynamicImage::new_rgb8(30001, 1)
-            .save(&huge)
-            .unwrap();
+        image::DynamicImage::new_rgb8(30001, 1).save(&huge).unwrap();
         assert!(
             open_image_limited(&huge).is_err(),
             "单边超限的图片应被拒绝解码"
