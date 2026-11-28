@@ -534,6 +534,14 @@ pub fn aes_encrypt(text: &str, key: &str, iv: &str, opts: &AesOptions) -> Result
         parse_iv(iv)?
     };
     let mut data = pad_data(text.as_bytes().to_vec(), opts.padding);
+    // ECB/CBC 为块模式：NoPadding 时明文必须已对齐（与解密侧校验对称），
+    // 否则 ecb/cbc_apply 的末块 try_into 会 panic
+    if matches!(opts.mode, AesMode::Ecb | AesMode::Cbc)
+        && opts.padding == AesPadding::NoPadding
+        && !data.len().is_multiple_of(AES_BLOCK_SIZE)
+    {
+        return Err("加密失败：NoPadding 模式下明文长度必须为 16 字节的整数倍".to_string());
+    }
     apply_mode(opts.mode, &key, &iv, &mut data, false)?;
     Ok(general_purpose::STANDARD.encode(&data))
 }
@@ -824,7 +832,11 @@ pub fn verify_jwt(token: &str, alg: &str, key: &str) -> Result<bool, String> {
     if alg.starts_with("HS") {
         let expected = hmac_sign(alg, key.as_bytes(), signing_input.as_bytes())
             .ok_or_else(|| format!("不支持的签名算法：{}", alg))?;
-        // 常量时间比较（长度不同返回 false），对齐 WebCrypto subtle.verify 的行为
+        // openssl::memcmp::eq 要求等长输入（不等长会 assert! panic），
+        // 长度不等（空签名 / 截断签名等）先按验签失败处理，再做常量时间比较
+        if expected.len() != signature.len() {
+            return Ok(false);
+        }
         Ok(openssl::memcmp::eq(&expected, &signature))
     } else {
         // 空签名 / 长度与模长不符的签名由 RSA_verify 判 false；空签名提前拦截，
@@ -1210,6 +1222,48 @@ mod tests {
     }
 
     #[test]
+    fn aes_encrypt_no_padding_rejects_unaligned_block_modes() {
+        // NoPadding + 块模式（ECB/CBC）遇到非对齐明文此前会在末块 try_into panic，
+        // 现在与解密侧对称地返回错误；流模式（CTR 等）不受影响
+        let cbc = AesOptions {
+            mode: AesMode::Cbc,
+            key_size: 128,
+            padding: AesPadding::NoPadding,
+        };
+        let err = aes_encrypt("hello", "0123456789abcdef", "0123456789abcdef01", &cbc).unwrap_err();
+        assert!(err.contains("NoPadding"));
+
+        let ecb = AesOptions {
+            mode: AesMode::Ecb,
+            key_size: 128,
+            padding: AesPadding::NoPadding,
+        };
+        assert!(aes_encrypt("hello", "0123456789abcdef", "", &ecb).is_err());
+
+        // 对齐文本在块模式下正常往返
+        let ct = aes_encrypt(
+            "0123456789abcdef",
+            "0123456789abcdef",
+            "0123456789abcdef01",
+            &cbc,
+        )
+        .unwrap();
+        let pt = aes_decrypt_to_bytes(&ct, "0123456789abcdef", "0123456789abcdef01", &cbc).unwrap();
+        assert_eq!(pt, b"0123456789abcdef");
+
+        // 流模式 + NoPadding 的非对齐数据保持可用
+        let ctr = AesOptions {
+            mode: AesMode::Ctr,
+            key_size: 128,
+            padding: AesPadding::NoPadding,
+        };
+        let ct2 = aes_encrypt("hello", "0123456789abcdef", "0123456789abcdef01", &ctr).unwrap();
+        let pt2 =
+            aes_decrypt_to_bytes(&ct2, "0123456789abcdef", "0123456789abcdef01", &ctr).unwrap();
+        assert_eq!(pt2, b"hello");
+    }
+
+    #[test]
     fn aes_parse_key_errors() {
         let err = aes_encrypt(
             "x",
@@ -1587,6 +1641,47 @@ F/oTzVy8qjlClT5Acwz5Smuskzg/dd2PEQIDAQAB
         let last = tampered.pop().unwrap();
         tampered.push(if last == 'g' { 'h' } else { 'g' });
         assert!(!verify_jwt(&tampered, "HS256", "your-256-bit-secret").unwrap());
+    }
+
+    #[test]
+    fn jwt_hs_verify_rejects_malformed_signature_lengths() {
+        // openssl::memcmp::eq 要求等长：签名段非摘要长度（空 / 截断 / 超长）时
+        // 必须返回 Ok(false) 而非 panic（此前直接 assert! 崩溃）
+        let token = sign_jwt(
+            "HS256",
+            json!({ "alg": "HS256", "typ": "JWT" }),
+            json!({ "sub": "u" }),
+            "k",
+        )
+        .unwrap();
+        let parts: Vec<&str> = token.split('.').collect();
+        let header_payload = format!("{}.{}", parts[0], parts[1]);
+
+        // 空签名段
+        assert_eq!(
+            verify_jwt(&format!("{header_payload}."), "HS256", "k"),
+            Ok(false)
+        );
+        // 1 字节与 33 字节签名（32 字节摘要的两侧）
+        assert_eq!(
+            verify_jwt(&format!("{header_payload}.x"), "HS256", "k"),
+            Ok(false)
+        );
+        assert_eq!(
+            verify_jwt(
+                &format!("{header_payload}.{}", "x".repeat(33)),
+                "HS256",
+                "k"
+            ),
+            Ok(false)
+        );
+        // HS512（64 字节摘要）同样覆盖
+        assert_eq!(
+            verify_jwt(&format!("{header_payload}."), "HS512", "k"),
+            Ok(false)
+        );
+        // 完整令牌不受影响
+        assert_eq!(verify_jwt(&token, "HS256", "k"), Ok(true));
     }
 
     #[test]
