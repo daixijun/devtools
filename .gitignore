@@ -23,6 +23,8 @@ CLAUDE.md
 
 # Rust 构建产物
 target/
+# 本地交叉检查用隔离 target 目录（rustup 工具链与 Homebrew rust 共存）
+target-*/
 
 # 打包产物
 *.app

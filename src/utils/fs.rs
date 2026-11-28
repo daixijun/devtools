@@ -1,5 +1,8 @@
 //! 文件写入辅助。
 
+// 仅 unix 分支的 write_all 需要；Windows 走 std::fs::write，
+// 不门控会在 Windows 上成为 unused import（clippy -D warnings 拦截）
+#[cfg(unix)]
 use std::io::Write as _;
 use std::path::Path;
 
@@ -32,12 +35,13 @@ pub fn write_text_file(path: &Path, content: &str, private: bool) -> std::io::Re
     }
 }
 
-#[cfg(test)]
+// 测试断言 Unix 权限语义，整个模块随平台门控：
+// 挂在测试函数上会让 use super::* 在 Windows 下成为 unused import
+#[cfg(all(test, unix))]
 mod tests {
     use super::*;
 
     #[test]
-    #[cfg(unix)]
     fn private_file_gets_restricted_permissions() {
         let dir = std::env::temp_dir().join("devtools-write-text-file-test");
         std::fs::create_dir_all(&dir).unwrap();
