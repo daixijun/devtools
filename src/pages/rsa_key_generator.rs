@@ -268,7 +268,7 @@ impl RsaKeyGenerator {
         let format = self.key_format;
         let text = format.private_text(&pair).to_string();
         let default_name = format!("rsa_private_key_{}.pem", format.id());
-        self.save_text_file(text, default_name, "PEM Files", "pem", window, cx);
+        self.save_text_file(text, default_name, "PEM Files", "pem", true, window, cx);
     }
 
     /// 下载公钥（默认名 rsa_public_key_{格式}.{ext}，OpenSSH 为 .pub）。
@@ -284,16 +284,26 @@ impl RsaKeyGenerator {
             format.public_extension().1
         );
         let (filter_name, extension) = format.public_extension();
-        self.save_text_file(text, default_name, filter_name, extension, window, cx);
+        self.save_text_file(
+            text,
+            default_name,
+            filter_name,
+            extension,
+            false,
+            window,
+            cx,
+        );
     }
 
-    /// 通用文本保存（rfd save_file + std::fs::write，均在后台线程）。
+    /// 通用文本保存（rfd save_file + 受限权限写盘，均在后台线程）。
     fn save_text_file(
         &mut self,
         content: String,
         default_name: String,
         filter_name: &'static str,
         extension: &'static str,
+        // 私钥等敏感内容：Unix 下以 0600 落盘
+        private: bool,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
@@ -303,10 +313,12 @@ impl RsaKeyGenerator {
                 .set_file_name(default_name)
                 .save_file()
             {
-                Some(path) => match std::fs::write(&path, content.as_bytes()) {
-                    Ok(_) => Some(Ok(path.to_string_lossy().to_string())),
-                    Err(e) => Some(Err(format!("{}: {}", t("保存文件失败"), e))),
-                },
+                Some(path) => {
+                    match devtools::utils::fs::write_text_file(&path, &content, private) {
+                        Ok(_) => Some(Ok(path.to_string_lossy().to_string())),
+                        Err(e) => Some(Err(format!("{}: {}", t("保存文件失败"), e))),
+                    }
+                }
                 None => None,
             }
         });

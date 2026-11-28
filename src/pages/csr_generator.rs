@@ -230,6 +230,8 @@ impl CsrGenerator {
         default_name: String,
         ext: &'static str,
         filter_name: &'static str,
+        // 私钥等敏感内容：Unix 下以 0600 落盘
+        private: bool,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
@@ -241,7 +243,7 @@ impl CsrGenerator {
             else {
                 return SaveOutcome::Cancelled;
             };
-            match std::fs::write(&path, content) {
+            match devtools::utils::fs::write_text_file(&path, &content, private) {
                 Ok(_) => SaveOutcome::Saved,
                 Err(e) => SaveOutcome::Failed(format!("{}: {}", t("保存文件失败"), e)),
             }
@@ -557,7 +559,8 @@ impl CsrGenerator {
                              content: String,
                              default_name: String,
                              ext: &'static str,
-                             filter_name: &'static str| {
+                             filter_name: &'static str,
+                             private: bool| {
             move |_ev: &gpui::ClickEvent, window: &mut Window, cx: &mut App| {
                 entity.update(cx, |this, cx| {
                     this.download(
@@ -565,6 +568,7 @@ impl CsrGenerator {
                         default_name.clone(),
                         ext,
                         filter_name,
+                        private,
                         window,
                         cx,
                     );
@@ -587,6 +591,7 @@ impl CsrGenerator {
                 format!("{base}.csr"),
                 "csr",
                 t("CSR 文件"),
+                false,
             ),
             cx,
         );
@@ -605,6 +610,7 @@ impl CsrGenerator {
                 format!("{base}_private_key.key"),
                 "key",
                 t("私钥文件"),
+                true,
             ),
             cx,
         );
@@ -623,6 +629,7 @@ impl CsrGenerator {
                 format!("{base}_public_key.pem"),
                 "pem",
                 t("PEM 文件"),
+                false,
             ),
             cx,
         );

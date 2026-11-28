@@ -954,8 +954,25 @@ pub fn bcrypt_hash(password: &str, rounds: u32) -> Result<String, String> {
     bcrypt::hash(password, rounds).map_err(|e| format!("bcrypt哈希计算失败: {}", e))
 }
 
-/// bcrypt 验证；哈希格式非法时按验证失败处理。
+/// 验证侧允许的最大 cost。cost 每加 1 耗时翻倍（20 在现代机器约数十秒级），
+/// 超过该值的哈希直接按验证失败处理——验证页的 cost 取自粘贴的哈希本身，
+/// 不设上限时粘贴 `$2b$31$…` 会让后台 worker 满载数十分钟以上
+///（加密侧由页面限制 4-20）。
+const BCRYPT_VERIFY_MAX_COST: u32 = 20;
+
+/// 解析 bcrypt 哈希内嵌的 cost（`$2b$NN$`）。
+fn bcrypt_hash_cost(hash: &str) -> Option<u32> {
+    hash.split('$').nth(2)?.parse().ok()
+}
+
+/// bcrypt 验证；哈希格式非法或 cost 超限（见 [`BCRYPT_VERIFY_MAX_COST`]）时
+/// 按验证失败处理。
 pub fn bcrypt_verify(password: &str, hash: &str) -> bool {
+    if let Some(cost) = bcrypt_hash_cost(hash) {
+        if cost > BCRYPT_VERIFY_MAX_COST {
+            return false;
+        }
+    }
     bcrypt::verify(password, hash).unwrap_or(false)
 }
 
@@ -1963,6 +1980,16 @@ F/oTzVy8qjlClT5Acwz5Smuskzg/dd2PEQIDAQAB
     }
 
     // ---------- bcrypt ----------
+
+    #[test]
+    fn bcrypt_verify_rejects_excessive_cost() {
+        // cost 31 的哈希串（只解析 cost，不实际计算——真实计算要数十小时）
+        let malicious = format!("$2b$31${}$", "a".repeat(22)) + &"b".repeat(31);
+        assert!(!bcrypt_verify("pw", &malicious));
+        // 正常 cost 的哈希不受影响
+        let hash = bcrypt_hash("pw", 4).unwrap();
+        assert!(bcrypt_verify("pw", &hash));
+    }
 
     #[test]
     fn bcrypt_hash_and_verify() {
