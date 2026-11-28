@@ -99,6 +99,16 @@ mod imp {
         }
     }
 
+    /// 探测是否确有实例在监听（区分「旧实例仍在退出」与「陈旧 socket 文件」）。
+    pub fn peer_alive() -> bool {
+        UnixStream::connect(socket_path()).is_ok()
+    }
+
+    /// 删除陈旧 socket 文件（供等待循环在确认无实例监听后重试 bind）。
+    pub fn clear_stale_socket() {
+        let _ = fs::remove_file(socket_path());
+    }
+
     /// 单例抢占入口。返回 `true` 表示本实例继续启动；`false` 表示已成功
     /// 激活现有实例，调用方应立即退出进程。
     pub fn acquire_or_notify() -> bool {
@@ -197,6 +207,14 @@ mod imp {
         }
     }
 
+    /// 探测是否确有实例在监听（区分「旧实例仍在退出」与「端口被其他应用占用」）。
+    pub fn peer_alive() -> bool {
+        TcpStream::connect(addr()).is_ok()
+    }
+
+    /// Windows 端口无需清理文件，空实现保持两平台接口一致。
+    pub fn clear_stale_socket() {}
+
     /// 单例抢占入口。返回 `true` 表示本实例继续启动；`false` 表示已成功
     /// 激活现有实例，调用方应立即退出进程。
     pub fn acquire_or_notify() -> bool {
@@ -253,13 +271,31 @@ pub fn acquire_or_notify() -> bool {
     let relaunch = std::env::args().any(|arg| arg == "--relaunch");
     if relaunch {
         let deadline = std::time::Instant::now() + RELAUNCH_WAIT;
-        while std::time::Instant::now() < deadline {
+        loop {
             if imp::try_bind() {
                 return true;
             }
+            // bind 失败：先用连接探测区分「旧实例仍在退出」与「陈旧 socket
+            // 文件」（socket 文件不做退出清理，仅凭 bind 失败会空转满等待上限）
+            if imp::peer_alive() {
+                if std::time::Instant::now() >= deadline {
+                    eprintln!("--relaunch 等待旧实例退出超时，按二次启动处理");
+                    break;
+                }
+                std::thread::sleep(RELAUNCH_POLL);
+                continue;
+            }
+            // 无实例监听：清掉陈旧 socket 文件后重试
+            imp::clear_stale_socket();
+            if imp::try_bind() {
+                return true;
+            }
+            if std::time::Instant::now() >= deadline {
+                eprintln!("--relaunch 等待旧实例退出超时，按二次启动处理");
+                break;
+            }
             std::thread::sleep(RELAUNCH_POLL);
         }
-        eprintln!("--relaunch 等待旧实例退出超时，按二次启动处理");
     }
     imp::acquire_or_notify()
 }
