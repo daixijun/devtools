@@ -65,6 +65,7 @@ pub const EN_PAGES_SSL: &[(&str, &str)] = &[
     ("证书有效期", "Certificate Validity"),
     ("证书颁发者", "Certificate Issuer"),
     ("协议与特性", "Protocols & Features"),
+    ("握手验证", "Handshake Verification"),
     // ---- 证书信息 ----
     ("未获取到证书信息", "No certificate information available"),
     ("位", "bits"),

@@ -677,11 +677,23 @@ impl SslChecker {
             .child(ui::card_header(t("协议与特性"), cx))
             .child(ui::info_rows(right_rows, cx));
 
-        div()
-            .flex()
-            .gap_3()
-            .child(left.flex_1())
-            .child(right.flex_1())
+        // 证书过期/自签名/域名不匹配等标准验证失败也会拿到完整诊断，
+        // 失败原因必须显式呈现，不能让用户误以为是正常结果
+        let mut overview = div().flex().flex_col().gap_3();
+        if let Some(errors) = &info.handshake_validation_errors {
+            let mut warnings = ui::card(cx).child(ui::card_header(t("握手验证"), cx));
+            for e in errors {
+                warnings = warnings.child(ui::warning_banner(e, cx));
+            }
+            overview = overview.child(warnings);
+        }
+        overview.child(
+            div()
+                .flex()
+                .gap_3()
+                .child(left.flex_1())
+                .child(right.flex_1()),
+        )
     }
 
     // -----------------------------------------------------------------------
