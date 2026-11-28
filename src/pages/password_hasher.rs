@@ -120,6 +120,8 @@ pub struct PasswordHasher {
     is_verifying: bool,
     // —— PBKDF2 迭代次数（两页共享同一 state）——
     iterations: Entity<InputState>,
+    /// PBKDF2 盐（两页共享同一 state；默认 "salt" 保持历史版本哈希可验证）
+    pbkdf2_salt: Entity<InputState>,
 }
 
 impl PasswordHasher {
@@ -149,6 +151,13 @@ impl PasswordHasher {
                 .max(1_000_000.)
                 .step(1000.)
         });
+        let pbkdf2_salt = cx.new(|cx| {
+            // 默认 "salt" 保持历史版本（固定盐）产出的哈希仍可验证；
+            // 提示文案引导用户改为随机盐
+            InputState::new(window, cx)
+                .placeholder(t("输入盐值（历史版本固定为 salt）"))
+                .default_value("salt")
+        });
         let verify_password = cx.new(|cx| {
             InputState::new(window, cx)
                 .placeholder(t("请输入要验证的密码..."))
@@ -170,6 +179,7 @@ impl PasswordHasher {
             verify_result: None,
             is_verifying: false,
             iterations,
+            pbkdf2_salt,
         }
     }
 
@@ -185,6 +195,11 @@ impl PasswordHasher {
     /// 解析共享的 PBKDF2 迭代次数输入。
     fn iterations_value(&self, cx: &Context<Self>) -> Option<u32> {
         self.iterations.read(cx).value().trim().parse::<u32>().ok()
+    }
+
+    /// 读取 PBKDF2 盐（两页共享）。
+    fn pbkdf2_salt_value(&self, cx: &Context<Self>) -> String {
+        self.pbkdf2_salt.read(cx).value().trim().to_string()
     }
 
     // ------------------------------------------------------------------
@@ -226,12 +241,18 @@ impl PasswordHasher {
                         return;
                     }
                 };
+                let salt = self.pbkdf2_salt_value(cx);
+                if salt.is_empty() {
+                    self.hash_result = Some(t("盐值不能为空").to_string());
+                    cx.notify();
+                    return;
+                }
                 self.is_hashing = true;
                 cx.notify();
-                // 盐固定 'salt'、dkLen 32（历史契约值）
+                // dkLen 32（历史契约值）
                 let rx = crate::core_rt::submit(cx, async move {
                     Ok::<String, String>(devtools::crypto::pbkdf2_hex(
-                        &password, "salt", iterations, 32,
+                        &password, &salt, iterations, 32,
                     ))
                 });
                 self.spawn_hash_result(rx, window, cx);
@@ -283,7 +304,7 @@ impl PasswordHasher {
         cx.notify();
     }
 
-    /// 加密区重置（密码/结果清空、算法与两个参数复位）。
+    /// 加密区重置（密码/结果清空、算法与参数复位）。
     fn reset_hash(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.password
             .update(cx, |state, cx| state.set_value("", window, cx));
@@ -291,6 +312,8 @@ impl PasswordHasher {
             .update(cx, |state, cx| state.set_value("10", window, cx));
         self.iterations
             .update(cx, |state, cx| state.set_value("10000", window, cx));
+        self.pbkdf2_salt
+            .update(cx, |state, cx| state.set_value("salt", window, cx));
         self.algorithm = HashAlgorithm::Bcrypt;
         self.hash_result = None;
         cx.notify();
@@ -330,7 +353,7 @@ impl PasswordHasher {
                 self.spawn_verify_result(rx, window, cx);
             }
             HashAlgorithm::Pbkdf2 => {
-                // 与加密页共享同一迭代次数输入；越界走提示横幅
+                // 与加密页共享同一迭代次数/盐值输入；越界走提示横幅
                 let iterations = match self.iterations_value(cx) {
                     Some(n) if ITERATIONS_RANGE.contains(&n) => n,
                     _ => {
@@ -342,11 +365,20 @@ impl PasswordHasher {
                         return;
                     }
                 };
+                let salt = self.pbkdf2_salt_value(cx);
+                if salt.is_empty() {
+                    self.verify_result = Some(VerifyOutcome {
+                        is_valid: None,
+                        message: t("盐值不能为空").to_string(),
+                    });
+                    cx.notify();
+                    return;
+                }
                 self.is_verifying = true;
                 cx.notify();
-                // 同盐重算比对（盐固定 'salt'、dkLen 32）
+                // 同盐重算比对（dkLen 32）
                 let rx = crate::core_rt::submit(cx, async move {
-                    devtools::crypto::pbkdf2_hex(&password, "salt", iterations, 32) == hash
+                    devtools::crypto::pbkdf2_hex(&password, &salt, iterations, 32) == hash
                 });
                 self.spawn_verify_result(rx, window, cx);
             }
@@ -563,6 +595,15 @@ impl PasswordHasher {
                 .child(ui::hint_text(
                     t("迭代次数越多，安全性越好，但加密时间越长。推荐值为 10,000 以上。范围：1,000 - 1,000,000"),
                     cx,
+                ))
+                .child(ui::field(
+                    t("盐值 (Salt)"),
+                    Input::new(&self.pbkdf2_salt),
+                    cx,
+                ))
+                .child(ui::hint_text(
+                    t("默认值 salt 为历史版本的固定盐，建议改为随机字符串以提高抗彩虹表能力。验证时需使用相同盐值。"),
+                    cx,
                 ));
         }
         params_card = params_card.child(
@@ -690,7 +731,13 @@ impl PasswordHasher {
                 .child(ui::hint_text(
                     t("验证时需要使用与加密时相同的迭代次数。范围：1,000 - 1,000,000"),
                     cx,
-                ));
+                ))
+                .child(ui::field(
+                    t("盐值 (Salt)"),
+                    Input::new(&self.pbkdf2_salt),
+                    cx,
+                ))
+                .child(ui::hint_text(t("验证时需要使用与加密时相同的盐值"), cx));
         }
         params_card = params_card.child(
             div()
