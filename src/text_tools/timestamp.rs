@@ -1,6 +1,6 @@
 //! 时间戳与日期时间互转纯逻辑。
 //!
-//! 契约见 docs/plans/tool-specs/batch1.md「TimestampConverter」节：
+//! 行为契约：
 //! - ts→dt：前导数字解析 → 按单位换算毫秒 → 范围校验 [0, 9999999999999]
 //!   → 输出 zh-CN 本地化格式（对齐 JS `toLocaleString('zh-CN', { timeZone })`，
 //!   即 `YYYY/M/D HH:mm:ss`：月/日不补零、时分秒补两位）

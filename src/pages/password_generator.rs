@@ -2,7 +2,6 @@
 //!
 //! 挂载及任意选项变化自动生成；长度用 gpui-component Slider（4–64）；
 //! 勾选「特殊符号」时展开自定义字符区（快捷 chips + 自定义输入）。
-//! 契约见 docs/plans/tool-specs/batch1.md。
 
 use gpui::{
     div, prelude::FluentBuilder as _, px, App, AppContext as _, ClipboardItem, IntoElement,

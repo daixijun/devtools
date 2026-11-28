@@ -30,7 +30,7 @@
 //! pub fn bcrypt_verify(password: &str, hash: &str) -> bool
 //! ```
 //!
-//! 错误文案必须与历史版本一致（见 docs/plans/tool-specs/batch1.md 算法规格）。
+//! 错误文案必须与历史版本一致。
 //!
 //! ## 与历史版本逐字节对齐的实现要点
 //!

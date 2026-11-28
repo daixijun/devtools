@@ -1,6 +1,5 @@
 //! JSON 格式化 + JSON/YAML/TOML 互转纯函数（含单元测试）。
 //!
-//! 契约见 docs/plans/tool-specs/batch1.md「JsonFormatter」「FormatConverter」两节；
 //! 错误文案必须与历史版本一致（前缀由 UI 层拼接）。
 
 use serde_json::Value as Json;
