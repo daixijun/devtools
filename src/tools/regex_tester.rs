@@ -202,48 +202,64 @@ async fn test_pcre_regex(request: RegexTestRequest) -> Result<RegexTestResult, S
         // PCRE2 中使用 ungreedy 的替代方法需要在模式中添加 (?U)
         // 暂时跳过此标志
     }
-    if !request.flags.unicode {
-        builder.utf(false);
-    }
+    // PCRE2 默认按非 UTF 编码编译（`.` 等按单字节匹配中文会产生碎片，
+    // 替换时还可能在多字节字符内部 panic）。显式跟随开关，
+    // ucp 让 \w \d 等具备 Unicode 语义，与 Rust 引擎的行为一致。
+    builder
+        .utf(request.flags.unicode)
+        .ucp(request.flags.unicode);
 
     match builder.build(&request.pattern) {
         Ok(re) => {
-            let mut matches = Vec::new();
             let text_bytes = request.text.as_bytes();
+            let mut matches = Vec::new();
 
-            // 使用 find_iter 查找所有匹配
-            for mat in re.find_iter(text_bytes).flatten() {
-                let start = mat.start();
-                let end = mat.end();
-                let full_match = String::from_utf8_lossy(&text_bytes[start..end]).to_string();
+            // captures_iter：一次迭代同时给出偏移与本次匹配的分组
+            //（旧实现循环内 re.captures 固定从头搜索，第二处起的分组全是第一处的）。
+            // 迭代器出错时不推进位置，必须显式处理，不能 flatten 吞掉后继续轮询
+            let mut iter = re.captures_iter(text_bytes);
+            loop {
+                let Some(captures) = iter.next() else {
+                    break;
+                };
+                let captures = match captures {
+                    Ok(c) => c,
+                    Err(e) => {
+                        return Ok(RegexTestResult {
+                            is_valid: false,
+                            error_message: Some(format!(
+                                "正则匹配失败: {}（常见原因：回溯超出 PCRE2 匹配限制）",
+                                e
+                            )),
+                            matches: Vec::new(),
+                            match_count: 0,
+                        });
+                    }
+                };
+                let whole = captures.get(0).expect("captures 的第 0 组总是存在");
+                let start = whole.start();
+                let end = whole.end();
+                let full_match = String::from_utf8_lossy(whole.as_bytes()).to_string();
 
-                // PCRE2 捕获组处理
+                // 捕获组
                 let mut groups = Vec::new();
+                for i in 1..captures.len() {
+                    groups.push(
+                        captures
+                            .get(i)
+                            .map(|g| String::from_utf8_lossy(g.as_bytes()).to_string()),
+                    );
+                }
+
+                // 命名捕获组
                 let mut named_groups = std::collections::HashMap::new();
-
-                // 尝试获取捕获组
-                if let Ok(Some(captures)) = re.captures(text_bytes) {
-                    for i in 1..captures.len() {
-                        if let Some(group_match) = captures.get(i) {
-                            groups.push(Some(
-                                String::from_utf8_lossy(group_match.as_bytes()).to_string(),
-                            ));
-                        } else {
-                            groups.push(None);
-                        }
-                    }
-
-                    // 命名捕获组
-                    for name_str in re.capture_names().iter().flatten() {
-                        if let Some(group_match) = captures.name(name_str) {
-                            named_groups.insert(
-                                name_str.to_string(),
-                                Some(String::from_utf8_lossy(group_match.as_bytes()).to_string()),
-                            );
-                        } else {
-                            named_groups.insert(name_str.to_string(), None);
-                        }
-                    }
+                for name_str in re.capture_names().iter().flatten() {
+                    named_groups.insert(
+                        name_str.to_string(),
+                        captures
+                            .name(name_str)
+                            .map(|g| String::from_utf8_lossy(g.as_bytes()).to_string()),
+                    );
                 }
 
                 matches.push(RegexMatch {
@@ -451,51 +467,34 @@ async fn test_re2_regex(request: RegexTestRequest) -> Result<RegexTestResult, St
         Ok(re) => {
             let mut matches = Vec::new();
 
-            // RE2 查找所有匹配
-            let mut start = 0;
-            while start <= request.text.len() {
-                if let Some(mat) = re.find(&request.text[start..]) {
-                    let match_start = start + mat.start();
-                    let match_end = start + mat.end();
-                    let full_match = mat.as_str().to_string();
+            // captures_iter：由 regex crate 处理空匹配的推进，避免手写
+            // 「start + 1」落进多字节字符内部导致 str 切片 panic
+            for caps in re.captures_iter(&request.text) {
+                let m = caps.get(0).expect("captures 的第 0 组总是存在");
+                let match_start = m.start();
+                let match_end = m.end();
+                let full_match = m.as_str().to_string();
 
-                    // RE2 简化的捕获组处理
-                    let mut groups = Vec::new();
-                    let mut named_groups = std::collections::HashMap::new();
-
-                    // 获取捕获组
-                    if let Some(caps) = re.captures(&request.text[start..]) {
-                        // 从索引1开始，0是完整匹配
-                        for i in 1..caps.len() {
-                            groups.push(caps.get(i).map(|m| m.as_str().to_string()));
-                        }
-
-                        // 命名捕获组
-                        for name_str in re.capture_names().flatten() {
-                            named_groups.insert(
-                                name_str.to_string(),
-                                caps.name(name_str).map(|m| m.as_str().to_string()),
-                            );
-                        }
-                    }
-
-                    matches.push(RegexMatch {
-                        full_match,
-                        start: match_start,
-                        end: match_end,
-                        groups,
-                        named_groups,
-                    });
-
-                    // 移动到下一个位置
-                    start = if match_end > match_start {
-                        match_end
-                    } else {
-                        match_start + 1
-                    };
-                } else {
-                    break;
+                let mut groups = Vec::new();
+                for i in 1..caps.len() {
+                    groups.push(caps.get(i).map(|g| g.as_str().to_string()));
                 }
+
+                let mut named_groups = std::collections::HashMap::new();
+                for name_str in re.capture_names().flatten() {
+                    named_groups.insert(
+                        name_str.to_string(),
+                        caps.name(name_str).map(|g| g.as_str().to_string()),
+                    );
+                }
+
+                matches.push(RegexMatch {
+                    full_match,
+                    start: match_start,
+                    end: match_end,
+                    groups,
+                    named_groups,
+                });
             }
 
             Ok(RegexTestResult {
@@ -605,38 +604,21 @@ async fn replace_re2_regex(request: RegexReplaceRequest) -> Result<RegexReplaceR
 
     match regex::Regex::new(&pattern) {
         Ok(re) => {
-            // RE2 的替换功能实现
+            // 单遍替换：由 regex crate 处理空匹配推进，替换后的文本不再被重扫
+            // （旧实现每轮在已替换的文本上从头 find，替换文本可被模式匹配时死循环）。
+            // NoExpand 保持与旧实现一致的字面量替换语义（不展开 $1）
             let result = if request.replace_all {
-                // 手动实现全部替换
-                let mut result_text = request.text.clone();
-                let mut replacement_count = 0;
-
-                loop {
-                    let find_result = re.find(&result_text);
-                    if let Some(mat) = find_result {
-                        let start = mat.start();
-                        let end = mat.end();
-                        result_text.replace_range(start..end, &request.replacement);
-                        replacement_count += 1;
-                        // 为了避免无限循环，如果替换后没有变化就停止
-                        if start == end {
-                            break;
-                        }
-                    } else {
-                        break;
-                    }
-                }
-
-                (result_text, replacement_count)
+                let replacement_count = re.find_iter(&request.text).count();
+                let text = re
+                    .replace_all(&request.text, regex::NoExpand(request.replacement.as_str()))
+                    .into_owned();
+                (text, replacement_count)
             } else {
-                // 单次替换
-                if let Some(mat) = re.find(&request.text) {
-                    let mut result_text = request.text.clone();
-                    result_text.replace_range(mat.start()..mat.end(), &request.replacement);
-                    (result_text, 1)
-                } else {
-                    (request.text.clone(), 0)
-                }
+                let has_match = re.find(&request.text).is_some();
+                let text = re
+                    .replace(&request.text, regex::NoExpand(request.replacement.as_str()))
+                    .into_owned();
+                (text, if has_match { 1 } else { 0 })
             };
 
             Ok(RegexReplaceResult {
@@ -673,57 +655,62 @@ async fn replace_pcre_regex(request: RegexReplaceRequest) -> Result<RegexReplace
         // PCRE2 中使用 ungreedy 的替代方法需要在模式中添加 (?U)
         // 暂时跳过此标志
     }
-    if !request.flags.unicode {
-        builder.utf(false);
-    }
+    // 与 test_pcre_regex 一致：显式跟随 UTF/UCP 开关（默认非 UTF 会在
+    // 多字节字符内部 replace_range panic）
+    builder
+        .utf(request.flags.unicode)
+        .ucp(request.flags.unicode);
 
     match builder.build(&request.pattern) {
         Ok(re) => {
             let text_bytes = request.text.as_bytes();
 
-            // 计算原始匹配数
-            let original_matches = re.find_iter(text_bytes).count();
-
-            // 简化替换实现
-            let result = if request.replace_all {
-                // 手动实现全部替换
-                let mut result_text = request.text.clone();
-                let mut replacement_count = 0;
-
-                // 重复查找并替换直到没有更多匹配
-                loop {
-                    let find_result = re.find(result_text.as_bytes());
-                    if let Ok(Some(mat)) = find_result {
-                        let start = mat.start();
-                        let end = mat.end();
-                        result_text.replace_range(start..end, &request.replacement);
-                        replacement_count += 1;
-                        if replacement_count >= original_matches * 2 {
-                            // 防止无限循环
-                            break;
-                        }
-                    } else {
-                        break;
+            // 先收集全部匹配再单遍拼装；迭代器错误显式上报
+            //（旧实现在替换后的文本上重复 find，靠「匹配数 × 2」硬截断，
+            // 替换文本可被模式匹配时既死循环又产出错误结果）
+            let mut ranges: Vec<(usize, usize)> = Vec::new();
+            let mut iter = re.find_iter(text_bytes);
+            loop {
+                let Some(next) = iter.next() else {
+                    break;
+                };
+                match next {
+                    Ok(m) => ranges.push((m.start(), m.end())),
+                    Err(e) => {
+                        return Ok(RegexReplaceResult {
+                            is_valid: false,
+                            error_message: Some(format!(
+                                "正则匹配失败: {}（常见原因：回溯超出 PCRE2 匹配限制）",
+                                e
+                            )),
+                            result: None,
+                            replacement_count: 0,
+                        });
                     }
                 }
+            }
 
-                (result_text, replacement_count)
+            let applied = if request.replace_all {
+                ranges.len()
             } else {
-                // 单次替换
-                if let Ok(Some(mat)) = re.find(text_bytes) {
-                    let mut result_text = request.text.clone();
-                    result_text.replace_range(mat.start()..mat.end(), &request.replacement);
-                    (result_text, 1)
-                } else {
-                    (request.text.clone(), 0)
-                }
+                ranges.len().min(1)
             };
+            let mut out = Vec::with_capacity(text_bytes.len());
+            let mut last = 0usize;
+            for (start, end) in ranges.iter().take(applied) {
+                out.extend_from_slice(&text_bytes[last..*start]);
+                out.extend_from_slice(request.replacement.as_bytes());
+                last = *end;
+            }
+            out.extend_from_slice(&text_bytes[last..]);
+
+            let result = String::from_utf8_lossy(&out).into_owned();
 
             Ok(RegexReplaceResult {
                 is_valid: true,
                 error_message: None,
-                result: Some(result.0),
-                replacement_count: result.1,
+                result: Some(result),
+                replacement_count: applied,
             })
         }
         Err(e) => Ok(RegexReplaceResult {
@@ -947,5 +934,107 @@ mod tests {
                 engine
             );
         }
+    }
+
+    fn replace_request(
+        pattern: &str,
+        text: &str,
+        replacement: &str,
+        engine: &str,
+    ) -> RegexReplaceRequest {
+        RegexReplaceRequest {
+            pattern: pattern.to_string(),
+            text: text.to_string(),
+            replacement: replacement.to_string(),
+            flags: RegexFlags::default(),
+            engine: engine.to_string(),
+            replace_all: true,
+        }
+    }
+
+    /// 替换文本本身可被模式匹配（a→aa）时不重扫已替换文本：见下两个用例
+
+    #[tokio::test]
+    async fn re2_replace_with_self_matching_replacement_is_single_pass() {
+        let req = replace_request("a", "a b a", "aa", "re2");
+        let result = replace_re2_regex(req).await.unwrap();
+        assert!(result.is_valid);
+        assert_eq!(result.result.as_deref(), Some("aa b aa"));
+        assert_eq!(result.replacement_count, 2);
+    }
+
+    #[tokio::test]
+    async fn pcre_replace_with_self_matching_replacement_is_single_pass() {
+        let req = replace_request("a", "a b a", "aa", "pcre");
+        let result = replace_pcre_regex(req).await.unwrap();
+        assert!(result.is_valid);
+        assert_eq!(result.result.as_deref(), Some("aa b aa"));
+        assert_eq!(result.replacement_count, 2);
+    }
+
+    /// 空匹配 + 非 ASCII 文本：旧 RE2 实现的 start+1 会切进多字节字符内部 panic
+    #[tokio::test]
+    async fn re2_test_empty_match_with_multibyte_text() {
+        let request = RegexTestRequest {
+            pattern: r"\d*".to_string(),
+            text: "a中1".to_string(),
+            flags: RegexFlags::default(),
+            engine: "re2".to_string(),
+        };
+        let result = test_re2_regex(request).await.unwrap();
+        assert!(result.is_valid);
+        let full: Vec<&str> = result
+            .matches
+            .iter()
+            .map(|m| m.full_match.as_str())
+            .collect();
+        // regex crate 语义：位置 0 空、位置 1（「中」前）空、位置 2 匹配 "1"；
+        // 非空匹配结束后的同一位置不再产出空匹配
+        assert_eq!(full, vec!["", "", "1"]);
+    }
+
+    /// unicode 开关必须生效：`.` 应按字符匹配中文而非字节碎片
+    #[tokio::test]
+    async fn pcre_test_unicode_flag_takes_effect() {
+        let request = RegexTestRequest {
+            pattern: ".".to_string(),
+            text: "中文".to_string(),
+            flags: RegexFlags::default(), // unicode: true
+            engine: "pcre".to_string(),
+        };
+        let result = test_pcre_regex(request).await.unwrap();
+        assert!(result.is_valid);
+        assert_eq!(result.match_count, 2);
+        assert_eq!(result.matches[0].full_match, "中");
+        assert_eq!(result.matches[1].full_match, "文");
+    }
+
+    /// 第二处匹配的分组取自该匹配本身（旧实现固定从头 captures，第二处沿用第一处的分组）
+    #[tokio::test]
+    async fn pcre_test_groups_follow_each_match() {
+        let request = RegexTestRequest {
+            pattern: r"(\d)-(\d)".to_string(),
+            text: "1-2 3-4".to_string(),
+            flags: RegexFlags::default(),
+            engine: "pcre".to_string(),
+        };
+        let result = test_pcre_regex(request).await.unwrap();
+        assert_eq!(result.match_count, 2);
+        assert_eq!(
+            result.matches[0]
+                .groups
+                .iter()
+                .map(|g| g.as_deref().unwrap_or(""))
+                .collect::<Vec<_>>(),
+            vec!["1", "2"]
+        );
+        assert_eq!(
+            result.matches[1]
+                .groups
+                .iter()
+                .map(|g| g.as_deref().unwrap_or(""))
+                .collect::<Vec<_>>(),
+            vec!["3", "4"]
+        );
     }
 }
