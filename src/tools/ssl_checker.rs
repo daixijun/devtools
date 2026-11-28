@@ -1131,14 +1131,26 @@ async fn check_http2_support(domain: &str, port: u16) -> Result<bool, String> {
 
     let connector = TlsConnector::from(Arc::new(config));
 
-    let stream = match tokio::net::TcpStream::connect(format!("{}:{}", domain, port)).await {
-        Ok(stream) => stream,
-        Err(_) => return Ok(false),
+    let stream = match tokio::time::timeout(
+        Duration::from_secs(10),
+        tokio::net::TcpStream::connect(format!("{}:{}", domain, port)),
+    )
+    .await
+    {
+        Ok(Ok(stream)) => stream,
+        Ok(Err(_)) => return Ok(false),
+        Err(_) => return Ok(false), // 超时
     };
 
-    let _tls_stream = match connector.connect(server_name, stream).await {
-        Ok(stream) => stream,
-        Err(_) => return Ok(false),
+    let _tls_stream = match tokio::time::timeout(
+        Duration::from_secs(10),
+        connector.connect(server_name, stream),
+    )
+    .await
+    {
+        Ok(Ok(stream)) => stream,
+        Ok(Err(_)) => return Ok(false),
+        Err(_) => return Ok(false), // 超时
     };
 
     // Check if HTTP/2 is supported by trying to make an HTTP/2 request
@@ -1255,20 +1267,35 @@ async fn check_alpn_support(domain: &str, port: u16) -> Result<Vec<String>, Stri
     let mut root_store = RootCertStore::empty();
     root_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
 
-    let config = rustls::ClientConfig::builder()
+    // 显式声明 ALPN 偏好：不设置时 rustls 不发 ALPN 扩展，
+    // 服务器不会协商任何协议，ALPN 探测恒为空
+    let mut config = rustls::ClientConfig::builder()
         .with_root_certificates(root_store)
         .with_no_client_auth();
+    config.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
 
     let connector = TlsConnector::from(Arc::new(config));
 
-    let stream = match tokio::net::TcpStream::connect(format!("{}:{}", domain, port)).await {
-        Ok(stream) => stream,
-        Err(_) => return Ok(vec![]),
+    let stream = match tokio::time::timeout(
+        Duration::from_secs(10),
+        tokio::net::TcpStream::connect(format!("{}:{}", domain, port)),
+    )
+    .await
+    {
+        Ok(Ok(stream)) => stream,
+        Ok(Err(_)) => return Ok(vec![]),
+        Err(_) => return Ok(vec![]), // 超时
     };
 
-    let tls_stream = match connector.connect(server_name, stream).await {
-        Ok(stream) => stream,
-        Err(_) => return Ok(vec![]),
+    let tls_stream = match tokio::time::timeout(
+        Duration::from_secs(10),
+        connector.connect(server_name, stream),
+    )
+    .await
+    {
+        Ok(Ok(stream)) => stream,
+        Ok(Err(_)) => return Ok(vec![]),
+        Err(_) => return Ok(vec![]), // 超时
     };
 
     // Get ALPN protocol from the connection
@@ -1284,19 +1311,11 @@ async fn check_alpn_support(domain: &str, port: u16) -> Result<Vec<String>, Stri
     }
 }
 
-async fn check_server_cipher_order(_domain: &str, _port: u16) -> Result<bool, String> {
-    // This is a simplified check - in a real implementation, you would
-    // need to make multiple connections with different cipher preferences
-    // to determine if the server honors the client's cipher order
-
-    // For now, we'll return a placeholder value
-    // In practice, you would:
-    // 1. Connect with one cipher order preference
-    // 2. Connect with a different cipher order preference
-    // 3. Compare which cipher was chosen in each case
-    // 4. If the server chooses differently based on client preference, it honors client order
-
-    Ok(false) // Default: server honors its own order
+async fn check_server_cipher_order(_domain: &str, _port: u16) -> Result<Option<bool>, String> {
+    // 尚未实现探测（需用两份顺序不同的套件列表各握手一次再比较选中结果）。
+    // 返回 None 让页面不显示结论——恒返回 false 曾让每个服务器都显示
+    // 「客户端优先」这一未经探测的断言
+    Ok(None)
 }
 
 async fn check_tls_connection(
@@ -1320,14 +1339,28 @@ async fn check_tls_connection(
 
     let connector = TlsConnector::from(Arc::new(config));
 
-    let stream = match tokio::net::TcpStream::connect(format!("{}:{}", domain, port)).await {
-        Ok(stream) => stream,
-        Err(e) => return Err(format!("TCP connection failed: {}", e)),
+    // TCP 连接与 TLS 握手都包超时：目标不可达时内核连接超时可达 75s+，
+    // 对端接受连接后不应答 ClientHello 时握手会永久挂起
+    let stream = match tokio::time::timeout(
+        Duration::from_secs(10),
+        tokio::net::TcpStream::connect(format!("{}:{}", domain, port)),
+    )
+    .await
+    {
+        Ok(Ok(stream)) => stream,
+        Ok(Err(e)) => return Err(format!("TCP connection failed: {}", e)),
+        Err(_) => return Err("TCP connection timed out (10s)".to_string()),
     };
 
-    let tls_stream = match connector.connect(server_name, stream).await {
-        Ok(stream) => stream,
-        Err(e) => return Err(format!("TLS connection failed: {}", e)),
+    let tls_stream = match tokio::time::timeout(
+        Duration::from_secs(10),
+        connector.connect(server_name, stream),
+    )
+    .await
+    {
+        Ok(Ok(stream)) => stream,
+        Ok(Err(e)) => return Err(format!("TLS connection failed: {}", e)),
+        Err(_) => return Err("TLS handshake timed out (10s)".to_string()),
     };
 
     // Get connection info and cipher suites
@@ -2455,7 +2488,8 @@ pub async fn check_ssl_info(domain: String) -> Result<SslInfo, String> {
                         };
 
                     // Get server cipher order preference
-                    let server_cipher_order = check_server_cipher_order(&domain, 443).await.ok();
+                    let server_cipher_order =
+                        check_server_cipher_order(&domain, 443).await.ok().flatten();
 
                     // Check HTTP/2 support
                     let http2_support = check_http2_support(&domain, 443).await.ok();
@@ -2539,10 +2573,11 @@ pub async fn check_ssl_info(domain: String) -> Result<SslInfo, String> {
                         alpn_protocols,
                     )
                 }
-                Err(_) => (
-                    None, None, None, None, None, None, None, None, None, None, None, None, None,
-                    None, None,
-                ),
+                Err(tls_err) => {
+                    // TLS 失败不再吞成全空结果：证书过期 / 自签 / 域名不匹配 /
+                    // 服务器不可达正是本工具要诊断的场景，必须把原因带回给用户
+                    return Err(format!("TLS 连接失败: {}", tls_err));
+                }
             }
         }
         Err(_) => (

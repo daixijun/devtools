@@ -107,6 +107,8 @@ pub const EN_PAGES_SSL: &[(&str, &str)] = &[
     ("证书链分析总结", "Certificate Chain Analysis"),
     ("✓ 证书链可验证至受信任的根 CA，",
         "✓ Certificate chain verifies to a trusted root CA, "),
+    ("△ 证书链完整，但根 CA 不在客户端信任库，",
+        "△ Chain complete, but its root CA is not in the client trust store, "),
     ("✗ 证书链无法验证到受信任的根 CA，",
         "✗ Certificate chain cannot be verified to a trusted root CA, "),
     ("共包含", "a total of"),
