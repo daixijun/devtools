@@ -65,9 +65,9 @@ cargo-check: ## cargo check
 	@printf "$(COLOR_CYAN)▶ cargo check...$(COLOR_RESET)\n"
 	$(CARGO) check
 
-clippy: ## cargo clippy (零警告标准)
+clippy: ## cargo clippy (零警告标准，与 CI 一致)
 	@printf "$(COLOR_CYAN)▶ cargo clippy...$(COLOR_RESET)\n"
-	$(CARGO) clippy --all-targets
+	$(CARGO) clippy --all-targets -- -D warnings
 
 test: ## cargo test (单元测试 + 黄金向量)
 	@printf "$(COLOR_CYAN)▶ cargo test...$(COLOR_RESET)\n"

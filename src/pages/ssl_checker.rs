@@ -161,6 +161,8 @@ impl SeverityFilter {
 pub struct SslChecker {
     domain_input: Entity<InputState>,
     loading: bool,
+    /// 检测代次：回填时序号不符即丢弃（检测期间 Enter / 最近记录可再次触发）
+    check_seq: u64,
     error: Option<String>,
     info: Option<SslInfo>,
     show_results: bool,
@@ -191,6 +193,7 @@ impl SslChecker {
         Self {
             domain_input,
             loading: false,
+            check_seq: 0,
             error: None,
             info: None,
             show_results: false,
@@ -206,6 +209,9 @@ impl SslChecker {
 
     /// 从输入框读取域名并开始检测。
     fn start_check(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.loading {
+            return; // 检测进行中：Enter / 最近记录不重复触发
+        }
         let domain = self.domain_input.read(cx).value().trim().to_string();
         if domain.is_empty() {
             self.error = Some(t("请输入域名").to_string());
@@ -219,6 +225,8 @@ impl SslChecker {
         }
 
         self.loading = true;
+        self.check_seq += 1;
+        let seq = self.check_seq;
         self.error = None;
         self.info = None;
         cx.notify();
@@ -228,7 +236,9 @@ impl SslChecker {
         });
         cx.spawn_in(window, async move |this, cx| {
             if let Some(result) = rx.next().await {
-                let _ = this.update_in(cx, |this, window, cx| this.on_result(result, window, cx));
+                let _ = this.update_in(cx, |this, window, cx| {
+                    this.on_result(seq, result, window, cx)
+                });
             }
         })
         .detach();
@@ -244,10 +254,14 @@ impl SslChecker {
     /// 检测结果回填（core_rt 异步完成）。
     fn on_result(
         &mut self,
+        seq: u64,
         result: Result<SslInfo, String>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        if seq != self.check_seq {
+            return; // 过期任务：新检测已发起，丢弃旧结果
+        }
         self.loading = false;
         match result {
             Ok(info) => {
@@ -663,11 +677,23 @@ impl SslChecker {
             .child(ui::card_header(t("协议与特性"), cx))
             .child(ui::info_rows(right_rows, cx));
 
-        div()
-            .flex()
-            .gap_3()
-            .child(left.flex_1())
-            .child(right.flex_1())
+        // 证书过期/自签名/域名不匹配等标准验证失败也会拿到完整诊断，
+        // 失败原因必须显式呈现，不能让用户误以为是正常结果
+        let mut overview = div().flex().flex_col().gap_3();
+        if let Some(errors) = &info.handshake_validation_errors {
+            let mut warnings = ui::card(cx).child(ui::card_header(t("握手验证"), cx));
+            for e in errors {
+                warnings = warnings.child(ui::warning_banner(e, cx));
+            }
+            overview = overview.child(warnings);
+        }
+        overview.child(
+            div()
+                .flex()
+                .gap_3()
+                .child(left.flex_1())
+                .child(right.flex_1()),
+        )
     }
 
     // -----------------------------------------------------------------------
@@ -880,15 +906,21 @@ impl SslChecker {
                         div()
                             .flex()
                             .gap_1()
-                            .text_color(if chain.is_complete {
+                            .text_color(if chain.is_complete && chain.trust_anchor_info.is_some() {
                                 tone_color(Tone::Success, cx)
+                            } else if chain.is_complete {
+                                // 链闭合但根不在客户端信任库（自签 / 私有 CA）：
+                                // 不能断言「可验证至受信任的根」
+                                tone_color(Tone::Warning, cx)
                             } else {
                                 tone_color(Tone::Danger, cx)
                             })
                             .child(format!(
                                 "{}{} {} {}",
-                                if chain.is_complete {
+                                if chain.is_complete && chain.trust_anchor_info.is_some() {
                                     t("✓ 证书链可验证至受信任的根 CA，")
+                                } else if chain.is_complete {
+                                    t("△ 证书链完整，但根 CA 不在客户端信任库，")
                                 } else {
                                     t("✗ 证书链无法验证到受信任的根 CA，")
                                 },
@@ -1786,9 +1818,9 @@ fn is_valid_domain(domain: &str) -> bool {
     true
 }
 
-/// TLS 1.0 / 1.1（含变体写法）视为已废弃。
+/// SSL 2.0 / 3.0（已废止）与 TLS 1.0 / 1.1（已弃用，含变体写法）视为不安全版本。
 fn is_deprecated_version(version: &str) -> bool {
-    version.contains("1.0") || version.contains("1.1")
+    version.starts_with("SSL ") || version.contains("1.0") || version.contains("1.1")
 }
 
 /// RFC3339 → 「YYYY-MM-DD HH:MM:SS +08:00」（无小数秒/解析不出时原样返回）。

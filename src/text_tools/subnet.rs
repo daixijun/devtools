@@ -1,6 +1,6 @@
 //! 子网计算纯逻辑。
 //!
-//! 契约见 docs/plans/tool-specs/batch1.md「SubnetCalculator」节：
+//! 行为契约：
 //! - 版本检测：IP 部分含 `.` → IPv4，含 `:` → IPv6；
 //! - IPv4 支持 IP/CIDR 与 IP/子网掩码 两种输入；IPv6 仅 CIDR；
 //! - 数字解析沿用宽松整数解析语义（见 [`super::timestamp::parse_int`]）；

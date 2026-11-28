@@ -235,11 +235,12 @@ impl PfxToPemConverter {
 
         let mut rx = crate::core_rt::submit(cx, async move {
             match rfd::FileDialog::new()
-                .add_filter("PEM Files", &["pem"])
+                .add_filter(t("PEM文件"), &["pem"])
                 .set_file_name(default_name)
                 .save_file()
             {
-                Some(path) => match std::fs::write(&path, content.as_bytes()) {
+                // 合并 PEM 含未加密私钥，以 0600 落盘
+                Some(path) => match devtools::utils::fs::write_text_file(&path, &content, true) {
                     Ok(_) => Some(Ok(path.to_string_lossy().to_string())),
                     Err(e) => Some(Err(format!("{}: {}", t("保存文件失败"), e))),
                 },

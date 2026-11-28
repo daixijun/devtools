@@ -4,7 +4,6 @@
 //! bcrypt 与 PBKDF2 计算较慢（bcrypt rounds=10 约「秒级」），经 core_rt 后台
 //! 线程执行、按钮进入 loading 态，完成后 spawn_in 回填结果；MD5/SHA 系列
 //! 为同步 hex 计算。PBKDF2 迭代次数两页共享同一 state。
-//! 契约见 docs/plans/tool-specs/batch1.md。
 
 use devtools::i18n::t;
 use futures::StreamExt as _;

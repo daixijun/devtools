@@ -15,7 +15,6 @@ use gpui::prelude::*;
 use gpui::{px, App, ClickEvent, Context, Entity, IntoElement, Window};
 use gpui_component::input::{EditorState, Input, InputEvent, TextareaState};
 use gpui_component::{ActiveTheme as _, Disableable as _, Sizable as _};
-use serde_json::Value;
 
 use crate::components::ui;
 
@@ -26,65 +25,20 @@ enum VerifyBanner {
     Error(String),
 }
 
-/// `-----BEGIN (RSA )?PUBLIC KEY-----` PEM 公钥校验（无 regex 依赖）。
-fn validate_pem(pem: &str, label: &str) -> bool {
-    let begin = |rsa: bool| {
-        if rsa {
-            format!("-----BEGIN RSA {label}-----")
-        } else {
-            format!("-----BEGIN {label}-----")
+/// 把业务层 JWT 解码错误翻成用户文案（静态 key 走 i18n，动态详情原样带出）。
+fn jwt_decode_error_message(err: devtools::crypto::JwtDecodeError) -> String {
+    match err {
+        devtools::crypto::JwtDecodeError::Malformed => {
+            t("无效的JWT格式：JWT应该包含3个部分，用点号分隔").to_string()
         }
-    };
-    let end = |rsa: bool| {
-        if rsa {
-            format!("-----END RSA {label}-----")
-        } else {
-            format!("-----END {label}-----")
+        devtools::crypto::JwtDecodeError::InvalidBase64(msg) => msg,
+        devtools::crypto::JwtDecodeError::InvalidHeaderJson(detail) => {
+            format!("{}: {detail}", t("Header 不是有效的 JSON"))
         }
-    };
-    let (begin_tok, end_tok) = if pem.contains(&begin(true)) {
-        (begin(true), end(true))
-    } else {
-        (begin(false), end(false))
-    };
-    if !pem.contains(begin_tok.as_str()) || !pem.contains(end_tok.as_str()) {
-        return false;
+        devtools::crypto::JwtDecodeError::InvalidPayloadJson(detail) => {
+            format!("{}: {detail}", t("Payload 不是有效的 JSON"))
+        }
     }
-    let body = pem
-        .replacen(begin_tok.as_str(), "", 1)
-        .replacen(end_tok.as_str(), "", 1);
-    let content = body.trim();
-    if content.is_empty() {
-        return false;
-    }
-    content
-        .chars()
-        .all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '/' | '=') || c.is_whitespace())
-}
-
-/// 解码 JWT：3 段校验 → base64url 解码 → JSON pretty(2)，签名段保留原文。
-fn decode_token(token: &str) -> Result<(String, String, String, String), String> {
-    let parts: Vec<&str> = token.split('.').collect();
-    if parts.len() != 3 {
-        return Err(t("无效的JWT格式：JWT应该包含3个部分，用点号分隔").to_string());
-    }
-    let header_raw = devtools::crypto::decode_jwt_segment(parts[0])?;
-    let header: Value = serde_json::from_str(&header_raw)
-        .map_err(|e| format!("{}: {e}", t("Header 不是有效的 JSON")))?;
-    let payload_raw = devtools::crypto::decode_jwt_segment(parts[1])?;
-    let payload: Value = serde_json::from_str(&payload_raw)
-        .map_err(|e| format!("{}: {e}", t("Payload 不是有效的 JSON")))?;
-    let algorithm = header
-        .get("alg")
-        .and_then(Value::as_str)
-        .unwrap_or("Unknown")
-        .to_string();
-    Ok((
-        serde_json::to_string_pretty(&header).unwrap_or(header_raw),
-        serde_json::to_string_pretty(&payload).unwrap_or(payload_raw),
-        parts[2].to_string(),
-        algorithm,
-    ))
 }
 
 /// 只读结果列通用骨架（标题行 + 复制按钮 + 内容主体）。
@@ -213,11 +167,12 @@ impl JwtDecode {
                 return;
             }
             let text = this.public_key.read(cx).value().to_string();
-            this.public_key_error = if text.trim().is_empty() || validate_pem(&text, "PUBLIC KEY") {
-                None
-            } else {
-                Some(t("RSA公钥格式无效，请检查或重新选择文件").to_string())
-            };
+            this.public_key_error =
+                if text.trim().is_empty() || devtools::crypto::validate_pem(&text, "PUBLIC KEY") {
+                    None
+                } else {
+                    Some(t("RSA公钥格式无效，请检查或重新选择文件").to_string())
+                };
             cx.notify();
         })
         .detach();
@@ -278,21 +233,27 @@ impl JwtDecode {
             return;
         }
         self.verify_result = None;
-        match decode_token(&token) {
-            Ok((header_text, payload_text, signature, algorithm)) => {
+        match devtools::crypto::decode_jwt(&token) {
+            Ok(decoded) => {
                 self.decode_error = None;
-                self.algorithm = algorithm;
+                self.algorithm = decoded.algorithm;
                 self.header_out
-                    .update(cx, |s, cx| s.set_value(header_text.as_str(), window, cx));
-                self.payload_out
-                    .update(cx, |s, cx| s.set_value(payload_text.as_str(), window, cx));
-                self.signature_out
-                    .update(cx, |s, cx| s.set_value(signature.as_str(), window, cx));
+                    .update(cx, |s, cx| s.set_value(decoded.header.as_str(), window, cx));
+                self.payload_out.update(cx, |s, cx| {
+                    s.set_value(decoded.payload.as_str(), window, cx)
+                });
+                self.signature_out.update(cx, |s, cx| {
+                    s.set_value(decoded.signature.as_str(), window, cx)
+                });
                 self.show_verification = true;
             }
-            Err(msg) => {
+            Err(err) => {
                 self.clear_results(window, cx);
-                self.decode_error = Some(format!("{}: {msg}", t("JWT解码失败")));
+                self.decode_error = Some(format!(
+                    "{}: {}",
+                    t("JWT解码失败"),
+                    jwt_decode_error_message(err)
+                ));
             }
         }
         cx.notify();
@@ -344,7 +305,7 @@ impl JwtDecode {
         let Some(text) = content else { return };
         self.public_key
             .update(cx, |s, cx| s.set_value(text.as_str(), window, cx));
-        self.public_key_error = if validate_pem(&text, "PUBLIC KEY") {
+        self.public_key_error = if devtools::crypto::validate_pem(&text, "PUBLIC KEY") {
             None
         } else {
             Some(t("RSA公钥格式无效，请检查或重新选择文件").to_string())
@@ -380,7 +341,7 @@ impl JwtDecode {
                 let key = self.public_key.read(cx).value().trim().to_string();
                 if key.is_empty() {
                     VerifyBanner::Warning(t("请输入RSA公钥").to_string())
-                } else if !validate_pem(&key, "PUBLIC KEY") {
+                } else if !devtools::crypto::validate_pem(&key, "PUBLIC KEY") {
                     VerifyBanner::Error(t("RSA公钥格式无效，请检查公钥内容").to_string())
                 } else {
                     match devtools::crypto::verify_jwt(token.trim(), &alg, &key) {

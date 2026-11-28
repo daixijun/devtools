@@ -2,7 +2,7 @@
 //!
 //! 表单（CN 必填 / RSA·ECC 密钥 / 主题字段 / SAN）→ core `generate_csr`
 //! 异步生成（openssl，秒级）；输出 CSR / 私钥 / 公钥三卡，各带复制 + 下载
-//! （rfd save_file 后台线程 + std::fs::write，成功 toast）。
+//! （保存流程走 components::file_save 共享组件）。
 
 use futures::StreamExt as _;
 use gpui::{div, prelude::*, px, App, Context, Entity, IntoElement, Render, SharedString, Window};
@@ -14,16 +14,9 @@ use gpui_component::{
 };
 
 use crate::components::select::SimpleSelectDelegate;
-use crate::components::{notify, select_state, ui};
+use crate::components::{file_save, select_state, ui};
 use devtools::i18n::t;
 use devtools::tools::csr_generator::{generate_csr, CsrGenerateRequest, GeneratedCsr};
-
-/// 文件保存结果（rfd save_file + std::fs::write，均在 core_rt 后台任务中执行）。
-enum SaveOutcome {
-    Cancelled,
-    Saved,
-    Failed(String),
-}
 
 pub struct CsrGenerator {
     // 主题字段
@@ -221,42 +214,6 @@ impl CsrGenerator {
             }
         }
         cx.notify();
-    }
-
-    /// 保存单张输出卡的内容：对话框与写文件都在后台任务中完成，成功 toast。
-    fn download(
-        &mut self,
-        content: String,
-        default_name: String,
-        ext: &'static str,
-        filter_name: &'static str,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        let mut rx = crate::core_rt::submit(cx, async move {
-            let Some(path) = rfd::FileDialog::new()
-                .add_filter(filter_name, &[ext])
-                .set_file_name(default_name)
-                .save_file()
-            else {
-                return SaveOutcome::Cancelled;
-            };
-            match std::fs::write(&path, content) {
-                Ok(_) => SaveOutcome::Saved,
-                Err(e) => SaveOutcome::Failed(format!("{}: {}", t("保存文件失败"), e)),
-            }
-        });
-
-        cx.spawn_in(window, async move |this, cx| {
-            if let Some(outcome) = rx.next().await {
-                let _ = this.update_in(cx, |_this, window, cx| match outcome {
-                    SaveOutcome::Cancelled => {}
-                    SaveOutcome::Saved => notify::toast_success(window, cx, t("文件保存成功")),
-                    SaveOutcome::Failed(message) => notify::toast_error(window, cx, message),
-                });
-            }
-        })
-        .detach();
     }
 }
 
@@ -557,14 +514,18 @@ impl CsrGenerator {
                              content: String,
                              default_name: String,
                              ext: &'static str,
-                             filter_name: &'static str| {
+                             filter_name: &'static str,
+                             private: bool| {
             move |_ev: &gpui::ClickEvent, window: &mut Window, cx: &mut App| {
-                entity.update(cx, |this, cx| {
-                    this.download(
-                        content.clone(),
-                        default_name.clone(),
-                        ext,
-                        filter_name,
+                entity.update(cx, |_this, cx| {
+                    file_save::save_text_file(
+                        file_save::SaveTextParams {
+                            content: content.clone(),
+                            default_name: default_name.clone(),
+                            filter_name,
+                            extension: ext,
+                            private,
+                        },
                         window,
                         cx,
                     );
@@ -587,6 +548,7 @@ impl CsrGenerator {
                 format!("{base}.csr"),
                 "csr",
                 t("CSR 文件"),
+                false,
             ),
             cx,
         );
@@ -605,6 +567,7 @@ impl CsrGenerator {
                 format!("{base}_private_key.key"),
                 "key",
                 t("私钥文件"),
+                true,
             ),
             cx,
         );
@@ -623,6 +586,7 @@ impl CsrGenerator {
                 format!("{base}_public_key.pem"),
                 "pem",
                 t("PEM 文件"),
+                false,
             ),
             cx,
         );

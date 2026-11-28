@@ -1,11 +1,13 @@
 use crate::tools::cert_chain_utils::{determine_chain_level, is_self_signed, issuer_in_chain};
 use chrono_tz::Asia::Shanghai;
-use rustls::pki_types::ServerName;
-use rustls::RootCertStore;
+use rustls::client::danger::{HandshakeSignatureValid, ServerCertVerified, ServerCertVerifier};
+use rustls::client::WebPkiServerVerifier;
+use rustls::pki_types::{CertificateDer, ServerName, UnixTime};
+use rustls::{CertificateError, DigitallySignedStruct, RootCertStore, SignatureScheme};
 use serde::{Deserialize, Serialize};
 use std::io::{BufRead, BufReader};
 use std::net::{IpAddr, SocketAddr, TcpStream};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio_rustls::{rustls, TlsConnector};
 use x509_parser::oid_registry::Oid;
@@ -111,6 +113,9 @@ pub struct SslInfo {
     pub spdy_support: Option<bool>,
     pub http3_support: Option<bool>,
     pub alpn_protocols: Option<Vec<String>>,
+    /// 标准证书验证在握手期间发现的问题（证书过期/自签名/域名不匹配等）。
+    /// 诊断工具放行握手以拿到完整信息，验证失败原因必须随结果带给用户
+    pub handshake_validation_errors: Option<Vec<String>>,
 }
 
 fn resolve_domain_ip(domain: &str) -> Result<IpAddr, String> {
@@ -413,7 +418,9 @@ async fn check_tls_version_support(domain: &str, port: u16, version: &str) -> bo
                 Err(_) => false,
             }
         }
-        // TLS 1.2 / 1.3 用 rustls 建立受限版本的真实连接
+        // TLS 1.2 / 1.3 用 rustls 建立受限版本的真实连接。
+        // 协议支持与证书有效性无关（诊断场景正是证书有问题的服务器），
+        // 使用放行型验证器，验证失败不影响版本探测结果
         _ => {
             // Initialize crypto provider
             let _ = rustls::crypto::ring::default_provider().install_default();
@@ -430,23 +437,7 @@ async fn check_tls_version_support(domain: &str, port: u16, version: &str) -> bo
                 &rustls::version::TLS12
             };
 
-            let mut root_store = RootCertStore::empty();
-            root_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
-
-            // Create a config that only supports the specific version
-            let version_config = rustls::ClientConfig::builder_with_provider(Arc::new(
-                rustls::crypto::ring::default_provider(),
-            ))
-            .with_protocol_versions(&[rustls_version])
-            .unwrap_or_else(|_| {
-                rustls::ClientConfig::builder_with_provider(Arc::new(
-                    rustls::crypto::ring::default_provider(),
-                ))
-                .with_safe_default_protocol_versions()
-                .expect("safe default protocol versions")
-            })
-            .with_root_certificates(root_store.clone())
-            .with_no_client_auth();
+            let (version_config, _) = diagnostics_client_config_with_versions(&[rustls_version]);
 
             let connector = TlsConnector::from(Arc::new(version_config));
 
@@ -1122,23 +1113,29 @@ async fn check_http2_support(domain: &str, port: u16) -> Result<bool, String> {
         Err(_) => return Ok(false),
     };
 
-    let mut root_store = RootCertStore::empty();
-    root_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
-
-    let config = rustls::ClientConfig::builder()
-        .with_root_certificates(root_store)
-        .with_no_client_auth();
-
+    let (config, _) = diagnostics_client_config();
     let connector = TlsConnector::from(Arc::new(config));
 
-    let stream = match tokio::net::TcpStream::connect(format!("{}:{}", domain, port)).await {
-        Ok(stream) => stream,
-        Err(_) => return Ok(false),
+    let stream = match tokio::time::timeout(
+        Duration::from_secs(10),
+        tokio::net::TcpStream::connect(format!("{}:{}", domain, port)),
+    )
+    .await
+    {
+        Ok(Ok(stream)) => stream,
+        Ok(Err(_)) => return Ok(false),
+        Err(_) => return Ok(false), // 超时
     };
 
-    let _tls_stream = match connector.connect(server_name, stream).await {
-        Ok(stream) => stream,
-        Err(_) => return Ok(false),
+    let _tls_stream = match tokio::time::timeout(
+        Duration::from_secs(10),
+        connector.connect(server_name, stream),
+    )
+    .await
+    {
+        Ok(Ok(stream)) => stream,
+        Ok(Err(_)) => return Ok(false),
+        Err(_) => return Ok(false), // 超时
     };
 
     // Check if HTTP/2 is supported by trying to make an HTTP/2 request
@@ -1252,23 +1249,33 @@ async fn check_alpn_support(domain: &str, port: u16) -> Result<Vec<String>, Stri
         Err(_) => return Ok(vec![]),
     };
 
-    let mut root_store = RootCertStore::empty();
-    root_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
-
-    let config = rustls::ClientConfig::builder()
-        .with_root_certificates(root_store)
-        .with_no_client_auth();
+    // 显式声明 ALPN 偏好：不设置时 rustls 不发 ALPN 扩展，
+    // 服务器不会协商任何协议，ALPN 探测恒为空
+    let (mut config, _) = diagnostics_client_config();
+    config.alpn_protocols = vec![b"h2".to_vec(), b"http/1.1".to_vec()];
 
     let connector = TlsConnector::from(Arc::new(config));
 
-    let stream = match tokio::net::TcpStream::connect(format!("{}:{}", domain, port)).await {
-        Ok(stream) => stream,
-        Err(_) => return Ok(vec![]),
+    let stream = match tokio::time::timeout(
+        Duration::from_secs(10),
+        tokio::net::TcpStream::connect(format!("{}:{}", domain, port)),
+    )
+    .await
+    {
+        Ok(Ok(stream)) => stream,
+        Ok(Err(_)) => return Ok(vec![]),
+        Err(_) => return Ok(vec![]), // 超时
     };
 
-    let tls_stream = match connector.connect(server_name, stream).await {
-        Ok(stream) => stream,
-        Err(_) => return Ok(vec![]),
+    let tls_stream = match tokio::time::timeout(
+        Duration::from_secs(10),
+        connector.connect(server_name, stream),
+    )
+    .await
+    {
+        Ok(Ok(stream)) => stream,
+        Ok(Err(_)) => return Ok(vec![]),
+        Err(_) => return Ok(vec![]), // 超时
     };
 
     // Get ALPN protocol from the connection
@@ -1284,25 +1291,195 @@ async fn check_alpn_support(domain: &str, port: u16) -> Result<Vec<String>, Stri
     }
 }
 
-async fn check_server_cipher_order(_domain: &str, _port: u16) -> Result<bool, String> {
-    // This is a simplified check - in a real implementation, you would
-    // need to make multiple connections with different cipher preferences
-    // to determine if the server honors the client's cipher order
+async fn check_server_cipher_order(_domain: &str, _port: u16) -> Result<Option<bool>, String> {
+    // 尚未实现探测（需用两份顺序不同的套件列表各握手一次再比较选中结果）。
+    // 返回 None 让页面不显示结论——恒返回 false 曾让每个服务器都显示
+    // 「客户端优先」这一未经探测的断言
+    Ok(None)
+}
 
-    // For now, we'll return a placeholder value
-    // In practice, you would:
-    // 1. Connect with one cipher order preference
-    // 2. Connect with a different cipher order preference
-    // 3. Compare which cipher was chosen in each case
-    // 4. If the server chooses differently based on client preference, it honors client order
+/// 客户端信任库（webpki roots）
+fn trust_root_store() -> RootCertStore {
+    let mut store = RootCertStore::empty();
+    store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
+    store
+}
 
-    Ok(false) // Default: server honors its own order
+/// 标准证书验证在握手期间发现的问题
+#[derive(Debug, Clone)]
+struct VerifyIssue {
+    /// 问题类别（发现项生成按类别判定，不对中文文案做字符串匹配）
+    kind: VerifyIssueKind,
+    /// 面向用户的中文说明
+    message: String,
+}
+
+/// 问题类别
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum VerifyIssueKind {
+    Expired,
+    NotValidYet,
+    UntrustedIssuer,
+    NameMismatch,
+    Revoked,
+    BadSignature,
+    /// TLS 握手报文签名验证失败
+    HandshakeSignature,
+    Other,
+}
+
+/// 把 rustls 证书验证错误分类并翻译为中文说明
+fn classify_certificate_error(err: &rustls::Error) -> (VerifyIssueKind, String) {
+    let (kind, text) = match err {
+        rustls::Error::InvalidCertificate(CertificateError::Expired)
+        | rustls::Error::InvalidCertificate(CertificateError::ExpiredContext { .. }) => {
+            (VerifyIssueKind::Expired, "证书已过期")
+        }
+        rustls::Error::InvalidCertificate(CertificateError::NotValidYet)
+        | rustls::Error::InvalidCertificate(CertificateError::NotValidYetContext { .. }) => {
+            (VerifyIssueKind::NotValidYet, "证书尚未生效")
+        }
+        rustls::Error::InvalidCertificate(CertificateError::UnknownIssuer) => (
+            VerifyIssueKind::UntrustedIssuer,
+            "证书链无法锚定到受信任的根 CA（自签名或非公认 CA 签发）",
+        ),
+        rustls::Error::InvalidCertificate(CertificateError::NotValidForName)
+        | rustls::Error::InvalidCertificate(CertificateError::NotValidForNameContext { .. }) => (
+            VerifyIssueKind::NameMismatch,
+            "证书不包含当前访问的域名（SAN 不匹配）",
+        ),
+        rustls::Error::InvalidCertificate(CertificateError::Revoked) => {
+            (VerifyIssueKind::Revoked, "证书已被吊销")
+        }
+        rustls::Error::InvalidCertificate(CertificateError::UnhandledCriticalExtension) => {
+            (VerifyIssueKind::Other, "证书包含未被处理的 critical 扩展")
+        }
+        rustls::Error::InvalidCertificate(CertificateError::BadSignature) => (
+            VerifyIssueKind::BadSignature,
+            "证书签名无法通过其颁发者公钥验证",
+        ),
+        _ => (VerifyIssueKind::Other, "证书验证失败"),
+    };
+    (kind, format!("{}；标准验证错误：{}", text, err))
+}
+
+/// 诊断用途的服务器证书验证器：完整执行 webpki 标准验证并记录失败原因，
+/// 无论结果如何都放行握手——证书过期/自签名/域名不匹配的服务器正是
+/// 本工具要诊断的对象，不能因验证失败而拿不到任何证书信息。
+#[derive(Debug)]
+struct DiagnosticsCertVerifier {
+    inner: Arc<WebPkiServerVerifier>,
+    issues: Arc<Mutex<Vec<VerifyIssue>>>,
+}
+
+impl DiagnosticsCertVerifier {
+    fn new(issues: Arc<Mutex<Vec<VerifyIssue>>>) -> Arc<Self> {
+        let inner = WebPkiServerVerifier::builder_with_provider(
+            Arc::new(trust_root_store()),
+            Arc::new(rustls::crypto::ring::default_provider()),
+        )
+        .build()
+        .expect("webpki 服务器验证器构建失败");
+        Arc::new(Self { inner, issues })
+    }
+
+    fn record(&self, issue: VerifyIssue) {
+        let mut issues = self.issues.lock().unwrap();
+        if !issues.iter().any(|i| i.message == issue.message) {
+            issues.push(issue);
+        }
+    }
+}
+
+impl ServerCertVerifier for DiagnosticsCertVerifier {
+    fn verify_server_cert(
+        &self,
+        end_entity: &CertificateDer<'_>,
+        intermediates: &[CertificateDer<'_>],
+        server_name: &ServerName<'_>,
+        ocsp_response: &[u8],
+        now: UnixTime,
+    ) -> Result<ServerCertVerified, rustls::Error> {
+        match self.inner.verify_server_cert(
+            end_entity,
+            intermediates,
+            server_name,
+            ocsp_response,
+            now,
+        ) {
+            Ok(verified) => Ok(verified),
+            Err(e) => {
+                let (kind, message) = classify_certificate_error(&e);
+                self.record(VerifyIssue { kind, message });
+                Ok(ServerCertVerified::assertion())
+            }
+        }
+    }
+
+    fn verify_tls12_signature(
+        &self,
+        message: &[u8],
+        cert: &CertificateDer<'_>,
+        dss: &DigitallySignedStruct,
+    ) -> Result<HandshakeSignatureValid, rustls::Error> {
+        match self.inner.verify_tls12_signature(message, cert, dss) {
+            Ok(valid) => Ok(valid),
+            Err(e) => {
+                self.record(VerifyIssue {
+                    kind: VerifyIssueKind::HandshakeSignature,
+                    message: format!("TLS 1.2 握手签名验证失败；标准验证错误：{}", e),
+                });
+                Ok(HandshakeSignatureValid::assertion())
+            }
+        }
+    }
+
+    fn verify_tls13_signature(
+        &self,
+        message: &[u8],
+        cert: &CertificateDer<'_>,
+        dss: &DigitallySignedStruct,
+    ) -> Result<HandshakeSignatureValid, rustls::Error> {
+        match self.inner.verify_tls13_signature(message, cert, dss) {
+            Ok(valid) => Ok(valid),
+            Err(e) => {
+                self.record(VerifyIssue {
+                    kind: VerifyIssueKind::HandshakeSignature,
+                    message: format!("TLS 1.3 握手签名验证失败；标准验证错误：{}", e),
+                });
+                Ok(HandshakeSignatureValid::assertion())
+            }
+        }
+    }
+
+    fn supported_verify_schemes(&self) -> Vec<SignatureScheme> {
+        self.inner.supported_verify_schemes()
+    }
+}
+
+/// 诊断用客户端配置（默认协议版本）：证书验证失败也放行握手，
+/// 并返回记录验证问题的事件槽
+fn diagnostics_client_config() -> (rustls::ClientConfig, Arc<Mutex<Vec<VerifyIssue>>>) {
+    diagnostics_client_config_with_versions(rustls::DEFAULT_VERSIONS)
+}
+
+/// 诊断用客户端配置（指定协议版本），供单版本协议探测使用
+fn diagnostics_client_config_with_versions(
+    versions: &[&'static rustls::SupportedProtocolVersion],
+) -> (rustls::ClientConfig, Arc<Mutex<Vec<VerifyIssue>>>) {
+    let issues = Arc::new(Mutex::new(Vec::new()));
+    let verifier = DiagnosticsCertVerifier::new(issues.clone());
+    let config = rustls::ClientConfig::builder_with_protocol_versions(versions)
+        .dangerous()
+        .with_custom_certificate_verifier(verifier)
+        .with_no_client_auth();
+    (config, issues)
 }
 
 async fn check_tls_connection(
     domain: &str,
     port: u16,
-) -> Result<(Vec<u8>, Vec<CipherSuite>, Vec<Vec<u8>>), String> {
+) -> Result<(Vec<u8>, Vec<CipherSuite>, Vec<Vec<u8>>, Vec<VerifyIssue>), String> {
     // Initialize crypto provider
     let _ = rustls::crypto::ring::default_provider().install_default();
 
@@ -1311,23 +1488,32 @@ async fn check_tls_connection(
         Err(_) => return Err("Invalid domain name".to_string()),
     };
 
-    let mut root_store = RootCertStore::empty();
-    root_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
-
-    let config = rustls::ClientConfig::builder()
-        .with_root_certificates(root_store)
-        .with_no_client_auth();
+    let (config, verifier_issues) = diagnostics_client_config();
 
     let connector = TlsConnector::from(Arc::new(config));
 
-    let stream = match tokio::net::TcpStream::connect(format!("{}:{}", domain, port)).await {
-        Ok(stream) => stream,
-        Err(e) => return Err(format!("TCP connection failed: {}", e)),
+    // TCP 连接与 TLS 握手都包超时：目标不可达时内核连接超时可达 75s+，
+    // 对端接受连接后不应答 ClientHello 时握手会永久挂起
+    let stream = match tokio::time::timeout(
+        Duration::from_secs(10),
+        tokio::net::TcpStream::connect(format!("{}:{}", domain, port)),
+    )
+    .await
+    {
+        Ok(Ok(stream)) => stream,
+        Ok(Err(e)) => return Err(format!("TCP connection failed: {}", e)),
+        Err(_) => return Err("TCP connection timed out (10s)".to_string()),
     };
 
-    let tls_stream = match connector.connect(server_name, stream).await {
-        Ok(stream) => stream,
-        Err(e) => return Err(format!("TLS connection failed: {}", e)),
+    let tls_stream = match tokio::time::timeout(
+        Duration::from_secs(10),
+        connector.connect(server_name, stream),
+    )
+    .await
+    {
+        Ok(Ok(stream)) => stream,
+        Ok(Err(e)) => return Err(format!("TLS connection failed: {}", e)),
+        Err(_) => return Err("TLS handshake timed out (10s)".to_string()),
     };
 
     // Get connection info and cipher suites
@@ -1361,7 +1547,12 @@ async fn check_tls_connection(
                 });
             }
 
-            return Ok((cert.to_vec(), cipher_suites, cert_chain));
+            return Ok((
+                cert.to_vec(),
+                cipher_suites,
+                cert_chain,
+                verifier_issues.lock().unwrap().clone(),
+            ));
         }
     }
 
@@ -2440,8 +2631,9 @@ pub async fn check_ssl_info(domain: String) -> Result<SslInfo, String> {
         spdy_support,
         http3_support,
         alpn_protocols,
+        handshake_validation_errors,
     ) = match check_tls_connection(&domain, 443).await {
-        Ok((cert_der, negotiated_suites, cert_chain_ders)) => {
+        Ok((cert_der, negotiated_suites, cert_chain_ders, handshake_issues)) => {
             match parse_certificate(&cert_der) {
                 Ok(cert) => {
                     // Build certificate chain（与 CertificateViewer 共用链级别判定）
@@ -2455,7 +2647,8 @@ pub async fn check_ssl_info(domain: String) -> Result<SslInfo, String> {
                         };
 
                     // Get server cipher order preference
-                    let server_cipher_order = check_server_cipher_order(&domain, 443).await.ok();
+                    let server_cipher_order =
+                        check_server_cipher_order(&domain, 443).await.ok().flatten();
 
                     // Check HTTP/2 support
                     let http2_support = check_http2_support(&domain, 443).await.ok();
@@ -2496,12 +2689,15 @@ pub async fn check_ssl_info(domain: String) -> Result<SslInfo, String> {
                         aggregate_cipher_suites(per_version, negotiated_suites.first().cloned());
 
                     // 仅证据判定的安全发现（每条都有真实探测证据）
-                    let findings = detect_cve_vulnerabilities(
+                    let mut findings = detect_cve_vulnerabilities(
                         &cert,
                         &supported_versions,
                         &cipher_suites,
                         compression_supported,
                     );
+                    // 过期/未生效已由证据发现覆盖，此处只补仅握手验证才能
+                    // 观测到的信任锚缺失与域名不匹配（否则无效证书可能拿到 A+）
+                    findings.extend(cert_trust_findings(&handshake_issues));
 
                     // 统一评分：四类加权分 + 等级封顶，Overview 与 Security 页共用
                     let assessment =
@@ -2521,6 +2717,17 @@ pub async fn check_ssl_info(domain: String) -> Result<SslInfo, String> {
                         details: assessment.details,
                     };
 
+                    let handshake_validation_errors = if handshake_issues.is_empty() {
+                        None
+                    } else {
+                        Some(
+                            handshake_issues
+                                .iter()
+                                .map(|issue| issue.message.clone())
+                                .collect(),
+                        )
+                    };
+
                     (
                         Some(cert),
                         certificate_chain,
@@ -2537,17 +2744,19 @@ pub async fn check_ssl_info(domain: String) -> Result<SslInfo, String> {
                         spdy_support,
                         http3_support,
                         alpn_protocols,
+                        handshake_validation_errors,
                     )
                 }
-                Err(_) => (
-                    None, None, None, None, None, None, None, None, None, None, None, None, None,
-                    None, None,
-                ),
+                Err(tls_err) => {
+                    // TLS 失败不再吞成全空结果：证书过期 / 自签 / 域名不匹配 /
+                    // 服务器不可达正是本工具要诊断的场景，必须把原因带回给用户
+                    return Err(format!("TLS 连接失败: {}", tls_err));
+                }
             }
         }
         Err(_) => (
             None, None, None, None, None, None, None, None, None, None, None, None, None, None,
-            None,
+            None, None,
         ),
     };
 
@@ -2570,7 +2779,54 @@ pub async fn check_ssl_info(domain: String) -> Result<SslInfo, String> {
         spdy_support,
         http3_support,
         alpn_protocols,
+        handshake_validation_errors,
     })
+}
+
+/// 由握手验证问题补充证书信任类发现项。
+/// 过期/未生效已由证据发现覆盖（EXPIRED-CERT 与链节点校验），此处只补
+/// 仅握手验证才能观测到的两类：信任锚缺失与域名不匹配
+fn cert_trust_findings(issues: &[VerifyIssue]) -> Vec<SecurityVulnerability> {
+    let mut findings = Vec::new();
+    for issue in issues {
+        match issue.kind {
+            VerifyIssueKind::UntrustedIssuer => {
+                findings.push(SecurityVulnerability {
+                    id: "CERT-UNTRUSTED".to_string(),
+                    name: "证书链不受信任".to_string(),
+                    description: "证书链无法锚定到客户端信任库中的根 CA（自签名或非公认 CA 签发），现代浏览器会直接拒绝连接。".to_string(),
+                    severity: "CRITICAL".to_string(),
+                    category: "certificate".to_string(),
+                    evidence: issue.message.clone(),
+                    cve_ids: vec![],
+                    affected_components: vec![],
+                    remediation: "使用受信任 CA 签发的证书；内网/自建服务可改用企业受信 CA 签发，或将根证书分发安装到客户端信任库。".to_string(),
+                    references: vec!["https://datatracker.ietf.org/doc/html/rfc7525".to_string()],
+                    grade_cap: "F".to_string(),
+                });
+            }
+            VerifyIssueKind::NameMismatch => {
+                findings.push(SecurityVulnerability {
+                    id: "CERT-NAME-MISMATCH".to_string(),
+                    name: "证书域名不匹配".to_string(),
+                    description: "证书的 SAN 不包含当前访问的域名，浏览器会直接拒绝连接。"
+                        .to_string(),
+                    severity: "HIGH".to_string(),
+                    category: "certificate".to_string(),
+                    evidence: issue.message.clone(),
+                    cve_ids: vec![],
+                    affected_components: vec![],
+                    remediation:
+                        "更换为覆盖该域名（含通配符）的证书，或在证书中补充对应 SAN 条目。"
+                            .to_string(),
+                    references: vec!["https://datatracker.ietf.org/doc/html/rfc6125".to_string()],
+                    grade_cap: "F".to_string(),
+                });
+            }
+            _ => {}
+        }
+    }
+    findings
 }
 
 #[cfg(test)]
@@ -3019,6 +3275,98 @@ mod tests {
             .find(|f| f.id == "TLS-COMPRESSION")
             .expect("应报告 TLS 压缩");
         assert_eq!(crime.grade_cap, "C");
+    }
+
+    // ===== 诊断验证器 =====
+
+    #[test]
+    fn test_classify_certificate_error_mapping() {
+        use rustls::Error as RustlsError;
+        let (kind, msg) =
+            classify_certificate_error(&RustlsError::InvalidCertificate(CertificateError::Expired));
+        assert_eq!(kind, VerifyIssueKind::Expired);
+        assert!(msg.contains("证书已过期"));
+        assert!(msg.contains("标准验证错误"), "应附带原始错误详情: {}", msg);
+
+        let (kind, msg) = classify_certificate_error(&RustlsError::InvalidCertificate(
+            CertificateError::UnknownIssuer,
+        ));
+        assert_eq!(kind, VerifyIssueKind::UntrustedIssuer);
+        assert!(msg.contains("根 CA"));
+
+        let (kind, _) = classify_certificate_error(&RustlsError::InvalidCertificate(
+            CertificateError::NotValidForName,
+        ));
+        assert_eq!(kind, VerifyIssueKind::NameMismatch);
+
+        let (kind, _) = classify_certificate_error(&RustlsError::General("boom".to_string()));
+        assert_eq!(kind, VerifyIssueKind::Other);
+    }
+
+    #[test]
+    fn test_cert_trust_findings_only_for_unmatched_kinds() {
+        // 过期/未生效由证据发现覆盖，不生成重复发现项
+        let issues = vec![
+            VerifyIssue {
+                kind: VerifyIssueKind::Expired,
+                message: "证书已过期".to_string(),
+            },
+            VerifyIssue {
+                kind: VerifyIssueKind::UntrustedIssuer,
+                message: "自签名".to_string(),
+            },
+            VerifyIssue {
+                kind: VerifyIssueKind::NameMismatch,
+                message: "SAN 不匹配".to_string(),
+            },
+        ];
+        let findings = cert_trust_findings(&issues);
+        let ids: Vec<&str> = findings.iter().map(|f| f.id.as_str()).collect();
+        assert_eq!(ids, vec!["CERT-UNTRUSTED", "CERT-NAME-MISMATCH"]);
+        // 信任锚缺失为 CRITICAL，域名不匹配为 HIGH，均封顶 F：
+        // 等级不会被无效证书美化
+        let untrusted = findings.iter().find(|f| f.id == "CERT-UNTRUSTED").unwrap();
+        let mismatch = findings
+            .iter()
+            .find(|f| f.id == "CERT-NAME-MISMATCH")
+            .unwrap();
+        assert_eq!(untrusted.severity, "CRITICAL");
+        assert_eq!(untrusted.grade_cap, "F");
+        assert_eq!(mismatch.severity, "HIGH");
+        assert_eq!(mismatch.grade_cap, "F");
+    }
+
+    #[test]
+    fn test_diagnostics_verifier_records_and_proceeds() {
+        // 用未加入信任库的测试证书探测：webpki 标准验证必然失败，
+        // 诊断验证器应记录问题并放行（这是证书问题可诊断的前提）
+        let leaf_der = pem_to_der(LEAF_PEM);
+        let issues = Arc::new(Mutex::new(Vec::new()));
+        let verifier = DiagnosticsCertVerifier::new(issues.clone());
+        let result = verifier.verify_server_cert(
+            &CertificateDer::from(leaf_der),
+            &[],
+            &ServerName::try_from("example.test").unwrap(),
+            &[],
+            UnixTime::now(),
+        );
+        assert!(result.is_ok(), "诊断验证器必须放行握手");
+        let recorded = issues.lock().unwrap().clone();
+        assert!(!recorded.is_empty(), "应记录验证问题");
+        assert!(
+            recorded.iter().any(|i| matches!(
+                i.kind,
+                VerifyIssueKind::UntrustedIssuer | VerifyIssueKind::Expired
+            )),
+            "自建 CA 的证书应报告信任锚缺失或过期，实际: {:?}",
+            recorded.iter().map(|i| i.kind.clone()).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn test_diagnostics_client_config_verifier_wired() {
+        let (_config, issues) = diagnostics_client_config();
+        assert!(issues.lock().unwrap().is_empty());
     }
 
     // ===== 端到端冒烟测试（需真实网络，默认忽略）=====

@@ -419,6 +419,17 @@ mod install {
         }
 
         let mounted_app = mnt.join("DevTools.app");
+
+        // 先把旧 bundle 改名让位：cp -R 的目标为已存在目录时会把源目录
+        // 复制进去（得到 DevTools.app/DevTools.app），旧版本从未被替换
+        // 还返回成功。正在运行的进程持有 inode，rename 不影响其继续运行
+        let backup = app.with_file_name(format!(
+            "{}.old",
+            app.file_name().unwrap_or_default().to_string_lossy()
+        ));
+        let _ = std::fs::remove_dir_all(&backup);
+        std::fs::rename(&app, &backup).map_err(|e| format!("备份旧版本失败: {e}"))?;
+
         let copy = Cmd::new("cp")
             .arg("-R")
             .arg(&mounted_app)
@@ -432,12 +443,23 @@ mod install {
             .output();
 
         match copy {
-            Ok(out) if out.status.success() => Ok(()),
-            Ok(out) => Err(format!(
-                "复制应用失败: {}",
-                String::from_utf8_lossy(&out.stderr).trim()
-            )),
-            Err(e) => Err(format!("执行复制失败: {e}")),
+            Ok(out) if out.status.success() => {
+                // 安装成功：清理旧 bundle
+                let _ = std::fs::remove_dir_all(&backup);
+                Ok(())
+            }
+            Ok(out) => {
+                // 复制失败：恢复旧版本
+                let _ = std::fs::rename(&backup, &app);
+                Err(format!(
+                    "复制应用失败: {}",
+                    String::from_utf8_lossy(&out.stderr).trim()
+                ))
+            }
+            Err(e) => {
+                let _ = std::fs::rename(&backup, &app);
+                Err(format!("执行复制失败: {e}"))
+            }
         }
     }
 
@@ -502,7 +524,21 @@ mod install {
         let backup = current.with_extension("exe.old");
         let _ = std::fs::remove_file(&backup);
         std::fs::rename(&current, &backup).map_err(|e| format!("备份旧版本失败: {e}"))?;
-        std::fs::rename(&new_exe, &current).map_err(|e| format!("安装新版本失败: {e}"))?;
+
+        // 新 exe 位于缓存目录，与安装目录可能不同卷（跨卷 rename 必失败）：
+        // 先复制到安装目录同卷的临时名再原子改名，失败即回滚旧版本
+        let staged = current.with_extension("exe.new");
+        let _ = std::fs::remove_file(&staged);
+        let install = std::fs::copy(&new_exe, &staged)
+            .map_err(|e| format!("复制新版本到安装目录失败: {e}"))
+            .and_then(|_| {
+                std::fs::rename(&staged, &current).map_err(|e| format!("安装新版本失败: {e}"))
+            });
+        if let Err(e) = install {
+            let _ = std::fs::remove_file(&staged);
+            let _ = std::fs::rename(&backup, &current);
+            return Err(e);
+        }
         Ok(())
     }
 
@@ -527,11 +563,19 @@ mod install {
         std::fs::set_permissions(&new_exe, std::fs::Permissions::from_mode(0o755))
             .map_err(|e| format!("设置执行权限失败: {e}"))?;
 
-        // Linux 允许 rename 覆盖运行中的二进制（旧 inode 由进程继续持有）
+        // Linux 允许 rename 覆盖运行中的二进制（旧 inode 由进程继续持有）。
+        // 新 exe 位于缓存目录，与安装目录可能不同卷（跨卷 rename 必失败）：
+        // 先复制到安装目录同卷的临时名再原子改名
         let current =
             std::env::current_exe().map_err(|e| format!("获取当前可执行文件失败: {e}"))?;
-        std::fs::rename(&new_exe, &current)
-            .map_err(|e| format!("安装新版本失败（安装目录可能无写权限）: {e}"))?;
+        let staged = current.with_file_name("devtools.new");
+        std::fs::copy(&new_exe, &staged).map_err(|e| format!("复制新版本到安装目录失败: {e}"))?;
+        std::fs::set_permissions(&staged, std::fs::Permissions::from_mode(0o755))
+            .map_err(|e| format!("设置执行权限失败: {e}"))?;
+        if let Err(e) = std::fs::rename(&staged, &current) {
+            let _ = std::fs::remove_file(&staged);
+            return Err(format!("安装新版本失败（安装目录可能无写权限）: {e}"));
+        }
         Ok(())
     }
 

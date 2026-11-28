@@ -2,7 +2,6 @@
 //!
 //! 挂载及任意选项变化自动生成；长度用 gpui-component Slider（4–64）；
 //! 勾选「特殊符号」时展开自定义字符区（快捷 chips + 自定义输入）。
-//! 契约见 docs/plans/tool-specs/batch1.md。
 
 use gpui::{
     div, prelude::FluentBuilder as _, px, App, AppContext as _, ClipboardItem, IntoElement,
@@ -128,7 +127,7 @@ impl PasswordGenerator {
             None => {
                 self.strength = None;
                 self.no_charset = true;
-                self.password = pw::NO_CHARSET_MSG.to_string();
+                self.password = t(pw::NO_CHARSET_MSG).to_string();
             }
         }
         cx.notify();
@@ -173,7 +172,7 @@ impl Render for PasswordGenerator {
                 pw::Strength::Medium => theme.colors.warning,
                 pw::Strength::Weak => theme.colors.danger,
             };
-            ui::badge(&format!("{}: {}", t("强度"), s.label()), color)
+            ui::badge(&format!("{}: {}", t("强度"), t(s.label())), color)
         });
         let password_for_copy = password.clone();
 

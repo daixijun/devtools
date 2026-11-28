@@ -65,6 +65,7 @@ pub const EN_PAGES_SSL: &[(&str, &str)] = &[
     ("证书有效期", "Certificate Validity"),
     ("证书颁发者", "Certificate Issuer"),
     ("协议与特性", "Protocols & Features"),
+    ("握手验证", "Handshake Verification"),
     // ---- 证书信息 ----
     ("未获取到证书信息", "No certificate information available"),
     ("位", "bits"),
@@ -107,6 +108,8 @@ pub const EN_PAGES_SSL: &[(&str, &str)] = &[
     ("证书链分析总结", "Certificate Chain Analysis"),
     ("✓ 证书链可验证至受信任的根 CA，",
         "✓ Certificate chain verifies to a trusted root CA, "),
+    ("△ 证书链完整，但根 CA 不在客户端信任库，",
+        "△ Chain complete, but its root CA is not in the client trust store, "),
     ("✗ 证书链无法验证到受信任的根 CA，",
         "✗ Certificate chain cannot be verified to a trusted root CA, "),
     ("共包含", "a total of"),

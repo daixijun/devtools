@@ -118,4 +118,5 @@ pub const EN_PAGES_MEDIA: &[(&str, &str)] = &[
     ("转换中...", "Converting..."),
     ("开始转换", "Start Conversion"),
     ("清空列表", "Clear list"),
+    ("输出路径冲突：多个文件映射到同一输出", "Output path conflict: multiple files map to the same output"),
 ];

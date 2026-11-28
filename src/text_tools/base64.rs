@@ -1,6 +1,6 @@
 //! Base64 编解码。
 //!
-//! 契约见 docs/plans/tool-specs/batch1.md 算法节：
+//! 算法契约：
 //! - 编码：UTF-8 字节 → 标准 Base64；
 //! - 解码先做 canonical 校验（「s 是某字节序列的
 //!   标准 Base64 编码」，再把字节按 UTF-8 解码。

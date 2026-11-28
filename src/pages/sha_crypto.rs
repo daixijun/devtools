@@ -59,6 +59,8 @@ pub struct ShaCrypto {
     batch_processing: bool,
     /// 批量选择代数（丢弃过期批量循环的状态回写）。
     batch_generation: u64,
+    /// 批量任务所用的算法（表头/结果以批次为准，切换全局算法不影响进行中的批次）。
+    batch_algorithm: String,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -122,7 +124,9 @@ impl ShaCrypto {
                 if let SelectEvent::Confirm(Some(value)) = event {
                     this.algorithm = value.to_string();
                     this.compute_text_hash(cx);
-                    if this.file_path.is_some() && !this.file_loading {
+                    // 切换算法必须重算文件哈希：跳过会让旧算法的结果
+                    // 冠以新算法标题（start_file_hash 已靠 file_task 自增作废旧任务）
+                    if this.file_path.is_some() {
                         this.start_file_hash(cx);
                     }
                     cx.notify();
@@ -148,6 +152,7 @@ impl ShaCrypto {
             batch_files: Vec::new(),
             batch_processing: false,
             batch_generation: 0,
+            batch_algorithm: "sha256".to_string(),
         }
     }
 
@@ -313,6 +318,8 @@ impl ShaCrypto {
             })
             .collect();
         self.batch_processing = !self.batch_files.is_empty();
+        // 表头与批量结果以批次所用算法为准（任务闭包里捕获的是同一值）
+        self.batch_algorithm = self.algorithm.clone();
         cx.notify();
 
         let algorithm = self.algorithm.clone();
@@ -623,7 +630,8 @@ impl ShaCrypto {
 
     fn render_batch_tab(&self, cx: &Context<Self>) -> Div {
         let theme = cx.theme().colors;
-        let name = algorithm_name(&self.algorithm);
+        // 批量表头取批次所用算法（进行中切换全局算法不改变批次归属）
+        let name = algorithm_name(&self.batch_algorithm);
         let has_completed = self
             .batch_files
             .iter()

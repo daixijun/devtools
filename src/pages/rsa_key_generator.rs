@@ -19,7 +19,7 @@ use gpui_component::{
 };
 
 use crate::components::select::{select_state, SimpleSelectDelegate};
-use crate::components::{notify, ui};
+use crate::components::{file_save, ui};
 use devtools::i18n::t;
 use devtools::tools::rsa_key_generator::{RsaGenerateRequest, RsaKeyPair};
 
@@ -97,8 +97,8 @@ impl KeyFormat {
     /// 公钥下载扩展名（OpenSSH 为 .pub，其余 .pem）。
     fn public_extension(self) -> (&'static str, &'static str) {
         match self {
-            KeyFormat::OpenSsh => ("Public Key Files", "pub"),
-            _ => ("PEM Files", "pem"),
+            KeyFormat::OpenSsh => (t("公钥文件"), "pub"),
+            _ => (t("PEM文件"), "pem"),
         }
     }
 }
@@ -266,9 +266,18 @@ impl RsaKeyGenerator {
             return;
         };
         let format = self.key_format;
-        let text = format.private_text(&pair).to_string();
-        let default_name = format!("rsa_private_key_{}.pem", format.id());
-        self.save_text_file(text, default_name, "PEM Files", "pem", window, cx);
+        file_save::save_text_file(
+            file_save::SaveTextParams {
+                content: format.private_text(&pair).to_string(),
+                default_name: format!("rsa_private_key_{}.pem", format.id()),
+                filter_name: t("PEM文件"),
+                extension: "pem",
+                // 私钥等敏感内容：Unix 下以 0600 落盘
+                private: true,
+            },
+            window,
+            cx,
+        );
     }
 
     /// 下载公钥（默认名 rsa_public_key_{格式}.{ext}，OpenSSH 为 .pub）。
@@ -277,53 +286,22 @@ impl RsaKeyGenerator {
             return;
         };
         let format = self.key_format;
-        let text = format.public_text(&pair).to_string();
-        let default_name = format!(
-            "rsa_public_key_{}.{}",
-            format.id(),
-            format.public_extension().1
-        );
         let (filter_name, extension) = format.public_extension();
-        self.save_text_file(text, default_name, filter_name, extension, window, cx);
-    }
-
-    /// 通用文本保存（rfd save_file + std::fs::write，均在后台线程）。
-    fn save_text_file(
-        &mut self,
-        content: String,
-        default_name: String,
-        filter_name: &'static str,
-        extension: &'static str,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        let mut rx = crate::core_rt::submit(cx, async move {
-            match rfd::FileDialog::new()
-                .add_filter(filter_name, &[extension])
-                .set_file_name(default_name)
-                .save_file()
-            {
-                Some(path) => match std::fs::write(&path, content.as_bytes()) {
-                    Ok(_) => Some(Ok(path.to_string_lossy().to_string())),
-                    Err(e) => Some(Err(format!("{}: {}", t("保存文件失败"), e))),
-                },
-                None => None,
-            }
-        });
-        cx.spawn_in(window, async move |this, cx| {
-            if let Some(result) = StreamExt::next(&mut rx).await {
-                let _ = this.update_in(cx, |_this, window, cx| match result {
-                    None => {} // 用户取消
-                    Some(Ok(_)) => {
-                        notify::toast_success(window, cx, t("文件保存成功"));
-                    }
-                    Some(Err(message)) => {
-                        notify::toast_error(window, cx, message);
-                    }
-                });
-            }
-        })
-        .detach();
+        file_save::save_text_file(
+            file_save::SaveTextParams {
+                content: format.public_text(&pair).to_string(),
+                default_name: format!(
+                    "rsa_public_key_{}.{}",
+                    format.id(),
+                    format.public_extension().1
+                ),
+                filter_name,
+                extension,
+                private: false,
+            },
+            window,
+            cx,
+        );
     }
 
     /// 消费 Enter 置位的生成请求（render 开头调用，此时有 window）。

@@ -3,6 +3,7 @@
 //! 工具实现只应依赖本模块的辅助函数与 gpui-component 的现成组件，
 //! 保证各工具页面的视觉与交互一致。
 
+pub mod file_save;
 pub mod notify;
 pub mod select;
 pub mod ui;

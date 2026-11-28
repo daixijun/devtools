@@ -127,10 +127,6 @@ fn read_heic_image(input_path: &Path) -> Result<DynamicImage, String> {
     // 确保句柄在函数结束时被释放
     let _handle_guard = ImageHandleGuard(handle);
 
-    // 获取图像信息
-    let width = unsafe { heif_image_handle_get_width(handle) };
-    let height = unsafe { heif_image_handle_get_height(handle) };
-
     // 解码图像
     let mut img = std::ptr::null_mut();
     let result = unsafe {
@@ -150,28 +146,65 @@ fn read_heic_image(input_path: &Path) -> Result<DynamicImage, String> {
     // 确保图像在函数结束时被释放
     let _img_guard = ImageGuard(img);
 
-    // 获取图像数据
-    let mut stride = 0;
-    let data_ptr =
-        unsafe { heif_image_get_plane(img, heif_channel_heif_channel_interleaved, &mut stride) };
+    // 按行拷贝像素平面（stride 感知，见 copy_heif_rgba_plane 文档）
+    let img_buffer = copy_heif_rgba_plane(img)?;
 
+    // 转换为 DynamicImage
+    Ok(DynamicImage::ImageRgba8(img_buffer))
+}
+
+/// 从解码后的 HEIF 图像按行拷贝 interleaved RGBA 平面。
+///
+/// libheif 契约（heif_image.h）：stride 是独立的「每行字节数」，按对齐规则
+/// 可能大于 width×4，不能把平面当作紧密排列缓冲整体拷贝（宽度不满足
+/// 特定条件时会逐行错位）；stride 与尺寸相乘须用 checked_mul，
+/// 超大图溢出会导致非法内存访问。宽高取自解码后的图像本体
+///（而非解码前的 handle——两者可能因旋转/裁剪不一致）。
+#[cfg(target_os = "macos")]
+fn copy_heif_rgba_plane(
+    img: *mut heif_image,
+) -> Result<image::ImageBuffer<image::Rgba<u8>, Vec<u8>>, String> {
+    let width = unsafe { heif_image_get_width(img, heif_channel_heif_channel_interleaved) };
+    let height = unsafe { heif_image_get_height(img, heif_channel_heif_channel_interleaved) };
+    if width <= 0 || height <= 0 {
+        return Err("图像尺寸无效".to_string());
+    }
+
+    let mut stride: usize = 0;
+    let data_ptr = unsafe {
+        heif_image_get_plane_readonly2(img, heif_channel_heif_channel_interleaved, &mut stride)
+    };
     if data_ptr.is_null() {
         return Err("无法获取图像数据".to_string());
     }
 
-    // 创建 image buffer
-    let img_buffer = unsafe {
-        image::ImageBuffer::<image::Rgba<u8>, Vec<u8>>::from_raw(
-            width as u32,
-            height as u32,
-            std::slice::from_raw_parts(data_ptr as *const u8, (stride * height) as usize).to_vec(),
-        )
-    };
+    let width_usize = width as usize;
+    let height_usize = height as usize;
+    let row_bytes = width_usize
+        .checked_mul(4)
+        .ok_or_else(|| "图像尺寸过大".to_string())?;
+    if stride < row_bytes {
+        return Err(format!(
+            "libheif 行跨度异常: stride={stride} 小于所需 {row_bytes}"
+        ));
+    }
+    let total = row_bytes
+        .checked_mul(height_usize)
+        .ok_or_else(|| "图像尺寸过大".to_string())?;
 
-    let img_buffer = img_buffer.ok_or_else(|| "无法创建图像缓冲区".to_string())?;
+    let mut buf = Vec::with_capacity(total);
+    for row in 0..height_usize {
+        let offset = row
+            .checked_mul(stride)
+            .ok_or_else(|| "图像尺寸过大".to_string())?;
+        // SAFETY: data_ptr 由 libheif 返回，指向 stride × height 的合法平面内存；
+        // 每行取 [offset, offset + row_bytes)，恒在平面范围内
+        let row_slice = unsafe { std::slice::from_raw_parts(data_ptr.add(offset), row_bytes) };
+        buf.extend_from_slice(row_slice);
+    }
 
-    // 转换为 DynamicImage
-    Ok(DynamicImage::ImageRgba8(img_buffer))
+    image::ImageBuffer::<image::Rgba<u8>, Vec<u8>>::from_raw(width as u32, height as u32, buf)
+        .ok_or_else(|| "图像数据长度不匹配".to_string())
 }
 
 /// 非 macOS 平台无 libheif（HEIF 属 Apple 生态），HEIC 输入直接报不支持
@@ -605,6 +638,9 @@ pub async fn convert_image(
 
     // 验证输入文件
     let input_path = validate_input_file(&request.input_path)?;
+
+    // 输出守卫：同文件 / 已存在的输出一律拒绝，防止覆盖损毁源文件或既有产物
+    super::ensure_output_safe(&request.input_path, &request.output_path)?;
 
     // 验证输出格式
     let supported_formats = ["jpg", "jpeg", "png", "gif", "bmp", "tiff", "webp", "ico"];

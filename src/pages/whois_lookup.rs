@@ -1,20 +1,17 @@
 //! 域名 Whois 查询（多源）。
 //!
-//! 批量查询：textarea 按 `\s , ;` 切分 + 校验 + 去重 + 小写化；并发 6
-//! （tokio Semaphore）+ 按源 700ms 限流，逐域名调用 core
-//! `query_whois_unified(domain, source)`；每个结果经 mpsc 流式回流 UI 更新行状态。
+//! 批量查询：textarea 按 `\s , ;` 切分 + 校验 + 去重 + 小写化；
+//! 并发/限流/服务器映射等批量编排在业务层
+//! `tools::whois::run_whois_batch`（每完成一个域名立即回流一条结果），
+//! 本页经 `core_rt::submit_multi` 提交并逐条更新行状态。
 //!
-//! 注：查询历史实现为内存会话态（保留 200 条，
-//! 展示最近 20 条）。批量任务函数写在本文件
-//! （core_rt.rs 为共享桥），经 `crate::core_rt::submit` 提交
-//! 到 tokio Runtime 执行。
+//! 注：查询历史实现为内存会话态（保留 200 条，展示最近 20 条）。
 
-use std::collections::{HashMap, HashSet};
-use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::collections::HashSet;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use devtools::i18n::t;
-use devtools::tools::whois::{query_whois_unified, WhoisParsed};
+use devtools::tools::whois::{server_for_mode, WhoisBatchItem, WhoisParsed};
 use futures::StreamExt as _;
 use gpui::{
     div, px, App, AppContext as _, Context, Div, Entity, InteractiveElement as _, IntoElement,
@@ -32,86 +29,13 @@ use serde::Serialize;
 use crate::components::{notify, select::select_state, select::SimpleSelectDelegate, ui};
 
 // ---------------------------------------------------------------------------
-// 批量任务（提交到 core_rt 的 tokio Runtime 执行）
+// 常量
 // ---------------------------------------------------------------------------
 
-/// 并发上限。
-const BATCH_CONCURRENCY: usize = 6;
-/// 每个查询源的最小间隔（限流）。
-const RATE_INTERVAL_MS: u64 = 700;
 /// 历史容量（内存会话态）。
 const HISTORY_CAP: usize = 200;
 /// 历史展示条数。
 const HISTORY_SHOW: usize = 20;
-
-/// 单个域名的批量查询结果（经 mpsc 回流 UI）。
-struct WhoisBatchItem {
-    domain: String,
-    parsed: Option<WhoisParsed>,
-    error: Option<String>,
-    duration_ms: u64,
-}
-
-/// 按源限流：预占该源下一个可用时间片，需要时 sleep 到位。
-/// 并发任务依次排队（首个立即放行，后续逐个 +700ms），避免同时唤醒挤在同一时刻。
-async fn whois_rate_wait(last_query: &Mutex<HashMap<String, Instant>>, key: &str) {
-    let wait = {
-        let mut map = last_query.lock().unwrap();
-        let now = Instant::now();
-        let earliest = map.get(key).copied().unwrap_or(now);
-        let delay = earliest.saturating_duration_since(now);
-        map.insert(
-            key.to_string(),
-            earliest.max(now) + Duration::from_millis(RATE_INTERVAL_MS),
-        );
-        delay
-    };
-    if wait > Duration::ZERO {
-        tokio::time::sleep(wait).await;
-    }
-}
-
-/// 批量查询任务：返回结果流（每个域名完成后立即回流一条）。
-/// 并发 6：先取 Semaphore 许可再 spawn，任务结束（发送结果后）归还许可。
-/// auto 模式下 core 内部会按 TLD 依次尝试多个服务器，此处按所选「源模式」
-/// 整体限流 700ms。
-async fn run_whois_batch(
-    domains: Vec<String>,
-    server: Option<String>,
-    rate_key: &'static str,
-) -> futures::channel::mpsc::UnboundedReceiver<WhoisBatchItem> {
-    let (tx, rx) = futures::channel::mpsc::unbounded::<WhoisBatchItem>();
-    let semaphore = Arc::new(tokio::sync::Semaphore::new(BATCH_CONCURRENCY));
-    let last_query: Arc<Mutex<HashMap<String, Instant>>> = Arc::new(Mutex::new(HashMap::new()));
-
-    for domain in domains {
-        // 占并发名额（最多 BATCH_CONCURRENCY 个在途查询）
-        let Ok(permit) = semaphore.clone().acquire_owned().await else {
-            break;
-        };
-        let tx = tx.clone();
-        let last_query = last_query.clone();
-        let server = server.clone();
-        tokio::spawn(async move {
-            let started = Instant::now();
-            whois_rate_wait(&last_query, rate_key).await;
-            let res = query_whois_unified(domain.clone(), server.clone()).await;
-            let (parsed, error) = match res {
-                Ok(p) => (Some(p), None),
-                Err(e) => (None, Some(e)),
-            };
-            let _ = tx.unbounded_send(WhoisBatchItem {
-                domain,
-                parsed,
-                error,
-                duration_ms: started.elapsed().as_millis() as u64,
-            });
-            drop(permit); // 归还并发名额
-        });
-    }
-    // 所有任务结束后 tx 全部 drop，rx 的 Stream 随即结束（= 批量完成）
-    rx
-}
 
 // ---------------------------------------------------------------------------
 // UI 状态
@@ -179,16 +103,6 @@ fn is_valid_domain(s: &str) -> bool {
         }
         true
     })
-}
-
-/// 查询源模式 → (传给 core 的 server 参数, 限流 key)。
-fn server_for_mode(mode: &str) -> (Option<String>, &'static str) {
-    match mode {
-        "whois_verisign" => (Some("whois.verisign-grs.com".to_string()), "whois_verisign"),
-        "whois_cndns" => (Some("grs-whois.cndns.com".to_string()), "whois_cndns"),
-        "whois_hichina" => (Some("grs-whois.hichina.com".to_string()), "whois_hichina"),
-        _ => (Some("auto".to_string()), "auto"),
-    }
 }
 
 fn now_millis() -> u128 {
@@ -414,16 +328,13 @@ impl WhoisLookup {
         self.running = true;
         cx.notify();
 
-        let mut rx = crate::core_rt::submit(cx, async move {
-            run_whois_batch(domains, server, rate_key).await
+        // 业务层批量编排：每完成一个域名立即回流一条结果
+        let mut rx = crate::core_rt::submit_multi(cx, move |tx| async move {
+            devtools::tools::whois::run_whois_batch(domains, server, rate_key, tx).await
         });
         cx.spawn_in(window, async move |this, cx| {
-            // core_rt 返回的「结果流本身」经第一个 mpsc 送达
-            let Some(mut stream) = rx.next().await else {
-                return;
-            };
             // 逐个回流：每条结果立即更新对应行
-            while let Some(item) = stream.next().await {
+            while let Some(item) = rx.next().await {
                 let alive = this
                     .update_in(cx, |this, _window, cx| this.apply_item(item, cx))
                     .is_ok();

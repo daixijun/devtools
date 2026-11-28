@@ -30,7 +30,7 @@
 //! pub fn bcrypt_verify(password: &str, hash: &str) -> bool
 //! ```
 //!
-//! 错误文案必须与历史版本一致（见 docs/plans/tool-specs/batch1.md 算法规格）。
+//! 错误文案必须与历史版本一致。
 //!
 //! ## 与历史版本逐字节对齐的实现要点
 //!
@@ -47,14 +47,12 @@
 //!   PEM 私钥兼容 PKCS#1（手工包裹为 PKCS#8）与 PKCS#8；PEM 公钥兼容 PKCS#1
 //!   （手工包裹为 SPKI）与 SPKI，DER 长编码 `0x80 | lenBytes` 与历史版本一致。
 
-use aes::cipher::generic_array::GenericArray;
 // cipher::KeyInit/KeyIvInit 即 crypto_common 的同名 trait，同一份导入同时覆盖
 // aes 分组密码与 HMAC 的 new_from_slice/new_from_slices。
-use aes::cipher::{BlockDecrypt, BlockEncrypt, KeyInit, KeyIvInit};
+use aes::cipher::{BlockCipherDecrypt, BlockCipherEncrypt, KeyInit, KeyIvInit};
 use aes::{Aes128, Aes192, Aes256};
 use base64::engine::general_purpose;
 use base64::Engine;
-use cfb_mode::cipher::AsyncStreamCipher;
 use cfb_mode::{Decryptor as CfbDecryptor, Encryptor as CfbEncryptor};
 use ctr::cipher::StreamCipher;
 use ctr::Ctr128BE;
@@ -369,17 +367,17 @@ impl AesCipher {
 
     fn encrypt_block(&self, block: &mut [u8; AES_BLOCK_SIZE]) {
         match self {
-            Self::A128(c) => BlockEncrypt::encrypt_block(c, GenericArray::from_mut_slice(block)),
-            Self::A192(c) => BlockEncrypt::encrypt_block(c, GenericArray::from_mut_slice(block)),
-            Self::A256(c) => BlockEncrypt::encrypt_block(c, GenericArray::from_mut_slice(block)),
+            Self::A128(c) => BlockCipherEncrypt::encrypt_block(c, block.into()),
+            Self::A192(c) => BlockCipherEncrypt::encrypt_block(c, block.into()),
+            Self::A256(c) => BlockCipherEncrypt::encrypt_block(c, block.into()),
         }
     }
 
     fn decrypt_block(&self, block: &mut [u8; AES_BLOCK_SIZE]) {
         match self {
-            Self::A128(c) => BlockDecrypt::decrypt_block(c, GenericArray::from_mut_slice(block)),
-            Self::A192(c) => BlockDecrypt::decrypt_block(c, GenericArray::from_mut_slice(block)),
-            Self::A256(c) => BlockDecrypt::decrypt_block(c, GenericArray::from_mut_slice(block)),
+            Self::A128(c) => BlockCipherDecrypt::decrypt_block(c, block.into()),
+            Self::A192(c) => BlockCipherDecrypt::decrypt_block(c, block.into()),
+            Self::A256(c) => BlockCipherDecrypt::decrypt_block(c, block.into()),
         }
     }
 }
@@ -536,6 +534,14 @@ pub fn aes_encrypt(text: &str, key: &str, iv: &str, opts: &AesOptions) -> Result
         parse_iv(iv)?
     };
     let mut data = pad_data(text.as_bytes().to_vec(), opts.padding);
+    // ECB/CBC 为块模式：NoPadding 时明文必须已对齐（与解密侧校验对称），
+    // 否则 ecb/cbc_apply 的末块 try_into 会 panic
+    if matches!(opts.mode, AesMode::Ecb | AesMode::Cbc)
+        && opts.padding == AesPadding::NoPadding
+        && !data.len().is_multiple_of(AES_BLOCK_SIZE)
+    {
+        return Err("加密失败：NoPadding 模式下明文长度必须为 16 字节的整数倍".to_string());
+    }
     apply_mode(opts.mode, &key, &iv, &mut data, false)?;
     Ok(general_purpose::STANDARD.encode(&data))
 }
@@ -578,6 +584,94 @@ pub fn generate_random_iv_hex() -> String {
 // ---------------------------------------------------------------------------
 // JWT/JWS
 // ---------------------------------------------------------------------------
+
+/// JWT 三段解码结果（header/payload 为 pretty 化 JSON 文本，签名段保留原文）。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DecodedJwt {
+    pub header: String,
+    pub payload: String,
+    pub signature: String,
+    pub algorithm: String,
+}
+
+/// JWT 解码错误（结构化：静态文案由壳层经 i18n 翻译，动态详情随变体携带）。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum JwtDecodeError {
+    /// 段数不为 3
+    Malformed,
+    /// base64url 段解码失败（携带完整错误文案）
+    InvalidBase64(String),
+    /// Header 不是有效 JSON（携带 serde 错误详情）
+    InvalidHeaderJson(String),
+    /// Payload 不是有效 JSON（携带 serde 错误详情）
+    InvalidPayloadJson(String),
+}
+
+/// 解码 JWT 的三段结构：base64url 解码 → JSON 校验 → pretty 化（2 空格缩进）。
+/// alg 缺失时 `algorithm` 为 "Unknown"；签名段不解码、保留原文。
+pub fn decode_jwt(token: &str) -> Result<DecodedJwt, JwtDecodeError> {
+    let parts: Vec<&str> = token.split('.').collect();
+    if parts.len() != 3 {
+        return Err(JwtDecodeError::Malformed);
+    }
+    let header_bytes = base64_url_to_bytes(parts[0]).map_err(JwtDecodeError::InvalidBase64)?;
+    let header_raw = String::from_utf8_lossy(&header_bytes).into_owned();
+    let header: Value = serde_json::from_str(&header_raw)
+        .map_err(|e| JwtDecodeError::InvalidHeaderJson(e.to_string()))?;
+    let payload_bytes = base64_url_to_bytes(parts[1]).map_err(JwtDecodeError::InvalidBase64)?;
+    let payload_raw = String::from_utf8_lossy(&payload_bytes).into_owned();
+    let payload: Value = serde_json::from_str(&payload_raw)
+        .map_err(|e| JwtDecodeError::InvalidPayloadJson(e.to_string()))?;
+    let algorithm = header
+        .get("alg")
+        .and_then(Value::as_str)
+        .unwrap_or("Unknown")
+        .to_string();
+    Ok(DecodedJwt {
+        header: serde_json::to_string_pretty(&header).unwrap_or(header_raw),
+        payload: serde_json::to_string_pretty(&payload).unwrap_or(payload_raw),
+        signature: parts[2].to_string(),
+        algorithm,
+    })
+}
+
+/// 校验 PEM 外壳：`-----BEGIN [RSA ]<label>-----` / `-----END ...-----` 标记
+/// 存在、正文非空且仅含 base64 字符与空白。
+/// 只做外壳校验（不解析密钥内容）；`label` 如 "PUBLIC KEY" / "PRIVATE KEY"。
+pub fn validate_pem(pem: &str, label: &str) -> bool {
+    let begin = |rsa: bool| {
+        if rsa {
+            format!("-----BEGIN RSA {label}-----")
+        } else {
+            format!("-----BEGIN {label}-----")
+        }
+    };
+    let end = |rsa: bool| {
+        if rsa {
+            format!("-----END RSA {label}-----")
+        } else {
+            format!("-----END {label}-----")
+        }
+    };
+    let (begin_tok, end_tok) = if pem.contains(&begin(true)) {
+        (begin(true), end(true))
+    } else {
+        (begin(false), end(false))
+    };
+    if !pem.contains(begin_tok.as_str()) || !pem.contains(end_tok.as_str()) {
+        return false;
+    }
+    let body = pem
+        .replacen(begin_tok.as_str(), "", 1)
+        .replacen(end_tok.as_str(), "", 1);
+    let content = body.trim();
+    if content.is_empty() {
+        return false;
+    }
+    content
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '/' | '=') || c.is_whitespace())
+}
 
 /// alg -> openssl 摘要（HS/RS × 256/384/512）。
 fn alg_message_digest(alg: &str) -> Option<MessageDigest> {
@@ -826,7 +920,11 @@ pub fn verify_jwt(token: &str, alg: &str, key: &str) -> Result<bool, String> {
     if alg.starts_with("HS") {
         let expected = hmac_sign(alg, key.as_bytes(), signing_input.as_bytes())
             .ok_or_else(|| format!("不支持的签名算法：{}", alg))?;
-        // 常量时间比较（长度不同返回 false），对齐 WebCrypto subtle.verify 的行为
+        // openssl::memcmp::eq 要求等长输入（不等长会 assert! panic），
+        // 长度不等（空签名 / 截断签名等）先按验签失败处理，再做常量时间比较
+        if expected.len() != signature.len() {
+            return Ok(false);
+        }
         Ok(openssl::memcmp::eq(&expected, &signature))
     } else {
         // 空签名 / 长度与模长不符的签名由 RSA_verify 判 false；空签名提前拦截，
@@ -856,8 +954,25 @@ pub fn bcrypt_hash(password: &str, rounds: u32) -> Result<String, String> {
     bcrypt::hash(password, rounds).map_err(|e| format!("bcrypt哈希计算失败: {}", e))
 }
 
-/// bcrypt 验证；哈希格式非法时按验证失败处理。
+/// 验证侧允许的最大 cost。cost 每加 1 耗时翻倍（20 在现代机器约数十秒级），
+/// 超过该值的哈希直接按验证失败处理——验证页的 cost 取自粘贴的哈希本身，
+/// 不设上限时粘贴 `$2b$31$…` 会让后台 worker 满载数十分钟以上
+///（加密侧由页面限制 4-20）。
+const BCRYPT_VERIFY_MAX_COST: u32 = 20;
+
+/// 解析 bcrypt 哈希内嵌的 cost（`$2b$NN$`）。
+fn bcrypt_hash_cost(hash: &str) -> Option<u32> {
+    hash.split('$').nth(2)?.parse().ok()
+}
+
+/// bcrypt 验证；哈希格式非法或 cost 超限（见 [`BCRYPT_VERIFY_MAX_COST`]）时
+/// 按验证失败处理。
 pub fn bcrypt_verify(password: &str, hash: &str) -> bool {
+    if let Some(cost) = bcrypt_hash_cost(hash) {
+        if cost > BCRYPT_VERIFY_MAX_COST {
+            return false;
+        }
+    }
     bcrypt::verify(password, hash).unwrap_or(false)
 }
 
@@ -1212,6 +1327,48 @@ mod tests {
     }
 
     #[test]
+    fn aes_encrypt_no_padding_rejects_unaligned_block_modes() {
+        // NoPadding + 块模式（ECB/CBC）遇到非对齐明文此前会在末块 try_into panic，
+        // 现在与解密侧对称地返回错误；流模式（CTR 等）不受影响
+        let cbc = AesOptions {
+            mode: AesMode::Cbc,
+            key_size: 128,
+            padding: AesPadding::NoPadding,
+        };
+        let err = aes_encrypt("hello", "0123456789abcdef", "0123456789abcdef01", &cbc).unwrap_err();
+        assert!(err.contains("NoPadding"));
+
+        let ecb = AesOptions {
+            mode: AesMode::Ecb,
+            key_size: 128,
+            padding: AesPadding::NoPadding,
+        };
+        assert!(aes_encrypt("hello", "0123456789abcdef", "", &ecb).is_err());
+
+        // 对齐文本在块模式下正常往返
+        let ct = aes_encrypt(
+            "0123456789abcdef",
+            "0123456789abcdef",
+            "0123456789abcdef01",
+            &cbc,
+        )
+        .unwrap();
+        let pt = aes_decrypt_to_bytes(&ct, "0123456789abcdef", "0123456789abcdef01", &cbc).unwrap();
+        assert_eq!(pt, b"0123456789abcdef");
+
+        // 流模式 + NoPadding 的非对齐数据保持可用
+        let ctr = AesOptions {
+            mode: AesMode::Ctr,
+            key_size: 128,
+            padding: AesPadding::NoPadding,
+        };
+        let ct2 = aes_encrypt("hello", "0123456789abcdef", "0123456789abcdef01", &ctr).unwrap();
+        let pt2 =
+            aes_decrypt_to_bytes(&ct2, "0123456789abcdef", "0123456789abcdef01", &ctr).unwrap();
+        assert_eq!(pt2, b"hello");
+    }
+
+    #[test]
     fn aes_parse_key_errors() {
         let err = aes_encrypt(
             "x",
@@ -1547,6 +1704,68 @@ F/oTzVy8qjlClT5Acwz5Smuskzg/dd2PEQIDAQAB
     const GOLDEN_RS256: &str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MDAwMDM2MDAsImlhdCI6MTcwMDAwMDAwMCwiaXNzIjoiZXhhbXBsZS5jb20iLCJzdWIiOiIxMjM0NTY3ODkwIn0.wrODx8nJmLKs3SEjcrN8z52B9_uvrNmyeXNPWFM-exSHw5BiEN_HOnidw6awjcZ_nbBPxdxzURWIxUPi5v6xpOtxIzPPwSwZ24PdLliRUSWmLg4YDaPfVcaC6jXqaA0ImDHbcxedU0kvcHOOXXTa6Z8CDmqbUYNCu2HydCw9pkm4A7U1FgxzqPd--QU0AcfRmBRrD9plN9FK5ypwuTwWsuumSgbQ3vmjQI_zeo6ztW1o2XNjCis-_Jt-7EIrbWh6E2Z4neUC-rof5MJ-XU82eSU8upXPR1uY-j4VUgVTcTJikDpAc0LFk_xa-nsZYySO0TYRZ1mSCkhPVUvkNOuZjQ";
 
     #[test]
+    fn decode_jwt_parses_and_reports_structured_errors() {
+        let token = sign_jwt(
+            "HS256",
+            json!({ "alg": "HS256", "typ": "JWT" }),
+            json!({ "sub": "u", "exp": 1700003600 }),
+            "k",
+        )
+        .unwrap();
+        let d = decode_jwt(&token).unwrap();
+        assert_eq!(d.algorithm, "HS256");
+        assert!(d.header.contains("\"alg\""));
+        assert!(d.payload.contains("\"sub\""));
+        assert_eq!(d.signature, token.split('.').nth(2).unwrap());
+
+        // 段数不为 3
+        assert_eq!(decode_jwt("a.b"), Err(JwtDecodeError::Malformed));
+        // base64url 段非法
+        assert!(matches!(
+            decode_jwt("!!!.e30.x"),
+            Err(JwtDecodeError::InvalidBase64(_))
+        ));
+        // Header 非法 JSON（base64("xyz") → "eHl6"）
+        assert!(matches!(
+            decode_jwt("eHl6.e30.x"),
+            Err(JwtDecodeError::InvalidHeaderJson(_))
+        ));
+        // Payload 非法 JSON
+        assert!(matches!(
+            decode_jwt("e30.eHl6.x"),
+            Err(JwtDecodeError::InvalidPayloadJson(_))
+        ));
+        // alg 缺失 → "Unknown"
+        let no_alg = decode_jwt("e30.e30.x").unwrap();
+        assert_eq!(no_alg.algorithm, "Unknown");
+    }
+
+    #[test]
+    fn validate_pem_checks_markers_and_body() {
+        assert!(validate_pem(
+            "-----BEGIN PUBLIC KEY-----\nabc\n-----END PUBLIC KEY-----",
+            "PUBLIC KEY"
+        ));
+        // RSA 前缀变体
+        assert!(validate_pem(
+            "-----BEGIN RSA PUBLIC KEY-----\nabc\n-----END RSA PUBLIC KEY-----",
+            "PUBLIC KEY"
+        ));
+        // 标记缺失
+        assert!(!validate_pem("no markers", "PUBLIC KEY"));
+        // 空正文
+        assert!(!validate_pem(
+            "-----BEGIN PUBLIC KEY-----\n-----END PUBLIC KEY-----",
+            "PUBLIC KEY"
+        ));
+        // 正文含非 base64 字符
+        assert!(!validate_pem(
+            "-----BEGIN PUBLIC KEY-----\nabc!\n-----END PUBLIC KEY-----",
+            "PUBLIC KEY"
+        ));
+    }
+
+    #[test]
     fn jwt_hs256_sign_golden_vector() {
         let token = sign_jwt(
             "HS256",
@@ -1589,6 +1808,47 @@ F/oTzVy8qjlClT5Acwz5Smuskzg/dd2PEQIDAQAB
         let last = tampered.pop().unwrap();
         tampered.push(if last == 'g' { 'h' } else { 'g' });
         assert!(!verify_jwt(&tampered, "HS256", "your-256-bit-secret").unwrap());
+    }
+
+    #[test]
+    fn jwt_hs_verify_rejects_malformed_signature_lengths() {
+        // openssl::memcmp::eq 要求等长：签名段非摘要长度（空 / 截断 / 超长）时
+        // 必须返回 Ok(false) 而非 panic（此前直接 assert! 崩溃）
+        let token = sign_jwt(
+            "HS256",
+            json!({ "alg": "HS256", "typ": "JWT" }),
+            json!({ "sub": "u" }),
+            "k",
+        )
+        .unwrap();
+        let parts: Vec<&str> = token.split('.').collect();
+        let header_payload = format!("{}.{}", parts[0], parts[1]);
+
+        // 空签名段
+        assert_eq!(
+            verify_jwt(&format!("{header_payload}."), "HS256", "k"),
+            Ok(false)
+        );
+        // 1 字节与 33 字节签名（32 字节摘要的两侧）
+        assert_eq!(
+            verify_jwt(&format!("{header_payload}.x"), "HS256", "k"),
+            Ok(false)
+        );
+        assert_eq!(
+            verify_jwt(
+                &format!("{header_payload}.{}", "x".repeat(33)),
+                "HS256",
+                "k"
+            ),
+            Ok(false)
+        );
+        // HS512（64 字节摘要）同样覆盖
+        assert_eq!(
+            verify_jwt(&format!("{header_payload}."), "HS512", "k"),
+            Ok(false)
+        );
+        // 完整令牌不受影响
+        assert_eq!(verify_jwt(&token, "HS256", "k"), Ok(true));
     }
 
     #[test]
@@ -1720,6 +1980,16 @@ F/oTzVy8qjlClT5Acwz5Smuskzg/dd2PEQIDAQAB
     }
 
     // ---------- bcrypt ----------
+
+    #[test]
+    fn bcrypt_verify_rejects_excessive_cost() {
+        // cost 31 的哈希串（只解析 cost，不实际计算——真实计算要数十小时）
+        let malicious = format!("$2b$31${}$", "a".repeat(22)) + &"b".repeat(31);
+        assert!(!bcrypt_verify("pw", &malicious));
+        // 正常 cost 的哈希不受影响
+        let hash = bcrypt_hash("pw", 4).unwrap();
+        assert!(bcrypt_verify("pw", &hash));
+    }
 
     #[test]
     fn bcrypt_hash_and_verify() {
