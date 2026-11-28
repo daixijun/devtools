@@ -669,11 +669,8 @@ async fn replace_pcre_regex(request: RegexReplaceRequest) -> Result<RegexReplace
             //（旧实现在替换后的文本上重复 find，靠「匹配数 × 2」硬截断，
             // 替换文本可被模式匹配时既死循环又产出错误结果）
             let mut ranges: Vec<(usize, usize)> = Vec::new();
-            let mut iter = re.find_iter(text_bytes);
-            loop {
-                let Some(next) = iter.next() else {
-                    break;
-                };
+            // find_iter 的错误项显式上报，不能用 filter_map 静默吞掉
+            for next in re.find_iter(text_bytes) {
                 match next {
                     Ok(m) => ranges.push((m.start(), m.end())),
                     Err(e) => {
