@@ -169,6 +169,8 @@ fn copy_heif_rgba_plane(
     if width <= 0 || height <= 0 {
         return Err("图像尺寸无效".to_string());
     }
+    // HEIC 绕过 image crate 的分配上限，解码前按同一标准预检
+    crate::utils::image::validate_dimensions(width as u32, height as u32)?;
 
     let mut stride: usize = 0;
     let data_ptr = unsafe {
@@ -398,11 +400,8 @@ fn get_image_info(input_path: &Path) -> Result<ImageInfo, String> {
         }
     }
 
-    // 使用 image 库获取图片信息
-    let img = match image::open(input_path) {
-        Ok(img) => img,
-        Err(e) => return Err(format!("无法读取图片文件: {}", e)),
-    };
+    // 使用 image 库获取图片信息（解码前按文件头尺寸做上限预检）
+    let img = crate::utils::image::open_image_limited(input_path)?;
 
     let dimensions = format!("{}x{}", img.width(), img.height());
 
@@ -533,7 +532,7 @@ fn convert_image_with_image_library(
         if ext == "heic" || ext == "heif" {
             read_heic_image(input_path)?
         } else {
-            image::open(input_path).map_err(|e| format!("无法加载图片: {}", e))?
+            crate::utils::image::open_image_limited(input_path)?
         }
     } else {
         return Err("无法确定文件格式".to_string());

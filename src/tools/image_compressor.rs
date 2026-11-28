@@ -228,8 +228,8 @@ fn compress_image_inner(
 
     let original_size = std::fs::metadata(input_path).map(|m| m.len()).unwrap_or(0);
 
-    // 解码图片
-    let mut img = image::open(input_path).map_err(|e| format!("无法加载图片: {}", e))?;
+    // 解码图片（解码前按文件头尺寸做上限预检）
+    let mut img = crate::utils::image::open_image_limited(input_path)?;
 
     // 等比缩放: 未指定的维度使用原始尺寸作为约束 (即不约束该方向, 同时避免误放大)
     let bound_w = request.max_width.unwrap_or(img.width());
