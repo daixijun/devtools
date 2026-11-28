@@ -2,7 +2,7 @@
 name = "devtools"
 description = "DevTools 开发者工具箱（纯 Rust 桌面应用）"
 edition = "2021"
-version = "0.3.0"
+version = "0.3.1"
 license = "MIT"
 
 # lib = 业务层（与 UI 框架无关）；bin = GPUI 壳（src/main.rs）。
