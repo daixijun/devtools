@@ -59,6 +59,7 @@ pub mod base64;
 pub mod base64_decode;
 pub mod base64_encode;
 pub mod format_converter;
+pub mod hash_common;
 pub mod json_formatter;
 pub mod jwt;
 pub mod jwt_decode;
